@@ -220,7 +220,10 @@
         }
 
         .stocks-grid {
-             /* No margin-top here, handled by group-wrapper */
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
         }
 
         .stock-card, .fund-card, .watchlist-card {
@@ -377,9 +380,7 @@
         }
         
         .group-wrapper {
-            display: grid;
-            grid-template-columns: 1fr;
-            margin-top: 20px;
+            display: contents; /* Allows children to be direct grid items of .stocks-grid */
         }
 
         .group-header, .watchlist-title {
