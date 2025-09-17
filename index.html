@@ -1183,7 +1183,7 @@
                     this.elements.watchlistCount.textContent = this.watchlist.length;
                 }
 
-                const filterTerm = this.elements.portfolioFilter.value.toLowerCase();
+                const filterTerm = (this.currentTab === 'stocks' ? this.elements.portfolioFilter.value : '').toLowerCase();
                 const filteredItems = items.filter(item => item.symbol.toLowerCase().includes(filterTerm) || (item.name && item.name.toLowerCase().includes(filterTerm)));
 
                 if (type === 'stock') {
@@ -1312,7 +1312,7 @@
                 if(elements.overallPLPercent) setElement(elements.overallPLPercent, totalOverallPLPercent, true);
             }
             async addItemFromInput(type) {
-                 const inputId = type === 'fund' ? 'mutualFundInput' : `${type}Input`;
+                 const inputId = type === 'fund' ? 'mutualFundInput' : (type === 'stock' ? 'stockInput' : 'watchlistInput');
                  const input = this.elements[inputId];
                 const symbol = input.value.trim().toUpperCase();
                 if (!symbol) return;
@@ -1546,6 +1546,23 @@
                          `;
                     }
 
+                    let stockInfoHTML = '';
+                     if (type === 'watchlist' || type === 'fund') {
+                         stockInfoHTML = `
+                            <div class="info-row"><span class="info-label">Open:</span><span class="info-value">$${(item.open || 0).toFixed(2)}</span></div>
+                            <div class="info-row"><span class="info-label">High:</span><span class="info-value">$${(item.high || 0).toFixed(2)}</span></div>
+                            <div class="info-row"><span class="info-label">Low:</span><span class="info-value">$${(item.low || 0).toFixed(2)}</span></div>
+                            <div class="info-row"><span class="info-label">Prev. Close:</span><span class="info-value">$${(item.previousClose || 0).toFixed(2)}</span></div>
+                         `;
+                     } else { // stock
+                         stockInfoHTML = `
+                            <div class="info-row"><span class="info-label">Open:</span><span class="info-value">$${(item.open || 0).toFixed(2)}</span></div>
+                            <div class="info-row"><span class="info-label">Total Shares:</span><span class="info-value">${stats.totalSharesOwned.toFixed(3)}</span></div>
+                            <div class="info-row"><span class="info-label">Total Value:</span><span class="info-value">$${stats.currentValue.toFixed(2)}</span></div>
+                            <div class="info-row"><span class="info-label">Avg. Cost Basis:</span><span class="info-value">$${stats.averageCostBasis.toFixed(2)}</span></div>
+                         `;
+                     }
+
                     let cardHTML = `
                         <div class="stock-header">
                             <span class="stock-symbol">${item.symbol}</span>
@@ -1556,10 +1573,7 @@
                             <span>${changeSymbol} ${(item.change || 0).toFixed(2)} (${(item.changePercent || 0).toFixed(2)}%)</span>
                         </div>
                         <div class="stock-info">
-                            <div class="info-row"><span class="info-label">Open:</span><span class="info-value">$${(item.open || 0).toFixed(2)}</span></div>
-                            <div class="info-row"><span class="info-label">High:</span><span class="info-value">$${(item.high || 0).toFixed(2)}</span></div>
-                            <div class="info-row"><span class="info-label">Low:</span><span class="info-value">$${(item.low || 0).toFixed(2)}</span></div>
-                            <div class="info-row"><span class="info-label">Prev. Close:</span><span class="info-value">$${(item.previousClose || 0).toFixed(2)}</span></div>
+                           ${stockInfoHTML}
                         </div>
                         ${transactionDetailsHTML}
                         <div class="total-pl ${todayPL >= 0 ? 'positive' : 'negative'}">P/L Today: $${todayPL.toFixed(2)}</div>
@@ -1607,11 +1621,11 @@
 
                 await Promise.all(list.map(async (item) => {
                     try {
-                        const oldPrice = item.price;
+                        const oldChange = item.change || 0;
                         const freshData = await this.apiService.fetchStockData(item.symbol);
                         Object.assign(item, { ...freshData, transactions: item.transactions });
-                        if (item.price > oldPrice) gainCount++;
-                        else if (item.price < oldPrice) lossCount++;
+                        if ((freshData.change || 0) > 0) gainCount++;
+                        else if ((freshData.change || 0) < 0) lossCount++;
                         successCount++;
                     } catch (error) { 
                         failCount++;
@@ -1627,22 +1641,27 @@
             
             showRefreshStatus(tab, stats) {
                 let statusDiv;
+                let itemType = tab === 'funds' ? 'fund' : 'stock';
+
                 if (tab === 'funds') {
                     statusDiv = this.elements.fundsRefreshStatus;
-                } else {
-                    // In a real app, you might have a dedicated status for watchlist too.
-                    // For now, we'll reuse the funds one as an example or just log it.
+                } else if (tab === 'watchlist') {
+                    // For now, let's just log watchlist status to console as there's no UI element
                     console.log(`Watchlist Refresh: ${stats.success} success, ${stats.failed} failed.`);
-                    return; 
+                    return;
+                } else {
+                    return; // No status for stocks tab for now
                 }
+                
+                if (statusDiv) {
+                    statusDiv.innerHTML = `Refreshed ${stats.success} ${itemType}(s). ✅ ${stats.gains} gained, 🔻${stats.losses} lost. Failed to refresh ${stats.failed}.`;
+                    statusDiv.className = 'refresh-status success';
+                    statusDiv.style.display = 'block';
 
-                statusDiv.innerHTML = `Refreshed ${stats.success} fund(s). ✅ ${stats.gains} gained, 🔻${stats.losses} lost. Failed to refresh ${stats.failed}.`;
-                statusDiv.className = 'refresh-status success';
-                statusDiv.style.display = 'block';
-
-                setTimeout(() => {
-                    statusDiv.style.display = 'none';
-                }, 10000);
+                    setTimeout(() => {
+                        statusDiv.style.display = 'none';
+                    }, 10000);
+                }
             }
             
             showLoading(show, message = 'Loading...') { this.elements.loadingDiv.style.display = show ? 'block' : 'none'; this.elements.loadingDiv.textContent = message; }
@@ -1755,8 +1774,8 @@
                 this.elements.settingsModal.style.display = 'none';
             }
             saveSettings(){
-                this.config.finnhubKey = this.elements.modalFinnhubKey.value.trim();
-                this.config.alphaVantageKey = this.elements.modalAlphaVantageKey.value.trim();
+                this.config.finnhubApiKey = this.elements.modalFinnhubKey.value.trim();
+                this.config.alphaVantageApiKey = this.elements.modalAlphaVantageKey.value.trim();
                 const interval = parseInt(this.elements.modalRefreshInterval.value, 10);
                 this.config.refreshIntervalMs = (interval && interval >= 10) ? interval * 1000 : 60000;
                 
