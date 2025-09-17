@@ -794,7 +794,7 @@
             <span id="user-name"></span>
             <button id="sign-out-btn" class="add-btn">Sign Out</button>
         </div>
-        <h1>💰 Khanh Live Stocks/ETFs & Mutual Funds Tracker</h1>
+        <h1>💰 Live Portfolio Tracker</h1>
         <div id="header-countdown">Next update in: <span id="countdown">60</span>s</div>
         
         <div class="tabs">
@@ -912,6 +912,7 @@
                 <button class="add-btn" id="updateWatchlistBtn">🔄 Update Watchlist</button>
                 <button class="add-btn" id="clearWatchlistBtn" style="background: #ff4757;">🗑️ Clear Watchlist</button>
             </div>
+            <div id="watchlist-refresh-status" class="refresh-status"></div>
             <h3 class="watchlist-title">Your Watchlist (<span id="watchlist-count">0</span>)</h3>
         </div>
 
@@ -1122,6 +1123,7 @@
                     updateWatchlistBtn: document.getElementById('updateWatchlistBtn'),
                     clearWatchlistBtn: document.getElementById('clearWatchlistBtn'),
                     watchlistCount: document.getElementById('watchlist-count'),
+                    watchlistRefreshStatus: document.getElementById('watchlist-refresh-status'),
                 };
             }
 
@@ -1175,6 +1177,8 @@
                 this.elements.diversificationChartContainer.style.display = 'none';
                 this.elements.historyChartContainer.style.display = 'none';
                 this.elements.fundsRefreshStatus.style.display = 'none';
+                if(this.elements.watchlistRefreshStatus) this.elements.watchlistRefreshStatus.style.display = 'none';
+
 
                 let items, type;
                 if (this.currentTab === 'stocks') { [items, type] = [this.stocks, 'stock']; this.elements.portfolioSummary.style.display = 'block';} 
