@@ -891,6 +891,7 @@
                 <label for="importFile" class="add-btn" style="background: linear-gradient(45deg, #2ecc71, #27ae60); cursor: pointer; text-align: center; display: flex; align-items: center; justify-content: center;">📤 Import Data</label>
                 <input type="file" id="importFile" accept=".json" style="display: none;">
                 <button class="add-btn" id="settingsBtn" style="background: linear-gradient(45deg, #6c757d, #343a40);">⚙️ Settings</button>
+                <button class="add-btn" id="listAllBtn" style="background: #9b59b6;">📋 List All Stocks</button>
             </div>
         </div>
 
@@ -1163,6 +1164,7 @@
                     clearWatchlistBtn: document.getElementById('clearWatchlistBtn'),
                     watchlistCount: document.getElementById('watchlist-count'),
                     refreshStatusPopup: document.getElementById('refresh-status-popup'),
+                    listAllBtn: document.getElementById('listAllBtn'),
                 };
             }
 
@@ -1189,6 +1191,7 @@
                 this.elements.modalSaveSettingsBtn.addEventListener('click', () => this.saveSettings());
                 this.elements.confirmModalCancelBtn.addEventListener('click', () => this.closeConfirmModal());
                 this.elements.confirmModalConfirmBtn.addEventListener('click', () => this.handleConfirmAction());
+                this.elements.listAllBtn.addEventListener('click', () => this.listAllSymbols());
 
                 // New Event Listeners for specific tabs
                 this.elements.updateAllFundsBtn.addEventListener('click', () => this.refreshAllData());
@@ -1680,7 +1683,7 @@
 
                 this.showLoading(true, `Preparing to refresh... (0/${totalCount})`);
                 
-                let stats = { success: 0, gains: 0, losses: 0, failed: 0 };
+                let stats = { success: 0, gains: 0, losses: 0, unchanged: 0 };
                 let processedCount = 0;
                 
                 for (const item of allItems) {
@@ -1691,10 +1694,12 @@
                         Object.assign(item, { ...freshData, transactions: item.transactions });
                         
                         stats.success++;
-                        if ((freshData.change || 0) >= 0) { 
+                        if ((freshData.change || 0) > 0) { 
                             stats.gains++;
-                        } else {
+                        } else if ((freshData.change || 0) < 0) {
                             stats.losses++;
+                        } else {
+                            stats.unchanged++;
                         }
                         
                     } catch (error) {
@@ -1718,7 +1723,7 @@
                 if (type === 'stock' || type === 'stocks' || type === 'watchlist') itemType = 'stock(s)';
                 
                 if (statusDiv) {
-                    statusDiv.innerHTML = `Refreshed ${stats.success} ${itemType}. ✅ ${stats.gains} gained, 🔻${stats.losses} lost. Failed to refresh ${stats.failed}.`;
+                    statusDiv.innerHTML = `Refreshed ${stats.success} ${itemType}. ✅ ${stats.gains} gained, 🔻${stats.losses} lost, ➖ ${stats.unchanged} unchanged. Failed to refresh ${stats.failed}.`;
                     statusDiv.style.display = 'block';
 
                     setTimeout(() => {
@@ -1847,6 +1852,39 @@
                 this.closeSettingsModal();
                 this.showSuccess('✅ Settings updated for this session!');
                 this.startLiveUpdate();
+            }
+            listAllSymbols() {
+                console.clear();
+                console.log("--- ALL SAVED SYMBOLS ---");
+                
+                let allSymbols = [];
+                
+                if(this.stocks.length > 0) {
+                    console.log(`\n--- Stocks (${this.stocks.length}) ---`);
+                    this.stocks.forEach(s => {
+                        console.log(s.symbol);
+                        allSymbols.push(s.symbol);
+                    });
+                }
+                
+                if(this.mutualFunds.length > 0) {
+                     console.log(`\n--- Mutual Funds (${this.mutualFunds.length}) ---`);
+                     this.mutualFunds.forEach(f => {
+                         console.log(f.symbol);
+                         allSymbols.push(f.symbol);
+                     });
+                }
+
+                if(this.watchlist.length > 0) {
+                     console.log(`\n--- Watchlist (${this.watchlist.length}) ---`);
+                     this.watchlist.forEach(w => {
+                        console.log(w.symbol);
+                        allSymbols.push(w.symbol);
+                     });
+                }
+                
+                console.log(`\nTotal: ${allSymbols.length} symbols.`);
+                this.showSuccess('📋 Symbol list printed to the developer console (Press F12 to view).');
             }
         }
         
