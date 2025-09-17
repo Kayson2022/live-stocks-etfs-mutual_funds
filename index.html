@@ -668,16 +668,17 @@
             padding: 8px 16px;
             font-size: 0.9rem;
             font-weight: 600;
-            background-color: rgba(0, 0, 0, 0.05);
-            border: 1px solid rgba(0, 0, 0, 0.1);
-            border-radius: 8px;
+            background-color: #ff4757;
+            color: white;
+            border: none;
+            border-radius: 15px;
             cursor: pointer;
             margin: 10px auto;
             transition: background-color 0.2s ease;
             min-width: 150px;
         }
         .collapse-group-btn:hover {
-            background-color: rgba(0, 0, 0, 0.1);
+            background-color: #ff5e6a;
         }
 
         .summary-content {
@@ -704,6 +705,39 @@
             font-size: 1.1rem;
             line-height: 1.6;
             color: #555;
+        }
+        
+        .transaction-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+            padding: 5px 0;
+        }
+        .transaction-header h4 {
+            margin: 0;
+        }
+        .transaction-header .toggle-icon {
+            transition: transform 0.3s ease;
+            display: inline-block;
+        }
+        .transaction-header.collapsed .toggle-icon {
+            transform: rotate(-90deg);
+        }
+
+        .transactions-container {
+            transition: max-height 0.5s ease-in-out, opacity 0.3s ease-in-out, margin-top 0.3s ease;
+            max-height: 1000px; /* arbitrary large value */
+            opacity: 1;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+        .transactions-container.collapsed {
+            max-height: 0;
+            opacity: 0;
+            margin-top: 0;
+            pointer-events: none;
         }
         /* -- END OF STYLES -- */
 
@@ -1346,7 +1380,7 @@
                 footer.className = 'group-footer';
                 const collapseBtn = document.createElement('button');
                 collapseBtn.className = 'collapse-group-btn';
-                collapseBtn.textContent = 'Collapse Section';
+                collapseBtn.textContent = 'Collapse';
                 footer.appendChild(collapseBtn);
 
                 const totalPLToday = list.reduce((sum, item) => {
@@ -1377,12 +1411,12 @@
                     if (isSummarized) {
                         content.style.display = 'grid';
                         summaryContent.style.display = 'none';
-                        collapseBtn.textContent = 'Collapse Section';
+                        collapseBtn.textContent = 'Collapse';
                         footer.style.borderTop = '1px solid #eee';
                     } else {
                         content.style.display = 'none';
                         summaryContent.style.display = 'block';
-                        collapseBtn.textContent = 'Expand Section';
+                        collapseBtn.textContent = 'Expand';
                         footer.style.borderTop = 'none';
                     }
                 });
@@ -1419,7 +1453,10 @@
                             <div class="info-row"><span class="info-label">Avg. Cost Basis:</span><span class="info-value">$${stats.averageCostBasis.toFixed(2)}</span></div>
                         </div>
                         <div class="transaction-details">
-                            <h4>Purchases & Sales:</h4>
+                             <div class="transaction-header">
+                                <h4>Purchases & Sales:</h4>
+                                <span class="toggle-icon">▼</span>
+                            </div>
                             <div class="transactions-container">
                                 ${ (item.transactions || []).map((t, index) => `
                                     <div class="transaction-entry">
@@ -1443,6 +1480,20 @@
                         <div class="total-pl ${todayPL >= 0 ? 'positive' : 'negative'}">P/L Today: $${todayPL.toFixed(2)}</div>
                     `;
                     card.innerHTML = cardHTML;
+
+                    const transactionHeader = card.querySelector('.transaction-header');
+                    const transactionsContainer = card.querySelector('.transactions-container');
+                    if (transactionHeader && transactionsContainer) {
+                        if (item.transactions && item.transactions.length > 3) {
+                            transactionHeader.classList.add('collapsed');
+                            transactionsContainer.classList.add('collapsed');
+                        }
+                        transactionHeader.addEventListener('click', () => {
+                            transactionHeader.classList.toggle('collapsed');
+                            transactionsContainer.classList.toggle('collapsed');
+                        });
+                    }
+
                     container.appendChild(card);
                 });
             }
@@ -1602,5 +1653,4 @@
     </script>
 </body>
 </html>
-" to work on the "Collapse Section" buttons. I want the border-radius of each card to be 15px, and I want you to change the collapse section button color to red. Also, make the button text "Collapse" when the section is expanded and "Expand" when it's collapsed.
 
