@@ -1590,8 +1590,16 @@
                     try {
                         const data = JSON.parse(event.target.result);
                         let imported = false;
-                        if (data.stocks) { this.stocks = data.stocks; imported = true; }
-                        if (data.mutualFunds) { this.mutualFunds = data.mutualFunds; imported = true; }
+                        if (data.stocks) { 
+                            this.stocks = data.stocks;
+                            this.stocks.forEach(s => this.migratePurchasesToTransactions(s));
+                            imported = true;
+                        }
+                        if (data.mutualFunds) { 
+                            this.mutualFunds = data.mutualFunds; 
+                            this.mutualFunds.forEach(f => this.migratePurchasesToTransactions(f));
+                            imported = true;
+                        }
                         if (data.watchlist) { this.watchlist = data.watchlist; imported = true; }
                         if (data.portfolioHistory) { this.portfolioHistory = data.portfolioHistory; imported = true; }
 
@@ -1605,6 +1613,18 @@
                     } catch (err) { this.showError('❌ Error parsing JSON file.'); console.error("Import error:", err); }
                 };
                 reader.readAsText(file);
+            }
+            migratePurchasesToTransactions(item) {
+                if (item.purchases && !item.transactions) {
+                    item.transactions = item.purchases.map(p => ({
+                        type: 'buy',
+                        shares: p.shares,
+                        price: p.costBasis,
+                        note: p.platform || '',
+                        date: new Date().toISOString()
+                    }));
+                    delete item.purchases;
+                }
             }
             renderDiversificationChart() {
                 const hasTransactions = this.stocks.some(s => s.transactions && s.transactions.length > 0 && this.calculateTransactionStats(s.transactions).totalSharesOwned > 0);
@@ -1641,7 +1661,7 @@
             }
             saveSettings(){
                 this.config.finnhubApiKey = this.elements.modalFinnhubKey.value.trim();
-                this.config.alphaVantageApiKey = this.elements.modalAlphaVantageKey.value.trim();
+                this.config.alphaVantageKey = this.elements.modalAlphaVantageKey.value.trim();
                 const interval = parseInt(this.elements.modalRefreshInterval.value, 10);
                 this.config.refreshIntervalMs = (interval && interval >= 10) ? interval * 1000 : 60000;
                 
