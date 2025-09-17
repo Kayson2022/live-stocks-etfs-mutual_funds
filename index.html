@@ -1130,7 +1130,7 @@
                 this.elements.signOutBtn.addEventListener('click', () => this.signOut());
                 this.elements.addBtn.addEventListener('click', () => this.addItemFromInput('stock'));
                 this.elements.stockInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') this.addItemFromInput('stock'); });
-                this.elements.liveUpdateBtn.addEventListener('click', () => this.refreshAllData());
+                this.elements.liveUpdateBtn.addEventListener('click', () => this.refreshAllData(true)); // Pass true to refresh all
                 this.elements.clearAllBtn.addEventListener('click', () => this.clearAllItems('stock'));
                 this.elements.toggleLiveUpdateBtn.addEventListener('click', () => this.toggleLiveUpdate());
                 this.elements.exportBtn.addEventListener('click', () => this.exportData());
@@ -1149,7 +1149,7 @@
                 this.elements.confirmModalCancelBtn.addEventListener('click', () => this.closeConfirmModal());
                 this.elements.confirmModalConfirmBtn.addEventListener('click', () => this.handleConfirmAction());
 
-                // New Event Listeners
+                // New Event Listeners for specific tabs
                 this.elements.updateAllFundsBtn.addEventListener('click', () => this.refreshAllData());
                 this.elements.clearAllFundsBtn.addEventListener('click', () => this.clearAllItems('fund'));
                 this.elements.updateWatchlistBtn.addEventListener('click', () => this.refreshAllData());
@@ -1228,8 +1228,19 @@
 
             // --- ALL OTHER METHODS ---
             startLiveUpdate() {
-                 this.stopLiveUpdate();
-                this.refreshIntervalId = setInterval(() => { if (this.stocks.length > 0 && !this.isLiveUpdatePaused && this.currentTab === 'stocks') this.refreshAllData(); }, this.config.refreshIntervalMs);
+                this.stopLiveUpdate();
+                this.refreshIntervalId = setInterval(() => {
+                    if (this.isLiveUpdatePaused) return;
+                    
+                    let list;
+                    if (this.currentTab === 'stocks') { list = this.stocks; }
+                    else if (this.currentTab === 'funds') { list = this.mutualFunds; }
+                    else if (this.currentTab === 'watchlist') { list = this.watchlist; }
+
+                    if (list && list.length > 0) {
+                        this.refreshAllData();
+                    }
+                }, this.config.refreshIntervalMs);
                 this.isLiveUpdatePaused = false;
                 this.elements.toggleLiveUpdateBtn.textContent = '⏸️ Pause Live Update';
                 this.startCountdown();
@@ -1608,50 +1619,53 @@
                     this.showSuccess(`✅ Moved ${symbol} to portfolio!`);
                 }
             }
-            async refreshAllData() {
-                let list, type;
-                if (this.currentTab === 'stocks') { [list, type] = [this.stocks, 'stocks']; }
-                else if (this.currentTab === 'funds') { [list, type] = [this.mutualFunds, 'funds']; }
-                else if (this.currentTab === 'watchlist') { [list, type] = [this.watchlist, 'watchlist']; }
-                
-                if(!list || list.length === 0) return;
-                
-                this.showLoading(true, `Refreshing ${type}...`);
-                
-                let successCount = 0, gainCount = 0, lossCount = 0, failCount = 0;
+            async refreshAllData(refreshAll = false) {
+                let listsToRefresh = [];
 
-                await Promise.all(list.map(async (item) => {
-                    try {
-                        const oldChange = item.change || 0;
-                        const freshData = await this.apiService.fetchStockData(item.symbol);
-                        Object.assign(item, { ...freshData, transactions: item.transactions });
-                        if ((freshData.change || 0) > 0) gainCount++;
-                        else if ((freshData.change || 0) < 0) lossCount++;
-                        successCount++;
-                    } catch (error) { 
-                        failCount++;
-                        console.error(`Failed to refresh ${item.symbol}`, error); 
-                    }
-                }));
+                if (refreshAll) {
+                    listsToRefresh.push({ list: this.stocks, type: 'stocks' });
+                    listsToRefresh.push({ list: this.mutualFunds, type: 'funds' });
+                    listsToRefresh.push({ list: this.watchlist, type: 'watchlist' });
+                } else {
+                    if (this.currentTab === 'stocks') { listsToRefresh.push({ list: this.stocks, type: 'stocks' }); }
+                    else if (this.currentTab === 'funds') { listsToRefresh.push({ list: this.mutualFunds, type: 'funds' }); }
+                    else if (this.currentTab === 'watchlist') { listsToRefresh.push({ list: this.watchlist, type: 'watchlist' }); }
+                }
+
+                this.showLoading(true, `Refreshing data...`);
+                
+                for (const { list, type } of listsToRefresh) {
+                    if (!list || list.length === 0) continue;
+
+                    let successCount = 0, gainCount = 0, lossCount = 0, failCount = 0;
+                    await Promise.all(list.map(async (item) => {
+                        try {
+                            const freshData = await this.apiService.fetchStockData(item.symbol);
+                            Object.assign(item, { ...freshData, transactions: item.transactions });
+                            if ((freshData.change || 0) > 0) gainCount++;
+                            else if ((freshData.change || 0) < 0) lossCount++;
+                            successCount++;
+                        } catch (error) { 
+                            failCount++;
+                            console.error(`Failed to refresh ${item.symbol}`, error); 
+                        }
+                    }));
+                     this.showRefreshStatus(type, { success: successCount, gains: gainCount, losses: lossCount, failed: failCount });
+                }
                 
                 await this.saveData();
                 this.renderContent();
                 this.showLoading(false);
-                this.showRefreshStatus(this.currentTab, { success: successCount, gains: gainCount, losses: lossCount, failed: failCount });
             }
             
             showRefreshStatus(tab, stats) {
                 let statusDiv;
-                let itemType = tab === 'funds' ? 'fund' : 'stock';
+                let itemType = tab === 'funds' ? 'fund' : (tab === 'watchlist' ? 'stock' : 'stock');
 
                 if (tab === 'funds') {
                     statusDiv = this.elements.fundsRefreshStatus;
-                } else if (tab === 'watchlist') {
-                    // For now, let's just log watchlist status to console as there's no UI element
-                    console.log(`Watchlist Refresh: ${stats.success} success, ${stats.failed} failed.`);
-                    return;
                 } else {
-                    return; // No status for stocks tab for now
+                    return; 
                 }
                 
                 if (statusDiv) {
