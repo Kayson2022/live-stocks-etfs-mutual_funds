@@ -793,6 +793,21 @@
             border-radius: 3px;
             font-family: monospace;
         }
+
+        #list-all-content {
+            max-height: 400px;
+            overflow-y: auto;
+            text-align: left;
+        }
+        #list-all-content h4 {
+            margin-top: 15px;
+            margin-bottom: 5px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+        }
+        #list-all-content p {
+            padding: 2px 5px;
+        }
         /* -- END OF STYLES -- */
 
         @media (max-width: 768px) {
@@ -1001,6 +1016,14 @@
         </div>
     </div>
 
+    <div id="listAllModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <button class="close-modal-btn" id="closeListAllBtn">&times;</button>
+            <h3 class="modal-title">All Saved Symbols</h3>
+            <div id="list-all-content"></div>
+        </div>
+    </div>
+
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -1165,6 +1188,9 @@
                     watchlistCount: document.getElementById('watchlist-count'),
                     refreshStatusPopup: document.getElementById('refresh-status-popup'),
                     listAllBtn: document.getElementById('listAllBtn'),
+                    listAllModal: document.getElementById('listAllModal'),
+                    listAllContent: document.getElementById('list-all-content'),
+                    closeListAllBtn: document.getElementById('closeListAllBtn'),
                 };
             }
 
@@ -1191,7 +1217,9 @@
                 this.elements.modalSaveSettingsBtn.addEventListener('click', () => this.saveSettings());
                 this.elements.confirmModalCancelBtn.addEventListener('click', () => this.closeConfirmModal());
                 this.elements.confirmModalConfirmBtn.addEventListener('click', () => this.handleConfirmAction());
-                this.elements.listAllBtn.addEventListener('click', () => this.listAllSymbols());
+                this.elements.listAllBtn.addEventListener('click', () => this.openListAllModal());
+                this.elements.closeListAllBtn.addEventListener('click', () => this.closeListAllModal());
+
 
                 // New Event Listeners for specific tabs
                 this.elements.updateAllFundsBtn.addEventListener('click', () => this.refreshAllData());
@@ -1660,13 +1688,11 @@
             }
             async refreshAllData(refreshAll = false) {
                 let listsToRefresh = [];
-                let totalItemsToRefresh = 0;
-
+                
                 if (refreshAll) {
                     listsToRefresh.push({ list: this.stocks, type: 'stock' });
                     listsToRefresh.push({ list: this.mutualFunds, type: 'fund' });
                     listsToRefresh.push({ list: this.watchlist, type: 'watchlist' });
-                    totalItemsToRefresh = this.stocks.length + this.mutualFunds.length + this.watchlist.length;
                 } else {
                     if (this.currentTab === 'stocks') { listsToRefresh.push({ list: this.stocks, type: 'stock' }); }
                     else if (this.currentTab === 'funds') { listsToRefresh.push({ list: this.mutualFunds, type: 'fund' }); }
@@ -1685,6 +1711,7 @@
                 
                 let stats = { success: 0, gains: 0, losses: 0, unchanged: 0 };
                 let processedCount = 0;
+                let failedSymbols = [];
                 
                 for (const item of allItems) {
                     processedCount++;
@@ -1703,6 +1730,7 @@
                         }
                         
                     } catch (error) {
+                        failedSymbols.push(item.symbol);
                         console.error(`Failed to refresh ${item.symbol}:`, error);
                     }
                 }
@@ -1711,6 +1739,11 @@
 
                 this.showLoading(false);
                 this.showRefreshStatus(refreshAll ? 'all' : this.currentTab, stats);
+
+                if (stats.failed > 0) {
+                    console.log("--- Failed to Refresh ---");
+                    failedSymbols.forEach(s => console.log(s));
+                }
                 
                 await this.saveData();
                 this.renderContent();
@@ -1720,7 +1753,7 @@
                 const statusDiv = this.elements.refreshStatusPopup;
                 let itemType = 'item(s)';
                 if (type === 'fund' || type === 'funds') itemType = 'fund(s)';
-                if (type === 'stock' || type === 'stocks' || type === 'watchlist') itemType = 'stock(s)';
+                if (type === 'stock' || type === 'stocks' || type === 'watchlist' || type === 'all') itemType = 'item(s)';
                 
                 if (statusDiv) {
                     statusDiv.innerHTML = `Refreshed ${stats.success} ${itemType}. ✅ ${stats.gains} gained, 🔻${stats.losses} lost, ➖ ${stats.unchanged} unchanged. Failed to refresh ${stats.failed}.`;
@@ -1853,38 +1886,44 @@
                 this.showSuccess('✅ Settings updated for this session!');
                 this.startLiveUpdate();
             }
+
+            openListAllModal() {
+                this.elements.listAllModal.style.display = 'flex';
+                this.listAllSymbols();
+            }
+
+            closeListAllModal() {
+                 this.elements.listAllModal.style.display = 'none';
+            }
+
             listAllSymbols() {
-                console.clear();
-                console.log("--- ALL SAVED SYMBOLS ---");
-                
-                let allSymbols = [];
-                
+                const contentDiv = this.elements.listAllContent;
+                contentDiv.innerHTML = ''; // Clear previous list
+
                 if(this.stocks.length > 0) {
-                    console.log(`\n--- Stocks (${this.stocks.length}) ---`);
+                    contentDiv.innerHTML += `<h4>Stocks (${this.stocks.length})</h4>`;
                     this.stocks.forEach(s => {
-                        console.log(s.symbol);
-                        allSymbols.push(s.symbol);
+                        contentDiv.innerHTML += `<p>${s.symbol}</p>`;
                     });
                 }
                 
                 if(this.mutualFunds.length > 0) {
-                     console.log(`\n--- Mutual Funds (${this.mutualFunds.length}) ---`);
+                     contentDiv.innerHTML += `<h4>Mutual Funds (${this.mutualFunds.length})</h4>`;
                      this.mutualFunds.forEach(f => {
-                         console.log(f.symbol);
-                         allSymbols.push(f.symbol);
+                         contentDiv.innerHTML += `<p>${f.symbol}</p>`;
                      });
                 }
 
                 if(this.watchlist.length > 0) {
-                     console.log(`\n--- Watchlist (${this.watchlist.length}) ---`);
+                     contentDiv.innerHTML += `<h4>Watchlist (${this.watchlist.length})</h4>`;
                      this.watchlist.forEach(w => {
-                        console.log(w.symbol);
-                        allSymbols.push(w.symbol);
+                        contentDiv.innerHTML += `<p>${w.symbol}</p>`;
                      });
                 }
                 
-                console.log(`\nTotal: ${allSymbols.length} symbols.`);
-                this.showSuccess('📋 Symbol list printed to the developer console (Press F12 to view).');
+                if(this.stocks.length === 0 && this.mutualFunds.length === 0 && this.watchlist.length === 0) {
+                    contentDiv.innerHTML = '<p>You have no saved symbols in any list.</p>';
+                }
             }
         }
         
@@ -1892,5 +1931,4 @@
     </script>
 </body>
 </html>
-
 
