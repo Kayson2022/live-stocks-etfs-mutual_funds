@@ -1144,6 +1144,7 @@
             constructor() {
                 this.userId = null; this.stocks = []; this.mutualFunds = []; this.watchlist = []; this.portfolioHistory = [];
                 this.currentTab = 'stocks'; this.onConfirm = null;
+                this.isLiveUpdatePaused = false;
                 this.init();
             }
 
@@ -1154,8 +1155,8 @@
                     this.cacheDOMElements();
                     this.setupEventListeners();
                     if (!db) { 
-                        const loginContainer = document.getElementById('login-container');
-                        loginContainer.innerHTML = `<div class="error" style="display:block;"><h1>Firebase Not Configured</h1><p>Please create a Firebase project and paste your configuration keys into the script tag of the HTML file to use this application.</p></div>`;
+                        this.showError("Firebase is not configured. Please add your firebaseConfig object to the script tag.");
+                        this.elements.loginContainer.style.display = 'block';
                         return;
                     }
                     this.handleAuthentication();
@@ -1250,8 +1251,8 @@
                 this.elements.toggleLiveUpdateBtn.addEventListener('click', () => this.toggleLiveUpdate());
                 this.elements.exportBtn.addEventListener('click', () => this.exportData());
                 this.elements.importFile.addEventListener('change', (e) => this.importData(e));
-                this.elements.portfolioFilter.addEventListener('input', (e) => this.renderContent());
-                this.elements.portfolioSort.addEventListener('change', (e) => this.renderContent());
+                this.elements.portfolioFilter.addEventListener('input', () => this.renderContent());
+                this.elements.portfolioSort.addEventListener('change', () => this.renderContent());
                 this.elements.addFundBtn.addEventListener('click', () => this.addItemFromInput('fund'));
                 this.elements.mutualFundInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') this.addItemFromInput('fund'); });
                 this.elements.addWatchlistBtn.addEventListener('click', () => this.addItemFromInput('watchlist'));
@@ -1259,8 +1260,8 @@
                 document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', (e) => { const tabId = e.target.getAttribute('onclick').split("'")[1].replace('window.stockTracker.',''); this.switchTab(tabId); }));
                 this.elements.modalSaveBtn.addEventListener('click', () => this.saveTransaction());
                 this.elements.settingsBtn.addEventListener('click', () => this.openSettingsModal());
-                document.getElementById('closeSettingsBtn').addEventListener('click', () => this.closeSettingsModal());
-                document.getElementById('modal-save-settings-btn').addEventListener('click', () => this.saveSettings());
+                this.elements.closeSettingsBtn.addEventListener('click', () => this.closeSettingsModal());
+                this.elements.modalSaveSettingsBtn.addEventListener('click', () => this.saveSettings());
                 this.elements.confirmModalCancelBtn.addEventListener('click', () => this.closeConfirmModal());
                 this.elements.confirmModalConfirmBtn.addEventListener('click', () => this.handleConfirmAction());
             }
@@ -1656,5 +1657,4 @@
     </script>
 </body>
 </html>
-
 
