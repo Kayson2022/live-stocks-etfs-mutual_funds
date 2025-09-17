@@ -220,7 +220,7 @@
         }
 
         .stocks-grid {
-            margin-top: 30px;
+             /* No margin-top here, handled by group-wrapper */
         }
 
         .stock-card, .fund-card, .watchlist-card {
@@ -376,6 +376,12 @@
             transform: scale(1.1) rotate(180deg);
         }
         
+        .group-wrapper {
+            display: grid;
+            grid-template-columns: 1fr;
+            margin-top: 20px;
+        }
+
         .group-header {
             grid-column: 1 / -1;
             font-size: 1.5rem;
@@ -405,7 +411,7 @@
             max-height: 50000px;
             opacity: 1;
             overflow: hidden;
-            margin-top: 20px;
+            margin-top: 0;
             grid-column: 1 / -1;
         }
 
@@ -413,6 +419,8 @@
             max-height: 0;
             opacity: 0;
             margin-top: 0;
+            padding: 0;
+            border: none;
             pointer-events: none;
             display: none;
         }
@@ -652,8 +660,8 @@
         .group-footer {
             grid-column: 1 / -1;
             text-align: center;
-            padding-top: 10px;
-            margin-top: -10px;
+            padding-top: 20px;
+            margin-top: 10px;
             border-top: 1px solid #eee;
         }
         .collapse-group-btn {
@@ -1318,6 +1326,9 @@
             createGroup(title, list, headerClass, parent, type) {
                 if(list.length === 0) return;
 
+                const groupWrapper = document.createElement('div');
+                groupWrapper.className = 'group-wrapper';
+
                 const header = document.createElement('div');
                 header.className = `group-header ${headerClass}`;
                 header.innerHTML = `
@@ -1326,17 +1337,17 @@
                 `;
 
                 const content = document.createElement('div');
-                content.className = 'group-content stocks-grid';
+                content.className = 'group-content';
 
                 const summaryContent = document.createElement('div');
                 summaryContent.className = 'summary-content';
                 
-                const buttonContainer = document.createElement('div');
-                buttonContainer.className = 'group-footer';
+                const footer = document.createElement('div');
+                footer.className = 'group-footer';
                 const collapseBtn = document.createElement('button');
                 collapseBtn.className = 'collapse-group-btn';
                 collapseBtn.textContent = 'Collapse Section';
-                buttonContainer.appendChild(collapseBtn);
+                footer.appendChild(collapseBtn);
 
                 const totalPLToday = list.reduce((sum, item) => {
                     const stats = this.calculateTransactionStats(item.transactions, item.price);
@@ -1356,7 +1367,7 @@
                     header.classList.toggle('collapsed');
                     content.classList.toggle('collapsed');
                     summaryContent.classList.toggle('collapsed'); 
-                    buttonContainer.classList.toggle('collapsed');
+                    footer.classList.toggle('collapsed');
                 });
 
                 collapseBtn.addEventListener('click', (e) => {
@@ -1367,14 +1378,17 @@
                         content.style.display = 'grid';
                         summaryContent.style.display = 'none';
                         collapseBtn.textContent = 'Collapse Section';
+                        footer.style.borderTop = '1px solid #eee';
                     } else {
                         content.style.display = 'none';
                         summaryContent.style.display = 'block';
                         collapseBtn.textContent = 'Expand Section';
+                        footer.style.borderTop = 'none';
                     }
                 });
                 
-                parent.append(header, content, summaryContent, buttonContainer);
+                groupWrapper.append(header, content, summaryContent, footer);
+                parent.appendChild(groupWrapper);
                 this.renderCards(list, content, type);
             }
             renderCards(itemList, container, type) {
@@ -1588,4 +1602,5 @@
     </script>
 </body>
 </html>
+" to work on the "Collapse Section" buttons. I want the border-radius of each card to be 15px, and I want you to change the collapse section button color to red. Also, make the button text "Collapse" when the section is expanded and "Expand" when it's collapsed.
 
