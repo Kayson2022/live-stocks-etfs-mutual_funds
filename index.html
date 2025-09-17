@@ -833,7 +833,7 @@
         <div class="stocks-grid" id="stocksGrid"></div>
     </div>
 
-    <div class="small-countdown">Next update: <span id="smallCountdown">60s</span></div>
+    <div class="small-countdown" id="small-countdown-container">Next update: <span id="smallCountdown">60s</span></div>
     
     <div id="transactionModal" class="modal" style="display: none;">
         <div class="modal-content">
@@ -1018,11 +1018,17 @@
                     modalAlphaVantageKey: document.getElementById('modal-alpha-vantage-key'),
                     modalRefreshInterval: document.getElementById('modal-refresh-interval'),
                     modalSaveSettingsBtn: document.getElementById('modal-save-settings-btn'),
-                    diversificationChartContainer: document.getElementById('diversification-chart-container'), diversificationChart: document.getElementById('diversificationChart'),
-                    historyChartContainer: document.getElementById('history-chart-container'), historyChart: document.getElementById('historyChart'),
-                    confirmModal: document.getElementById('confirmModal'), confirmModalText: document.getElementById('confirm-modal-text'), confirmModalCancelBtn: document.getElementById('confirm-modal-cancel-btn'), confirmModalConfirmBtn: document.getElementById('confirm-modal-confirm-btn'),
+                    diversificationChartContainer: document.getElementById('diversification-chart-container'),
+                    diversificationChart: document.getElementById('diversificationChart'),
+                    historyChartContainer: document.getElementById('history-chart-container'),
+                    historyChart: document.getElementById('historyChart'),
+                    confirmModal: document.getElementById('confirmModal'),
+                    confirmModalText: document.getElementById('confirm-modal-text'),
+                    confirmModalCancelBtn: document.getElementById('confirm-modal-cancel-btn'),
+                    confirmModalConfirmBtn: document.getElementById('confirm-modal-confirm-btn'),
                     countdown: document.getElementById('countdown'),
                     smallCountdown: document.getElementById('smallCountdown'),
+                    smallCountdownContainer: document.getElementById('small-countdown-container'),
                 };
             }
 
@@ -1121,13 +1127,19 @@
                 this.startCountdown();
             }
             startCountdown() {
+                // Restore original HTML if it was changed by stopLiveUpdate
+                this.elements.smallCountdownContainer.innerHTML = `Next update: <span id="smallCountdown">${this.config.refreshIntervalMs / 1000}s</span>`;
+                // Re-cache the span since we just overwrote it
+                this.elements.smallCountdown = document.getElementById('smallCountdown');
+
                 let timeLeft = this.config.refreshIntervalMs / 1000;
                 if(this.countdownIntervalId) clearInterval(this.countdownIntervalId);
                 
                 const updateTimers = () => {
                     if (timeLeft >= 0) {
                         this.elements.countdown.textContent = timeLeft;
-                        if(this.elements.smallCountdown) this.elements.smallCountdown.textContent = `Next update: ${timeLeft}s`;
+                        // Only update the span's text content, not the whole thing
+                        if(this.elements.smallCountdown) this.elements.smallCountdown.textContent = `${timeLeft}s`;
                         timeLeft--;
                     } else {
                         timeLeft = this.config.refreshIntervalMs / 1000;
@@ -1142,7 +1154,8 @@
                 clearInterval(this.countdownIntervalId);
                 this.isLiveUpdatePaused = true;
                 this.elements.toggleLiveUpdateBtn.textContent = '▶️ Resume Live Update';
-                 if(this.elements.smallCountdown) this.elements.smallCountdown.textContent = 'Updates Paused';
+                 // Update the whole container div
+                 if(this.elements.smallCountdownContainer) this.elements.smallCountdownContainer.textContent = 'Updates Paused';
             }
             toggleLiveUpdate() { this.isLiveUpdatePaused ? this.startLiveUpdate() : this.stopLiveUpdate(); }
             renderPortfolioSummary() {
@@ -1549,7 +1562,7 @@
                 this.elements.settingsModal.style.display = 'none';
             }
             saveSettings(){
-                this.config.finnhubApiKey = this.elements.modalFinnhubKey.value.trim();
+                this.config.finnhubKey = this.elements.modalFinnhubKey.value.trim();
                 this.config.alphaVantageKey = this.elements.modalAlphaVantageKey.value.trim();
                 const interval = parseInt(this.elements.modalRefreshInterval.value, 10);
                 this.config.refreshIntervalMs = (interval && interval >= 10) ? interval * 1000 : 60000;
