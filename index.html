@@ -695,6 +695,10 @@
                         <span id="total-pl-today" class="summary-value positive">$0.00</span>
                     </div>
                     <div class="summary-item">
+                        <span class="summary-label">Total P/L % Today</span>
+                        <span id="total-pl-percent-today" class="summary-value positive">0.00%</span>
+                    </div>
+                    <div class="summary-item">
                         <span class="summary-label">Unrealized P/L</span>
                         <span id="total-pl-unrealized" class="summary-value positive">$0.00</span>
                     </div>
@@ -750,6 +754,10 @@
                     <div class="summary-item">
                         <span class="summary-label">Total P/L Today</span>
                         <span id="funds-total-pl-today" class="summary-value positive">$0.00</span>
+                    </div>
+                     <div class="summary-item">
+                        <span class="summary-label">Total P/L % Today</span>
+                        <span id="funds-total-pl-percent-today" class="summary-value positive">0.00%</span>
                     </div>
                     <div class="summary-item">
                         <span class="summary-label">Unrealized P/L</span>
@@ -872,6 +880,8 @@
                 this.userId = null; this.stocks = []; this.mutualFunds = []; this.watchlist = []; this.portfolioHistory = [];
                 this.currentTab = 'stocks'; this.onConfirm = null;
                 this.isLiveUpdatePaused = false;
+                this.countdownIntervalId = null;
+                this.refreshIntervalId = null;
                 this.init();
             }
 
@@ -965,6 +975,7 @@
                     historyChartContainer: document.getElementById('history-chart-container'), historyChart: document.getElementById('historyChart'),
                     confirmModal: document.getElementById('confirmModal'), confirmModalText: document.getElementById('confirm-modal-text'), confirmModalCancelBtn: document.getElementById('confirm-modal-cancel-btn'), confirmModalConfirmBtn: document.getElementById('confirm-modal-confirm-btn'),
                     countdown: document.getElementById('countdown'),
+                    smallCountdown: document.getElementById('smallCountdown'),
                 };
             }
 
@@ -1065,23 +1076,33 @@
             startCountdown() {
                 let timeLeft = this.config.refreshIntervalMs / 1000;
                 if(this.countdownIntervalId) clearInterval(this.countdownIntervalId);
-                this.countdownIntervalId = setInterval(() => {
-                    timeLeft--;
-                    if (timeLeft >= 0) { this.elements.countdown.textContent = timeLeft; }
-                    else { timeLeft = this.config.refreshIntervalMs / 1000; }
-                }, 1000);
+                
+                const updateTimers = () => {
+                    if (timeLeft >= 0) {
+                        this.elements.countdown.textContent = timeLeft;
+                        if(this.elements.smallCountdown) this.elements.smallCountdown.textContent = `Next update: ${timeLeft}s`;
+                        timeLeft--;
+                    } else {
+                        timeLeft = this.config.refreshIntervalMs / 1000;
+                    }
+                };
+                
+                updateTimers(); // Initial call to set timers immediately
+                this.countdownIntervalId = setInterval(updateTimers, 1000);
             }
             stopLiveUpdate() {
                  clearInterval(this.refreshIntervalId);
                 clearInterval(this.countdownIntervalId);
                 this.isLiveUpdatePaused = true;
                 this.elements.toggleLiveUpdateBtn.textContent = '▶️ Resume Live Update';
+                 if(this.elements.smallCountdown) this.elements.smallCountdown.textContent = 'Updates Paused';
             }
             toggleLiveUpdate() { this.isLiveUpdatePaused ? this.startLiveUpdate() : this.stopLiveUpdate(); }
             renderPortfolioSummary() {
                  this.renderSummary(this.stocks, {
                     totalValue: document.getElementById('total-value'),
                     plToday: document.getElementById('total-pl-today'),
+                    plPercentToday: document.getElementById('total-pl-percent-today'),
                     plUnrealized: document.getElementById('total-pl-unrealized'),
                     plRealized: document.getElementById('total-pl-realized'),
                 });
@@ -1090,27 +1111,34 @@
                  this.renderSummary(this.mutualFunds, {
                     totalValue: document.getElementById('funds-total-value'),
                     plToday: document.getElementById('funds-total-pl-today'),
+                    plPercentToday: document.getElementById('funds-total-pl-percent-today'),
                     plUnrealized: document.getElementById('funds-total-pl-unrealized'),
                     plRealized: document.getElementById('funds-total-pl-realized'),
                 });
             }
             renderSummary(items, elements) {
-                let totalCurrentValue = 0, totalUnrealizedPL = 0, totalRealizedPL = 0, totalPLToday = 0;
+                let totalCurrentValue = 0, totalUnrealizedPL = 0, totalRealizedPL = 0, totalPLToday = 0, totalPreviousDayValue = 0;
                 items.forEach(item => {
                     const stats = this.calculateTransactionStats(item.transactions, item.price);
-                    totalCurrentValue += stats.currentValue;
-                    totalUnrealizedPL += stats.unrealizedPL;
-                    totalRealizedPL += stats.realizedPL;
-                    totalPLToday += (item.change || 0) * stats.totalSharesOwned;
+                    if(stats.totalSharesOwned > 0) {
+                        totalCurrentValue += stats.currentValue;
+                        totalUnrealizedPL += stats.unrealizedPL;
+                        totalRealizedPL += stats.realizedPL;
+                        totalPLToday += (item.change || 0) * stats.totalSharesOwned;
+                        totalPreviousDayValue += (item.previousClose || item.price - (item.change || 0)) * stats.totalSharesOwned;
+                    }
                 });
-                const setElement = (el, value) => { if (el) { el.textContent = `$${value.toFixed(2)}`; el.className = `summary-value ${value >= 0 ? 'positive' : 'negative'}`; } };
+                const totalPLPercentToday = totalPreviousDayValue > 0 ? (totalPLToday / totalPreviousDayValue) * 100 : 0;
+                const setElement = (el, value, isPercent = false) => { if (el) { el.textContent = isPercent ? `${value.toFixed(2)}%` : `$${value.toFixed(2)}`; el.className = `summary-value ${value >= 0 ? 'positive' : 'negative'}`; } };
                 setElement(elements.totalValue, totalCurrentValue);
                 setElement(elements.plToday, totalPLToday);
+                if(elements.plPercentToday) setElement(elements.plPercentToday, totalPLPercentToday, true);
                 setElement(elements.plUnrealized, totalUnrealizedPL);
                 setElement(elements.plRealized, totalRealizedPL);
             }
             async addItemFromInput(type) {
-                 const input = this.elements[`${type}Input`];
+                 const inputId = type === 'fund' ? 'mutualFundInput' : `${type}Input`;
+                 const input = this.elements[inputId];
                 const symbol = input.value.trim().toUpperCase();
                 if (!symbol) return;
                 input.value = '';
