@@ -487,8 +487,13 @@
             display: flex;
             gap: 10px;
             margin-top: 15px;
-            border-top: 1px solid #eee;
-            padding-top: 15px;
+        }
+        
+        .modal-actions {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
         }
 
         .modal {
@@ -563,11 +568,24 @@
             text-align: center;
             font-size: 1.5rem;
         }
+        
+        .utility-buttons-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+
+        .utility-buttons-grid .add-btn {
+            min-width: unset;
+        }
 
         @media (max-width: 768px) {
             .container { padding: 15px; }
             h1 { font-size: 1.8rem; }
             .stocks-grid { grid-template-columns: 1fr; }
+            .utility-buttons-grid { grid-template-columns: repeat(2, 1fr); }
         }
     </style>
 </head>
@@ -645,16 +663,12 @@
                 </select>
             </div>
 
-
-            <div class="utility-buttons">
+            <div class="utility-buttons-grid">
                 <button class="add-btn" id="liveUpdateBtn" style="background: linear-gradient(45deg, #2ed573, #17c0eb);">🔄 Live Update All</button>
                 <button class="add-btn" id="toggleLiveUpdateBtn" style="background: linear-gradient(45deg, #f7b731, #ff5e3a);">⏸️ Pause Live Update</button>
                 <button class="add-btn" id="clearAllBtn" style="background: #ff4757;">🗑️ Clear All Data</button>
-            </div>
-            
-            <div class="utility-buttons">
                 <button class="add-btn" id="exportBtn" style="background: linear-gradient(45deg, #3498db, #2980b9);">📥 Export Data</button>
-                <label for="importFile" class="add-btn" style="background: linear-gradient(45deg, #2ecc71, #27ae60); cursor: pointer;">📤 Import Data</label>
+                <label for="importFile" class="add-btn" style="background: linear-gradient(45deg, #2ecc71, #27ae60); cursor: pointer; text-align: center; display: flex; align-items: center; justify-content: center;">📤 Import Data</label>
                 <input type="file" id="importFile" accept=".json" style="display: none;">
                 <button class="add-btn" id="settingsBtn" style="background: linear-gradient(45deg, #6c757d, #343a40);">⚙️ Settings</button>
             </div>
@@ -745,7 +759,7 @@
         <div class="modal-content">
             <h3 class="modal-title">Are you sure?</h3>
             <p id="confirm-modal-text" style="text-align: center; margin-bottom: 20px;"></p>
-            <div class="card-actions">
+            <div class="modal-actions">
                 <button class="add-btn" id="confirm-modal-cancel-btn" style="background: #6c757d;">Cancel</button>
                 <button class="add-btn" id="confirm-modal-confirm-btn" style="background: #ff4757;">Confirm Delete</button>
             </div>
@@ -1191,7 +1205,6 @@
                     container.appendChild(card);
                 });
             }
-
             async moveToPortfolio(symbol) {
                  const stockToMove = this.watchlist.find(stock => stock.symbol === symbol);
                 if (stockToMove) {
