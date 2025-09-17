@@ -396,9 +396,7 @@
         }
         
         .transaction-details {
-            border-top: 1px solid #eee;
-            padding-top: 15px;
-            margin-top: 15px;
+            padding-bottom: 15px;
         }
 
         .transaction-entry {
@@ -480,12 +478,10 @@
             border-radius: 8px;
             cursor: pointer;
             font-size: 0.9rem;
-            flex: 1;
+            width: 100%;
         }
         
         .card-actions {
-            display: flex;
-            gap: 10px;
             margin-top: 15px;
         }
         
@@ -1149,7 +1145,26 @@
                     }
                 });
             }
-            renderGroupedStocks(items, container, type) { this.renderCards(items, container, type) }
+            renderGroupedStocks(items, container, type) {
+                const bigWinners = items.filter(s => s.changePercent >= 10).sort((a, b) => b.changePercent - a.changePercent);
+                const steadyGains = items.filter(s => s.changePercent >= 0 && s.changePercent < 10).sort((a, b) => b.changePercent - a.changePercent);
+                const losses = items.filter(s => s.changePercent < 0).sort((a, b) => a.changePercent - b.changePercent);
+
+                this.createGroup('📉 Losses Today', losses, 'losses-header', container, type);
+                this.createGroup('📈 Gains Today', steadyGains, 'gains-header', container, type);
+                this.createGroup('🚀 Big Winners Today', bigWinners, 'big-winners-header', container, type);
+            }
+            createGroup(title, list, headerClass, parent, type) {
+                if(list.length === 0) return;
+                const header = document.createElement('div');
+                header.className = `group-header ${headerClass}`;
+                header.innerHTML = `<span>${title} (${list.length})</span> <span class="toggle-icon">▼</span>`;
+                const content = document.createElement('div');
+                content.className = 'group-content stocks-grid'; // Use stocks-grid for consistent layout
+                header.onclick = () => { header.classList.toggle('collapsed'); content.classList.toggle('collapsed'); };
+                parent.append(header, content);
+                this.renderCards(list, content, type);
+            }
             renderCards(itemList, container, type) {
                 itemList.forEach(item => {
                     const card = document.createElement('div');
