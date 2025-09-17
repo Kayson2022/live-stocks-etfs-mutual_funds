@@ -163,7 +163,7 @@
             justify-content: center;
         }
         
-        .portfolio-controls {
+        .portfolio-controls, .funds-controls, .watchlist-controls {
             margin-top: 20px;
             margin-bottom: 15px;
             display: flex;
@@ -382,7 +382,7 @@
             margin-top: 20px;
         }
 
-        .group-header {
+        .group-header, .watchlist-title {
             grid-column: 1 / -1;
             font-size: 1.5rem;
             font-weight: bold;
@@ -390,13 +390,16 @@
             text-align: left;
             margin-top: 20px;
             position: relative;
-            cursor: pointer;
             border-radius: 10px;
-            transition: background-color 0.3s ease;
             user-select: none;
             display: flex;
             justify-content: space-between;
             align-items: center;
+        }
+
+        .group-header {
+             cursor: pointer;
+             transition: background-color 0.3s ease;
         }
 
         .group-header:hover {
@@ -562,6 +565,9 @@
         
         .card-actions {
             margin-top: 15px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
         }
         
         .modal-actions {
@@ -739,6 +745,25 @@
             margin-top: 0;
             pointer-events: none;
         }
+
+        .refresh-status {
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 10px;
+            text-align: center;
+            font-weight: 600;
+            display: none; /* Hidden by default */
+        }
+        .refresh-status.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .move-to-portfolio-btn {
+            width: 100%;
+            margin-top: 15px;
+        }
         /* -- END OF STYLES -- */
 
         @media (max-width: 768px) {
@@ -855,12 +880,12 @@
                         <span id="funds-total-pl-percent-today" class="summary-value positive">0.00%</span>
                     </div>
                     <div class="summary-item">
-                        <span class="summary-label">Unrealized P/L</span>
-                        <span id="funds-total-pl-unrealized" class="summary-value positive">$0.00</span>
+                        <span class="summary-label">Overall P/L</span>
+                        <span id="funds-overall-pl" class="summary-value positive">$0.00</span>
                     </div>
                      <div class="summary-item">
-                        <span class="summary-label">Realized P/L</span>
-                        <span id="funds-total-pl-realized" class="summary-value positive">$0.00</span>
+                        <span class="summary-label">Overall P/L %</span>
+                        <span id="funds-overall-pl-percent" class="summary-value positive">0.00%</span>
                     </div>
                 </div>
             </div>
@@ -868,14 +893,25 @@
             <div class="search-section">
                 <input type="text" class="search-input" id="mutualFundInput" placeholder="Enter mutual fund symbol (e.g., VTIAX, FXNAX, SWPPX)">
                 <button class="add-btn" id="addFundBtn" style="background: linear-gradient(45deg, #ff6b6b, #ff9f43);">Add Fund</button>
+                <button class="add-btn" id="quickLookupBtn" style="background: linear-gradient(45deg, #f7b731, #ff9f43);">Quick Lookup</button>
             </div>
+             <div class="funds-controls">
+                <button class="add-btn" id="updateAllFundsBtn">🔄 Update All Funds</button>
+                <button class="add-btn" id="clearAllFundsBtn" style="background: #ff4757;">🗑️ Clear All Funds</button>
+            </div>
+            <div id="funds-refresh-status" class="refresh-status"></div>
         </div>
         
         <div id="watchlist-tab" class="tab-content">
-            <div class="search-section">
+             <div class="search-section">
                 <input type="text" class="search-input" id="watchlistInput" placeholder="Enter stock symbol (e.g., AAPL, GOOGL, TSLA)">
                 <button class="add-btn" id="addWatchlistBtn" style="background: linear-gradient(45deg, #f7b731, #ff5e3a);">Add to Watchlist</button>
             </div>
+             <div class="watchlist-controls">
+                <button class="add-btn" id="updateWatchlistBtn">🔄 Update Watchlist</button>
+                <button class="add-btn" id="clearWatchlistBtn" style="background: #ff4757;">🗑️ Clear Watchlist</button>
+            </div>
+            <h3 class="watchlist-title">Your Watchlist (<span id="watchlist-count">0</span>)</h3>
         </div>
 
         <div class="stocks-grid" id="stocksGrid"></div>
@@ -1077,6 +1113,14 @@
                     countdown: document.getElementById('countdown'),
                     smallCountdown: document.getElementById('smallCountdown'),
                     smallCountdownContainer: document.getElementById('small-countdown-container'),
+                    // New Elements
+                    quickLookupBtn: document.getElementById('quickLookupBtn'),
+                    updateAllFundsBtn: document.getElementById('updateAllFundsBtn'),
+                    clearAllFundsBtn: document.getElementById('clearAllFundsBtn'),
+                    fundsRefreshStatus: document.getElementById('funds-refresh-status'),
+                    updateWatchlistBtn: document.getElementById('updateWatchlistBtn'),
+                    clearWatchlistBtn: document.getElementById('clearWatchlistBtn'),
+                    watchlistCount: document.getElementById('watchlist-count'),
                 };
             }
 
@@ -1086,7 +1130,7 @@
                 this.elements.addBtn.addEventListener('click', () => this.addItemFromInput('stock'));
                 this.elements.stockInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') this.addItemFromInput('stock'); });
                 this.elements.liveUpdateBtn.addEventListener('click', () => this.refreshAllData());
-                this.elements.clearAllBtn.addEventListener('click', () => this.clearAllItems(this.currentTab));
+                this.elements.clearAllBtn.addEventListener('click', () => this.clearAllItems('stock'));
                 this.elements.toggleLiveUpdateBtn.addEventListener('click', () => this.toggleLiveUpdate());
                 this.elements.exportBtn.addEventListener('click', () => this.exportData());
                 this.elements.importFile.addEventListener('change', (e) => this.importData(e));
@@ -1103,6 +1147,12 @@
                 this.elements.modalSaveSettingsBtn.addEventListener('click', () => this.saveSettings());
                 this.elements.confirmModalCancelBtn.addEventListener('click', () => this.closeConfirmModal());
                 this.elements.confirmModalConfirmBtn.addEventListener('click', () => this.handleConfirmAction());
+
+                // New Event Listeners
+                this.elements.updateAllFundsBtn.addEventListener('click', () => this.refreshAllData());
+                this.elements.clearAllFundsBtn.addEventListener('click', () => this.clearAllItems('fund'));
+                this.elements.updateWatchlistBtn.addEventListener('click', () => this.refreshAllData());
+                this.elements.clearWatchlistBtn.addEventListener('click', () => this.clearAllItems('watchlist'));
             }
             
             // --- UI & RENDER ---
@@ -1123,11 +1173,15 @@
                 this.elements.fundsPortfolioSummary.style.display = 'none';
                 this.elements.diversificationChartContainer.style.display = 'none';
                 this.elements.historyChartContainer.style.display = 'none';
+                this.elements.fundsRefreshStatus.style.display = 'none';
 
                 let items, type;
                 if (this.currentTab === 'stocks') { [items, type] = [this.stocks, 'stock']; this.elements.portfolioSummary.style.display = 'block';} 
                 else if (this.currentTab === 'funds') { [items, type] = [this.mutualFunds, 'fund']; this.elements.fundsPortfolioSummary.style.display = 'block';}
-                else if (this.currentTab === 'watchlist') { [items, type] = [this.watchlist, 'watchlist']; }
+                else if (this.currentTab === 'watchlist') { 
+                    [items, type] = [this.watchlist, 'watchlist']; 
+                    this.elements.watchlistCount.textContent = this.watchlist.length;
+                }
 
                 const filterTerm = this.elements.portfolioFilter.value.toLowerCase();
                 const filteredItems = items.filter(item => item.symbol.toLowerCase().includes(filterTerm) || (item.name && item.name.toLowerCase().includes(filterTerm)));
@@ -1136,12 +1190,17 @@
                     this.renderPortfolioSummary();
                     this.renderDiversificationChart();
                     this.renderHistoryChart();
+                     this.renderGroupedStocks(filteredItems, grid, type);
                 } else if (type ==='fund') {
                     this.renderFundsPortfolioSummary();
+                    this.renderCards(filteredItems, grid, type);
+                } else if (type === 'watchlist') {
+                    this.renderCards(filteredItems, grid, type);
                 }
 
-                if (filteredItems.length === 0) { grid.innerHTML = `<div class="loading">Your ${type} list is empty.</div>`; return; }
-                this.renderGroupedStocks(filteredItems, grid, type);
+                if (filteredItems.length === 0 && type !== 'stock') { 
+                    grid.innerHTML = `<div class="loading">Your ${type} list is empty.</div>`; 
+                }
             }
             
             // --- DATA SAVING/LOADING ---
@@ -1169,7 +1228,7 @@
             // --- ALL OTHER METHODS ---
             startLiveUpdate() {
                  this.stopLiveUpdate();
-                this.refreshIntervalId = setInterval(() => { if (this.stocks.length > 0 && !this.isLiveUpdatePaused) this.refreshAllData(); }, this.config.refreshIntervalMs);
+                this.refreshIntervalId = setInterval(() => { if (this.stocks.length > 0 && !this.isLiveUpdatePaused && this.currentTab === 'stocks') this.refreshAllData(); }, this.config.refreshIntervalMs);
                 this.isLiveUpdatePaused = false;
                 this.elements.toggleLiveUpdateBtn.textContent = '⏸️ Pause Live Update';
                 this.startCountdown();
@@ -1220,12 +1279,12 @@
                     totalValue: document.getElementById('funds-total-value'),
                     plToday: document.getElementById('funds-total-pl-today'),
                     plPercentToday: document.getElementById('funds-total-pl-percent-today'),
-                    plUnrealized: document.getElementById('funds-total-pl-unrealized'),
-                    plRealized: document.getElementById('funds-total-pl-realized'),
+                    overallPL: document.getElementById('funds-overall-pl'),
+                    overallPLPercent: document.getElementById('funds-overall-pl-percent'),
                 });
             }
             renderSummary(items, elements) {
-                let totalCurrentValue = 0, totalUnrealizedPL = 0, totalRealizedPL = 0, totalPLToday = 0, totalPreviousDayValue = 0;
+                let totalCurrentValue = 0, totalUnrealizedPL = 0, totalRealizedPL = 0, totalPLToday = 0, totalPreviousDayValue = 0, totalCostBasis = 0;
                 items.forEach(item => {
                     const stats = this.calculateTransactionStats(item.transactions, item.price);
                     if(stats.totalSharesOwned > 0) {
@@ -1234,15 +1293,23 @@
                         totalRealizedPL += stats.realizedPL;
                         totalPLToday += (item.change || 0) * stats.totalSharesOwned;
                         totalPreviousDayValue += (item.previousClose || item.price - (item.change || 0)) * stats.totalSharesOwned;
+                        totalCostBasis += stats.totalSharesOwned * stats.averageCostBasis;
                     }
                 });
+
+                const totalOverallPL = totalUnrealizedPL + totalRealizedPL;
+                const totalOverallPLPercent = totalCostBasis > 0 ? (totalOverallPL / totalCostBasis) * 100 : 0;
                 const totalPLPercentToday = totalPreviousDayValue > 0 ? (totalPLToday / totalPreviousDayValue) * 100 : 0;
+                
                 const setElement = (el, value, isPercent = false) => { if (el) { el.textContent = isPercent ? `${value.toFixed(2)}%` : `$${value.toFixed(2)}`; el.className = `summary-value ${value >= 0 ? 'positive' : 'negative'}`; } };
+                
                 setElement(elements.totalValue, totalCurrentValue);
                 setElement(elements.plToday, totalPLToday);
                 if(elements.plPercentToday) setElement(elements.plPercentToday, totalPLPercentToday, true);
-                setElement(elements.plUnrealized, totalUnrealizedPL);
-                setElement(elements.plRealized, totalRealizedPL);
+                if(elements.plUnrealized) setElement(elements.plUnrealized, totalUnrealizedPL);
+                if(elements.plRealized) setElement(elements.plRealized, totalRealizedPL);
+                if(elements.overallPL) setElement(elements.overallPL, totalOverallPL);
+                if(elements.overallPLPercent) setElement(elements.overallPLPercent, totalOverallPLPercent, true);
             }
             async addItemFromInput(type) {
                  const inputId = type === 'fund' ? 'mutualFundInput' : `${type}Input`;
@@ -1354,6 +1421,11 @@
                 const gains = items.filter(s => s.changePercent >= 0).sort((a, b) => b.changePercent - a.changePercent);
                 const losses = items.filter(s => s.changePercent < 0).sort((a, b) => a.changePercent - b.changePercent);
                 
+                if (gains.length === 0 && losses.length === 0) {
+                     container.innerHTML = `<div class="loading">Your ${type} list is empty.</div>`;
+                     return;
+                }
+
                 this.createGroup('📉 Losses Today', losses, 'losses-header', container, type);
                 this.createGroup('📈 Gains Today', gains, 'gains-header', container, type);
             }
@@ -1437,22 +1509,10 @@
                     const overallPLPercent = totalCost > 0 ? (stats.unrealizedPL / totalCost) * 100 : 0;
                     const todayPL = (item.change || 0) * stats.totalSharesOwned;
 
-                    let cardHTML = `
-                        <div class="stock-header">
-                            <span class="stock-symbol">${item.symbol}</span>
-                            <button class="remove-btn" onclick="window.stockTracker.${removalFunction}">×</button>
-                        </div>
-                        <div class="stock-price">$${(item.price || 0).toFixed(2)}</div>
-                        <div class="stock-change ${changeClass}">
-                            <span>${changeSymbol} ${(item.change || 0).toFixed(2)} (${(item.changePercent || 0).toFixed(2)}%)</span>
-                        </div>
-                        <div class="stock-info">
-                            <div class="info-row"><span class="info-label">Open:</span><span class="info-value">$${(item.open || 0).toFixed(2)}</span></div>
-                            <div class="info-row"><span class="info-label">Total Shares:</span><span class="info-value">${stats.totalSharesOwned.toFixed(3)}</span></div>
-                            <div class="info-row"><span class="info-label">Total Value:</span><span class="info-value">$${stats.currentValue.toFixed(2)}</span></div>
-                            <div class="info-row"><span class="info-label">Avg. Cost Basis:</span><span class="info-value">$${stats.averageCostBasis.toFixed(2)}</span></div>
-                        </div>
-                        <div class="transaction-details">
+                    let transactionDetailsHTML = '';
+                    if (type === 'stock' || type === 'fund') {
+                        transactionDetailsHTML = `
+                         <div class="transaction-details">
                              <div class="transaction-header">
                                 <h4>Purchases & Sales:</h4>
                                 <span class="toggle-icon">▼</span>
@@ -1477,6 +1537,31 @@
                             <button class="transaction-btn" style="background: #ff4757;" onclick="window.stockTracker.openTransactionModal('${item.symbol}', '${type}', 'sell')">Sell</button>
                         </div>
                         <div class="total-pl ${stats.unrealizedPL >= 0 ? 'positive' : 'negative'}">Overall P/L: $${stats.unrealizedPL.toFixed(2)} (${overallPLPercent.toFixed(2)}%)</div>
+                        `;
+                    } else if (type === 'watchlist') {
+                         transactionDetailsHTML = `
+                            <div class="card-actions">
+                                <button class="add-btn move-to-portfolio-btn" onclick="window.stockTracker.moveToPortfolio('${item.symbol}')">Move to Portfolio</button>
+                            </div>
+                         `;
+                    }
+
+                    let cardHTML = `
+                        <div class="stock-header">
+                            <span class="stock-symbol">${item.symbol}</span>
+                            <button class="remove-btn" onclick="window.stockTracker.${removalFunction}">×</button>
+                        </div>
+                        <div class="stock-price">$${(item.price || 0).toFixed(2)}</div>
+                        <div class="stock-change ${changeClass}">
+                            <span>${changeSymbol} ${(item.change || 0).toFixed(2)} (${(item.changePercent || 0).toFixed(2)}%)</span>
+                        </div>
+                        <div class="stock-info">
+                            <div class="info-row"><span class="info-label">Open:</span><span class="info-value">$${(item.open || 0).toFixed(2)}</span></div>
+                            <div class="info-row"><span class="info-label">High:</span><span class="info-value">$${(item.high || 0).toFixed(2)}</span></div>
+                            <div class="info-row"><span class="info-label">Low:</span><span class="info-value">$${(item.low || 0).toFixed(2)}</span></div>
+                            <div class="info-row"><span class="info-label">Prev. Close:</span><span class="info-value">$${(item.previousClose || 0).toFixed(2)}</span></div>
+                        </div>
+                        ${transactionDetailsHTML}
                         <div class="total-pl ${todayPL >= 0 ? 'positive' : 'negative'}">P/L Today: $${todayPL.toFixed(2)}</div>
                     `;
                     card.innerHTML = cardHTML;
@@ -1508,22 +1593,56 @@
                     this.showSuccess(`✅ Moved ${symbol} to portfolio!`);
                 }
             }
-            refreshAllData() {
-                 if (this.currentTab === 'stocks') this.refreshAllStocks();
-                 // Add fund and watchlist refresh logic if needed
-            }
-            async refreshAllStocks() {
-                if(this.stocks.length === 0) return;
-                this.showLoading(true, "Refreshing stocks...");
-                await Promise.all(this.stocks.map(async (stock) => {
+            async refreshAllData() {
+                let list, type;
+                if (this.currentTab === 'stocks') { [list, type] = [this.stocks, 'stocks']; }
+                else if (this.currentTab === 'funds') { [list, type] = [this.mutualFunds, 'funds']; }
+                else if (this.currentTab === 'watchlist') { [list, type] = [this.watchlist, 'watchlist']; }
+                
+                if(!list || list.length === 0) return;
+                
+                this.showLoading(true, `Refreshing ${type}...`);
+                
+                let successCount = 0, gainCount = 0, lossCount = 0, failCount = 0;
+
+                await Promise.all(list.map(async (item) => {
                     try {
-                        const freshData = await this.apiService.fetchStockData(stock.symbol);
-                        Object.assign(stock, { ...freshData, transactions: stock.transactions });
-                    } catch (error) { console.error(`Failed to refresh ${stock.symbol}`, error); }
+                        const oldPrice = item.price;
+                        const freshData = await this.apiService.fetchStockData(item.symbol);
+                        Object.assign(item, { ...freshData, transactions: item.transactions });
+                        if (item.price > oldPrice) gainCount++;
+                        else if (item.price < oldPrice) lossCount++;
+                        successCount++;
+                    } catch (error) { 
+                        failCount++;
+                        console.error(`Failed to refresh ${item.symbol}`, error); 
+                    }
                 }));
+                
                 await this.saveData();
                 this.renderContent();
                 this.showLoading(false);
+                this.showRefreshStatus(this.currentTab, { success: successCount, gains: gainCount, losses: lossCount, failed: failCount });
+            }
+            
+            showRefreshStatus(tab, stats) {
+                let statusDiv;
+                if (tab === 'funds') {
+                    statusDiv = this.elements.fundsRefreshStatus;
+                } else {
+                    // In a real app, you might have a dedicated status for watchlist too.
+                    // For now, we'll reuse the funds one as an example or just log it.
+                    console.log(`Watchlist Refresh: ${stats.success} success, ${stats.failed} failed.`);
+                    return; 
+                }
+
+                statusDiv.innerHTML = `Refreshed ${stats.success} fund(s). ✅ ${stats.gains} gained, 🔻${stats.losses} lost. Failed to refresh ${stats.failed}.`;
+                statusDiv.className = 'refresh-status success';
+                statusDiv.style.display = 'block';
+
+                setTimeout(() => {
+                    statusDiv.style.display = 'none';
+                }, 10000);
             }
             
             showLoading(show, message = 'Loading...') { this.elements.loadingDiv.style.display = show ? 'block' : 'none'; this.elements.loadingDiv.textContent = message; }
