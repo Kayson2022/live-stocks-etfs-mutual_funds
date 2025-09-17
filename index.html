@@ -220,9 +220,6 @@
         }
 
         .stocks-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 20px;
             margin-top: 30px;
         }
 
@@ -401,12 +398,11 @@
         }
 
         .group-content {
-            grid-column: 1 / -1;
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
             gap: 20px;
-            transition: max-height 0.5s ease-in-out, opacity 0.3s ease-in-out;
-            max-height: 5000px; /* A large value to allow animation */
+            transition: max-height 0.5s ease-in-out, opacity 0.3s ease-in-out, margin-top 0.3s ease;
+            max-height: 50000px;
             opacity: 1;
             overflow: hidden;
         }
@@ -414,6 +410,7 @@
         .group-content.collapsed {
             max-height: 0;
             opacity: 0;
+            margin-top: -20px;
             pointer-events: none;
         }
         
@@ -1217,13 +1214,11 @@
                 });
             }
             renderGroupedStocks(items, container, type) {
-                const bigWinners = items.filter(s => s.changePercent >= 10).sort((a, b) => b.changePercent - a.changePercent);
-                const steadyGains = items.filter(s => s.changePercent >= 0 && s.changePercent < 10).sort((a, b) => b.changePercent - a.changePercent);
+                const gains = items.filter(s => s.changePercent >= 0).sort((a, b) => b.changePercent - a.changePercent);
                 const losses = items.filter(s => s.changePercent < 0).sort((a, b) => a.changePercent - b.changePercent);
-
+                
                 this.createGroup('📉 Losses Today', losses, 'losses-header', container, type);
-                this.createGroup('📈 Gains Today', steadyGains, 'gains-header', container, type);
-                this.createGroup('🚀 Big Winners Today', bigWinners, 'big-winners-header', container, type);
+                this.createGroup('📈 Gains Today', gains, 'gains-header', container, type);
             }
             createGroup(title, list, headerClass, parent, type) {
                 if(list.length === 0) return;
@@ -1231,7 +1226,7 @@
                 header.className = `group-header ${headerClass}`;
                 header.innerHTML = `<span>${title} (${list.length})</span> <span class="toggle-icon">▼</span>`;
                 const content = document.createElement('div');
-                content.className = 'group-content stocks-grid'; // Use stocks-grid for consistent layout
+                content.className = 'group-content stocks-grid';
                 header.onclick = () => { header.classList.toggle('collapsed'); content.classList.toggle('collapsed'); };
                 parent.append(header, content);
                 this.renderCards(list, content, type);
@@ -1431,7 +1426,7 @@
             }
             saveSettings(){
                 this.config.finnhubApiKey = this.elements.modalFinnhubKey.value.trim();
-                this.config.alphaVantageApiKey = this.elements.modalAlphaVantageKey.value.trim();
+                this.config.alphaVantageKey = this.elements.modalAlphaVantageKey.value.trim();
                 const interval = parseInt(this.elements.modalRefreshInterval.value, 10);
                 this.config.refreshIntervalMs = (interval && interval >= 10) ? interval * 1000 : 60000;
                 
