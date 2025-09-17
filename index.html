@@ -1455,7 +1455,7 @@
             }
             saveSettings(){
                 this.config.finnhubApiKey = this.elements.modalFinnhubKey.value.trim();
-                this.config.alphaVantageKey = this.elements.modalAlphaVantageKey.value.trim();
+                this.config.alphaVantageApiKey = this.elements.modalAlphaVantageKey.value.trim();
                 const interval = parseInt(this.elements.modalRefreshInterval.value, 10);
                 this.config.refreshIntervalMs = (interval && interval >= 10) ? interval * 1000 : 60000;
                 
