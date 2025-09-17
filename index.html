@@ -1660,10 +1660,14 @@
             
             showRefreshStatus(tab, stats) {
                 let statusDiv;
-                let itemType = tab === 'funds' ? 'fund' : (tab === 'watchlist' ? 'stock' : 'stock');
-
+                let itemType;
+                
                 if (tab === 'funds') {
                     statusDiv = this.elements.fundsRefreshStatus;
+                    itemType = 'fund';
+                } else if (tab === 'watchlist') {
+                    statusDiv = this.elements.watchlistRefreshStatus;
+                     itemType = 'stock';
                 } else {
                     return; 
                 }
