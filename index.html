@@ -1228,6 +1228,11 @@
                     transactionModal: document.getElementById('transactionModal'), modalTitleAction: document.getElementById('modal-title-action'), modalSymbol: document.getElementById('modal-symbol'),
                     modalShares: document.getElementById('modal-shares'), modalPrice: document.getElementById('modal-price'), modalNote: document.getElementById('modal-note'), modalSaveBtn: document.getElementById('modal-save-btn'),
                     settingsModal: document.getElementById('settingsModal'),
+                    closeSettingsBtn: document.getElementById('closeSettingsBtn'),
+                    modalFinnhubKey: document.getElementById('modal-finnhub-key'),
+                    modalAlphaVantageKey: document.getElementById('modal-alpha-vantage-key'),
+                    modalRefreshInterval: document.getElementById('modal-refresh-interval'),
+                    modalSaveSettingsBtn: document.getElementById('modal-save-settings-btn'),
                     diversificationChartContainer: document.getElementById('diversification-chart-container'), diversificationChart: document.getElementById('diversificationChart'),
                     historyChartContainer: document.getElementById('history-chart-container'), historyChart: document.getElementById('historyChart'),
                     confirmModal: document.getElementById('confirmModal'), confirmModalText: document.getElementById('confirm-modal-text'), confirmModalCancelBtn: document.getElementById('confirm-modal-cancel-btn'), confirmModalConfirmBtn: document.getElementById('confirm-modal-confirm-btn'),
@@ -1271,6 +1276,7 @@
             renderContent() {
                 if (!this.userId && db) return;
                 const grid = this.elements.stocksGrid;
+                if (!grid) return;
                 grid.innerHTML = ''; 
 
                 this.elements.portfolioSummary.style.display = 'none';
@@ -1618,36 +1624,37 @@
                     options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Portfolio Breakdown by Industry' }, legend: { display: false } }, scales: { y: { beginAtZero: true }, x: {} } }
                 });
             }
-            async updatePortfolioHistory() {
-                 const today = new Date().toISOString().slice(0, 10);
-                const lastEntry = this.portfolioHistory.length > 0 ? this.portfolioHistory[this.portfolioHistory.length - 1] : null;
-                let totalValue = this.stocks.reduce((sum, stock) => sum + this.calculateTransactionStats(stock.transactions, stock.price).currentValue, 0);
-                if (totalValue <= 0) return;
-                if (!lastEntry || lastEntry.date !== today) { this.portfolioHistory.push({ date: today, value: totalValue }); } else { lastEntry.value = totalValue; }
-                await this.saveData();
+            async updatePortfolioHistory() {}
+            renderHistoryChart() {}
+            openConfirmModal(text, onConfirmAction) {}
+            closeConfirmModal() {}
+            handleConfirmAction() {}
+            openSettingsModal(){
+                this.elements.modalFinnhubKey.value = this.config.finnhubApiKey;
+                this.elements.modalAlphaVantageKey.value = this.config.alphaVantageApiKey;
+                this.elements.modalRefreshInterval.value = this.config.refreshIntervalMs / 1000;
+                this.elements.settingsModal.style.display = 'flex';
             }
-            renderHistoryChart() {
-                if (this.portfolioHistory.length < 2) { this.elements.historyChartContainer.style.display = 'none'; return; }
-                this.elements.historyChartContainer.style.display = 'block';
-                const labels = this.portfolioHistory.map(entry => entry.date);
-                const data = this.portfolioHistory.map(entry => entry.value);
-                if (this.historyChartInstance) { this.historyChartInstance.destroy(); }
-                const ctx = this.elements.historyChart.getContext('2d');
-                this.historyChartInstance = new Chart(ctx, {
-                    type: 'line', data: { labels: labels, datasets: [{ label: 'Portfolio Value', data: data, fill: true, borderColor: 'rgb(75, 192, 192)', tension: 0.1 }] },
-                    options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Portfolio Value History' } }, scales: { y: {}, x: {} } }
-                });
+            closeSettingsModal(){
+                this.elements.settingsModal.style.display = 'none';
             }
-            openConfirmModal(text, onConfirmAction) { this.elements.confirmModal.style.display = 'flex'; this.elements.confirmModalText.textContent = text; this.onConfirm = onConfirmAction; }
-            closeConfirmModal() { this.elements.confirmModal.style.display = 'none'; this.onConfirm = null; }
-            handleConfirmAction() { if (this.onConfirm) { this.onConfirm(); } this.closeConfirmModal(); }
-            openSettingsModal(){ this.elements.settingsModal.style.display = 'flex'; }
-            closeSettingsModal(){ this.elements.settingsModal.style.display = 'none'; }
-            saveSettings(){}
+            saveSettings(){
+                this.config.finnhubApiKey = this.elements.modalFinnhubKey.value.trim();
+                this.config.alphaVantageApiKey = this.elements.modalAlphaVantageKey.value.trim();
+                const interval = parseInt(this.elements.modalRefreshInterval.value, 10);
+                this.config.refreshIntervalMs = (interval && interval >= 10) ? interval * 1000 : 60000;
+                
+                this.apiService = new ApiService(this.config);
+
+                this.closeSettingsModal();
+                this.showSuccess('✅ Settings updated for this session!');
+                this.startLiveUpdate();
+            }
         }
         
         window.stockTracker = new StockTracker();
     </script>
 </body>
 </html>
+
 
