@@ -409,11 +409,12 @@
             grid-column: 1 / -1;
         }
 
-        .group-content.collapsed {
+        .group-content.collapsed, .group-footer.collapsed {
             max-height: 0;
             opacity: 0;
             margin-top: 0;
             pointer-events: none;
+            display: none;
         }
         
         .group-header .toggle-icon {
@@ -647,25 +648,30 @@
             min-width: unset;
         }
         
-        /* -- NEW STYLES FOR COLLAPSE BUTTON AND SUMMARY -- */
+        /* -- STYLES FOR COLLAPSE BUTTON AND SUMMARY -- */
+        .group-footer {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding-top: 10px;
+            margin-top: -10px;
+            border-top: 1px solid #eee;
+        }
         .collapse-group-btn {
-            padding: 6px 12px;
-            font-size: 0.8rem;
+            padding: 8px 16px;
+            font-size: 0.9rem;
             font-weight: 600;
             background-color: rgba(0, 0, 0, 0.05);
             border: 1px solid rgba(0, 0, 0, 0.1);
             border-radius: 8px;
             cursor: pointer;
-            margin-right: 15px;
+            margin: 10px auto;
             transition: background-color 0.2s ease;
+            min-width: 150px;
         }
         .collapse-group-btn:hover {
             background-color: rgba(0, 0, 0, 0.1);
         }
-        .group-header > div {
-            display: flex;
-            align-items: center;
-        }
+
         .summary-content {
             display: none; /* Hidden by default */
             padding: 20px 0;
@@ -691,7 +697,7 @@
             line-height: 1.6;
             color: #555;
         }
-        /* -- END OF NEW STYLES -- */
+        /* -- END OF STYLES -- */
 
         @media (max-width: 768px) {
             .container { padding: 15px; }
@@ -1316,10 +1322,7 @@
                 header.className = `group-header ${headerClass}`;
                 header.innerHTML = `
                     <span>${title} (${list.length})</span>
-                    <div>
-                        <button class="collapse-group-btn">Collapse Section</button>
-                        <span class="toggle-icon">▼</span>
-                    </div>
+                    <span class="toggle-icon">▼</span>
                 `;
 
                 const content = document.createElement('div');
@@ -1327,6 +1330,13 @@
 
                 const summaryContent = document.createElement('div');
                 summaryContent.className = 'summary-content';
+                
+                const buttonContainer = document.createElement('div');
+                buttonContainer.className = 'group-footer';
+                const collapseBtn = document.createElement('button');
+                collapseBtn.className = 'collapse-group-btn';
+                collapseBtn.textContent = 'Collapse Section';
+                buttonContainer.appendChild(collapseBtn);
 
                 const totalPLToday = list.reduce((sum, item) => {
                     const stats = this.calculateTransactionStats(item.transactions, item.price);
@@ -1342,14 +1352,13 @@
                     </div>
                 `;
                 
-                header.addEventListener('click', (e) => {
-                    if (e.target.classList.contains('collapse-group-btn')) return;
+                header.addEventListener('click', () => {
                     header.classList.toggle('collapsed');
                     content.classList.toggle('collapsed');
                     summaryContent.classList.toggle('collapsed'); 
+                    buttonContainer.classList.toggle('collapsed');
                 });
 
-                const collapseBtn = header.querySelector('.collapse-group-btn');
                 collapseBtn.addEventListener('click', (e) => {
                     e.stopPropagation(); 
                     
@@ -1365,7 +1374,7 @@
                     }
                 });
                 
-                parent.append(header, content, summaryContent);
+                parent.append(header, content, summaryContent, buttonContainer);
                 this.renderCards(list, content, type);
             }
             renderCards(itemList, container, type) {
