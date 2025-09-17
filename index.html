@@ -1670,13 +1670,18 @@
                     else if (this.currentTab === 'watchlist') { listsToRefresh.push({ list: this.watchlist, type: 'watchlist' }); }
                 }
 
-                this.showLoading(true, `Preparing to refresh...`);
-
                 const allItems = listsToRefresh.flatMap(({ list }) => list);
                 const totalCount = allItems.length;
-                let processedCount = 0;
+
+                if (totalCount === 0) {
+                    this.showError("Nothing to refresh.");
+                    return;
+                }
+
+                this.showLoading(true, `Preparing to refresh... (0/${totalCount})`);
                 
                 let stats = { success: 0, gains: 0, losses: 0, failed: 0 };
+                let processedCount = 0;
                 
                 for (const item of allItems) {
                     processedCount++;
@@ -1684,15 +1689,20 @@
                     try {
                         const freshData = await this.apiService.fetchStockData(item.symbol);
                         Object.assign(item, { ...freshData, transactions: item.transactions });
-
-                        if ((freshData.change || 0) > 0) stats.gains++;
-                        else if ((freshData.change || 0) < 0) stats.losses++;
+                        
                         stats.success++;
+                        if ((freshData.change || 0) >= 0) { 
+                            stats.gains++;
+                        } else {
+                            stats.losses++;
+                        }
+                        
                     } catch (error) {
-                        stats.failed++;
                         console.error(`Failed to refresh ${item.symbol}:`, error);
                     }
                 }
+
+                stats.failed = totalCount - stats.success;
 
                 this.showLoading(false);
                 this.showRefreshStatus(refreshAll ? 'all' : this.currentTab, stats);
