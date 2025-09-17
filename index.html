@@ -221,7 +221,7 @@
 
         .stocks-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            grid-template-columns: 1fr;
             gap: 20px;
             margin-top: 30px;
         }
@@ -379,6 +379,83 @@
             transform: scale(1.1) rotate(180deg);
         }
         
+        .group-header {
+            grid-column: 1 / -1;
+            font-size: 1.5rem;
+            font-weight: bold;
+            padding: 20px;
+            text-align: left;
+            margin-top: 20px;
+            position: relative;
+            cursor: pointer;
+            border-radius: 10px;
+            transition: background-color 0.3s ease;
+            user-select: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .group-header:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+
+        .group-content {
+            grid-column: 1 / -1;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            transition: max-height 0.5s ease-in-out, opacity 0.3s ease-in-out;
+            max-height: 5000px; /* A large value to allow animation */
+            opacity: 1;
+            overflow: hidden;
+        }
+
+        .group-content.collapsed {
+            max-height: 0;
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .group-header .toggle-icon {
+            transition: transform 0.3s ease;
+            display: inline-block;
+            font-size: 1.2rem;
+        }
+
+        .group-header.collapsed .toggle-icon {
+            transform: rotate(-90deg);
+        }
+        
+        .losses-header {
+            color: #ff4757;
+            background: linear-gradient(90deg, transparent, rgba(255, 71, 87, 0.1), transparent);
+        }
+
+        .gains-header {
+            color: #2ed573;
+            background: linear-gradient(90deg, transparent, rgba(46, 213, 115, 0.1), transparent);
+        }
+        
+        .losses-header::before, .gains-header::before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            bottom: 5px;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 3px;
+            border-radius: 2px;
+        }
+        
+        .losses-header::before {
+            background: #ff4757;
+        }
+
+        .gains-header::before {
+            background: #2ed573;
+        }
+        
         .chart-container {
             margin-top: 20px;
             padding: 20px;
@@ -387,12 +464,6 @@
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
             position: relative;
             height: 400px; /* Constrains the chart height */
-        }
-
-        .chart-container h3 {
-            text-align: center;
-            color: #333;
-            margin-bottom: 15px;
         }
         
         .transaction-details {
