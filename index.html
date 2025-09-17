@@ -681,7 +681,7 @@
             border-radius: 15px;
             cursor: pointer;
             margin: 10px auto;
-            transition: background-color 0.2s ease;
+            transition: background-color: 0.2s ease;
             min-width: 150px;
         }
         .collapse-group-btn:hover {
@@ -1670,44 +1670,35 @@
                     else if (this.currentTab === 'watchlist') { listsToRefresh.push({ list: this.watchlist, type: 'watchlist' }); }
                 }
 
-                this.showLoading(true, `Refreshing data...`);
+                this.showLoading(true, `Preparing to refresh...`);
 
-                const allPromises = listsToRefresh.flatMap(({ list }) => 
-                    list.map(item => 
-                        this.apiService.fetchStockData(item.symbol)
-                            .then(freshData => ({ status: 'fulfilled', value: freshData, item: item }))
-                            .catch(error => ({ status: 'rejected', reason: error, item: item }))
-                    )
-                );
-
-                const results = await Promise.all(allPromises);
+                const allItems = listsToRefresh.flatMap(({ list }) => list);
+                const totalCount = allItems.length;
+                let processedCount = 0;
                 
-                let stats = { success: 0, gains: 0, losses: 0 };
+                let stats = { success: 0, gains: 0, losses: 0, failed: 0 };
                 
-                results.forEach(result => {
-                    if (result.status === 'fulfilled') {
-                        stats.success++;
-                        const freshData = result.value;
-                        const item = result.item;
+                for (const item of allItems) {
+                    processedCount++;
+                    this.showLoading(true, `Refreshing ${item.symbol}... (${processedCount}/${totalCount})`);
+                    try {
+                        const freshData = await this.apiService.fetchStockData(item.symbol);
                         Object.assign(item, { ...freshData, transactions: item.transactions });
+
                         if ((freshData.change || 0) > 0) stats.gains++;
                         else if ((freshData.change || 0) < 0) stats.losses++;
-                    } else {
-                        console.error(`Failed to refresh ${result.item.symbol}:`, result.reason);
+                        stats.success++;
+                    } catch (error) {
+                        stats.failed++;
+                        console.error(`Failed to refresh ${item.symbol}:`, error);
                     }
-                });
-                
-                const totalInLists = refreshAll 
-                    ? this.stocks.length + this.mutualFunds.length + this.watchlist.length
-                    : listsToRefresh.length > 0 ? listsToRefresh[0].list.length : 0;
-                
-                stats.failed = totalInLists - stats.success;
+                }
 
+                this.showLoading(false);
                 this.showRefreshStatus(refreshAll ? 'all' : this.currentTab, stats);
                 
                 await this.saveData();
                 this.renderContent();
-                this.showLoading(false);
             }
             
             showRefreshStatus(type, stats) {
