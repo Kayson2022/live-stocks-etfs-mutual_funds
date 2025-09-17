@@ -1753,7 +1753,7 @@
                 const statusDiv = this.elements.refreshStatusPopup;
                 let itemType = 'item(s)';
                 if (type === 'fund' || type === 'funds') itemType = 'fund(s)';
-                if (type === 'stock' || type === 'stocks' || type === 'watchlist' || type === 'all') itemType = 'item(s)';
+                if (type === 'stock' || type === 'stocks' || type === 'watchlist') itemType = 'stock(s)';
                 
                 if (statusDiv) {
                     statusDiv.innerHTML = `Refreshed ${stats.success} ${itemType}. ✅ ${stats.gains} gained, 🔻${stats.losses} lost, ➖ ${stats.unchanged} unchanged. Failed to refresh ${stats.failed}.`;
@@ -1931,4 +1931,5 @@
     </script>
 </body>
 </html>
+
 
