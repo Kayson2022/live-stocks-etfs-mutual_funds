@@ -370,7 +370,7 @@
             font-weight: 600;
             color: #333;
         }
-
+        
         .loading, .error, .success {
             position: fixed;
             top: 20px;
@@ -1269,7 +1269,7 @@
             }
 
             renderContent() {
-                if (!this.userId) return;
+                if (!this.userId && db) return;
                 const grid = this.elements.stocksGrid;
                 grid.innerHTML = ''; 
 
