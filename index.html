@@ -400,7 +400,7 @@
 
         .group-header {
              cursor: pointer;
-             transition: background-color 0.3s ease;
+             transition: background-color: 0.3s ease;
         }
 
         .group-header:hover {
@@ -770,6 +770,29 @@
             width: 100%;
             margin-top: 15px;
         }
+        
+        #firebase-auth-error {
+            background-color: #ffdddd;
+            border-left: 6px solid #f44336;
+            color: #333;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 5px;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+
+        #firebase-auth-error h4 {
+            margin-top: 0;
+            color: #f44336;
+        }
+
+        #firebase-auth-error code {
+            background-color: #e0e0e0;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
         /* -- END OF STYLES -- */
 
         @media (max-width: 768px) {
@@ -793,6 +816,7 @@
             <svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 0 24 24" width="24" fill="white"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/><path d="M1 1h22v22H1z" fill="none"/></svg>
             Sign in with Google
         </button>
+        <div id="firebase-auth-error" style="display: none;"></div>
     </div>
 
     <div id="app-container" class="container" style="display: none;">
@@ -1062,8 +1086,20 @@
                 const provider = new GoogleAuthProvider();
                 signInWithPopup(auth, provider).catch(error => {
                     console.error("Google sign-in error", error);
-                     if (error.code === 'auth/unauthorized-domain') {
-                        this.showError("Authentication Error: This domain is not authorized for sign-in. Please add it to your Firebase project's authorized domains in the Authentication -> Settings tab.");
+                    if (error.code === 'auth/unauthorized-domain') {
+                        const errorDiv = document.getElementById('firebase-auth-error');
+                        errorDiv.style.display = 'block';
+                        errorDiv.innerHTML = `
+                            <h4>Authentication Error: Unauthorized Domain</h4>
+                            <p>This application's domain is not authorized for sign-in with your Firebase project.</p>
+                            <p><b>To fix this, you must add the domain to the authorized list in your Firebase console:</b></p>
+                            <ol>
+                                <li>Go to the <a href="https://console.firebase.google.com/" target="_blank">Firebase Console</a> and select your project.</li>
+                                <li>Navigate to <b>Authentication</b> > <b>Settings</b> tab.</li>
+                                <li>Under the <b>Authorized domains</b> section, click <b>Add domain</b>.</li>
+                                <li>Enter the domain where this app is hosted and click Add.</li>
+                            </ol>
+                        `;
                     } else {
                         this.showError("Could not sign in with Google. Please try again.");
                     }
@@ -1123,12 +1159,9 @@
                     quickLookupBtn: document.getElementById('quickLookupBtn'),
                     updateAllFundsBtn: document.getElementById('updateAllFundsBtn'),
                     clearAllFundsBtn: document.getElementById('clearAllFundsBtn'),
-                    fundsRefreshStatus: document.getElementById('funds-refresh-status'),
                     updateWatchlistBtn: document.getElementById('updateWatchlistBtn'),
                     clearWatchlistBtn: document.getElementById('clearWatchlistBtn'),
                     watchlistCount: document.getElementById('watchlist-count'),
-                    watchlistRefreshStatus: document.getElementById('watchlist-refresh-status'),
-                    stocksRefreshStatus: document.getElementById('stocks-refresh-status'),
                     refreshStatusPopup: document.getElementById('refresh-status-popup'),
                 };
             }
@@ -1638,34 +1671,40 @@
                 }
 
                 this.showLoading(true, `Refreshing data...`);
-                let totalStats = { success: 0, gains: 0, losses: 0, failed: 0 };
-                
-                for (const { list, type } of listsToRefresh) {
-                    if (!list || list.length === 0) continue;
-                    
-                    await Promise.all(list.map(async (item) => {
-                        try {
-                            const freshData = await this.apiService.fetchStockData(item.symbol);
-                            Object.assign(item, { ...freshData, transactions: item.transactions });
-                            if ((freshData.change || 0) > 0) totalStats.gains++;
-                            else if ((freshData.change || 0) < 0) totalStats.losses++;
-                            totalStats.success++;
-                        } catch (error) { 
-                            console.error(`Failed to refresh ${item.symbol}`, error); 
-                        }
-                    }));
-                }
-                
-                if (refreshAll) {
-                    totalStats.failed = totalItemsToRefresh - totalStats.success;
-                    this.showRefreshStatus('all', totalStats);
-                } else {
-                    const currentList = listsToRefresh[0].list || [];
-                    const currentType = listsToRefresh[0].type;
-                    totalStats.failed = currentList.length - totalStats.success;
-                    this.showRefreshStatus(currentType, totalStats);
-                }
 
+                const allPromises = listsToRefresh.flatMap(({ list }) => 
+                    list.map(item => 
+                        this.apiService.fetchStockData(item.symbol)
+                            .then(freshData => ({ status: 'fulfilled', value: freshData, item: item }))
+                            .catch(error => ({ status: 'rejected', reason: error, item: item }))
+                    )
+                );
+
+                const results = await Promise.all(allPromises);
+                
+                let stats = { success: 0, gains: 0, losses: 0 };
+                
+                results.forEach(result => {
+                    if (result.status === 'fulfilled') {
+                        stats.success++;
+                        const freshData = result.value;
+                        const item = result.item;
+                        Object.assign(item, { ...freshData, transactions: item.transactions });
+                        if ((freshData.change || 0) > 0) stats.gains++;
+                        else if ((freshData.change || 0) < 0) stats.losses++;
+                    } else {
+                        console.error(`Failed to refresh ${result.item.symbol}:`, result.reason);
+                    }
+                });
+                
+                const totalInLists = refreshAll 
+                    ? this.stocks.length + this.mutualFunds.length + this.watchlist.length
+                    : listsToRefresh.length > 0 ? listsToRefresh[0].list.length : 0;
+                
+                stats.failed = totalInLists - stats.success;
+
+                this.showRefreshStatus(refreshAll ? 'all' : this.currentTab, stats);
+                
                 await this.saveData();
                 this.renderContent();
                 this.showLoading(false);
@@ -1674,8 +1713,8 @@
             showRefreshStatus(type, stats) {
                 const statusDiv = this.elements.refreshStatusPopup;
                 let itemType = 'item(s)';
-                if (type === 'fund') itemType = 'fund(s)';
-                if (type === 'stock' || type === 'watchlist') itemType = 'stock(s)';
+                if (type === 'fund' || type === 'funds') itemType = 'fund(s)';
+                if (type === 'stock' || type === 'stocks' || type === 'watchlist') itemType = 'stock(s)';
                 
                 if (statusDiv) {
                     statusDiv.innerHTML = `Refreshed ${stats.success} ${itemType}. ✅ ${stats.gains} gained, 🔻${stats.losses} lost. Failed to refresh ${stats.failed}.`;
