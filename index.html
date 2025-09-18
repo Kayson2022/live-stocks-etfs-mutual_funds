@@ -899,7 +899,7 @@
             </div>
 
             <div class="utility-buttons-grid">
-                <button class="add-btn" id="liveUpdateBtn" style="background: linear-gradient(45deg, #2ed573, #17c0eb);">🔄 Live Update Tab</button>
+                <button class="add-btn" id="liveUpdateBtn" style="background: linear-gradient(45deg, #2ed573, #17c0eb);">🔄 Live Update All</button>
                 <button class="add-btn" id="toggleLiveUpdateBtn" style="background: linear-gradient(45deg, #f7b731, #ff5e3a);">⏸️ Pause Live Update</button>
                 <button class="add-btn" id="clearAllBtn" style="background: #ff4757;">🗑️ Clear All Data</button>
                 <button class="add-btn" id="exportBtn" style="background: linear-gradient(45deg, #3498db, #2980b9);">📥 Export Data</button>
@@ -1217,7 +1217,7 @@
                 this.elements.signOutBtn.addEventListener('click', () => this.signOut());
                 this.elements.addBtn.addEventListener('click', () => this.addItemFromInput('stock'));
                 this.elements.stockInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') this.addItemFromInput('stock'); });
-                this.elements.liveUpdateBtn.addEventListener('click', () => this.refreshAllData()); // FIX: No longer forces refreshAll=true
+                this.elements.liveUpdateBtn.addEventListener('click', () => this.refreshAllData(true)); // Pass true to refresh all
                 this.elements.clearAllBtn.addEventListener('click', () => this.clearAllItems('stock'));
                 this.elements.toggleLiveUpdateBtn.addEventListener('click', () => this.toggleLiveUpdate());
                 this.elements.exportBtn.addEventListener('click', () => this.exportData());
@@ -1320,7 +1320,7 @@
                 this.stopLiveUpdate();
                 this.refreshIntervalId = setInterval(() => {
                     if (this.isLiveUpdatePaused) return;
-                    this.refreshAllData(); // FIX: No longer forces refreshAll=true for timed updates
+                    this.refreshAllData(true);
                 }, this.config.refreshIntervalMs);
                 this.isLiveUpdatePaused = false;
                 this.elements.toggleLiveUpdateBtn.textContent = '⏸️ Pause Live Update';
@@ -1955,6 +1955,5 @@
     </script>
 </body>
 </html>
-
 
 
