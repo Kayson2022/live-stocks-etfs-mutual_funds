@@ -840,7 +840,7 @@
             <button id="sign-out-btn" class="add-btn">Sign Out</button>
         </div>
         <h1>💰 Live Portfolio Tracker</h1>
-        <div id="header-countdown">Next update in: <span id="countdown">60</span>s</div>
+        <div id="header-countdown">Next update in: <span id="countdown">90</span>s</div>
         
         <div class="tabs">
             <button class="tab active" onclick="window.stockTracker.switchTab('stocks')">📊 Stocks & Portfolio</button>
@@ -963,7 +963,7 @@
         <div class="stocks-grid" id="stocksGrid"></div>
     </div>
 
-    <div class="small-countdown" id="small-countdown-container">Next update: <span id="smallCountdown">60s</span></div>
+    <div class="small-countdown" id="small-countdown-container">Next update: <span id="smallCountdown">90s</span></div>
     
     <div id="transactionModal" class="modal" style="display: none;">
         <div class="modal-content">
@@ -1186,7 +1186,7 @@
             
             loadConfig() {
                 this.config = {
-                    refreshIntervalMs: 60000,
+                    refreshIntervalMs: 90000, // Changed from 60000 to 90000 (90 seconds)
                     finnhubApiKey: "d316lc1r01qnu2r0opjgd316lc1r01qnu2r0opk0",
                     alphaVantageApiKey: "0ZPH51BZ2N5O9G8Q",
                 };
@@ -1986,5 +1986,4 @@
     </script>
 </body>
 </html>
-
 
