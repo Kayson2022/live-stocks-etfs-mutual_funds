@@ -17,6 +17,7 @@
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             padding: 20px;
+            transition: background 0.3s ease;
         }
 
         .container {
@@ -27,6 +28,7 @@
             padding: 30px;
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
             backdrop-filter: blur(10px);
+            transition: background 0.3s ease, color 0.3s ease;
         }
 
         #login-container {
@@ -396,6 +398,18 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+        }
+
+        .group-header .header-controls {
+            display: flex;
+            align-items: center;
+        }
+
+        .header-collapse-btn {
+            padding: 5px 15px;
+            font-size: 0.9rem;
+            min-width: auto;
+            margin-right: 15px;
         }
 
         .group-header {
@@ -808,6 +822,85 @@
         #list-all-content p {
             padding: 2px 5px;
         }
+        
+        /* --- Dark Mode Styles --- */
+        body.dark-mode {
+            background: linear-gradient(135deg, #232526 0%, #414345 100%);
+        }
+
+        .dark-mode .container {
+            background: rgba(40, 40, 40, 0.95);
+            color: #f1f1f1;
+        }
+
+        .dark-mode .stock-card, 
+        .dark-mode .fund-card, 
+        .dark-mode .watchlist-card,
+        .dark-mode .chart-container,
+        .dark-mode .modal-content {
+            background: #2a2a2e;
+            color: #f1f1f1;
+            border-color: #444;
+        }
+
+        .dark-mode .stock-symbol, .dark-mode .fund-symbol, 
+        .dark-mode .watchlist-symbol, .dark-mode .stock-price,
+        .dark-mode .info-value, .dark-mode .modal-title,
+        .dark-mode .portfolio-summary h3 {
+            color: #f1f1f1;
+        }
+
+        .dark-mode .info-label, .dark-mode .close-modal-btn {
+             color: #aaa;
+        }
+
+        .dark-mode .tabs {
+            background: rgba(20, 20, 20, 0.9);
+        }
+        
+        .dark-mode .tab {
+            color: #bbb;
+        }
+
+        .dark-mode .tab.active {
+             background: linear-gradient(45deg, #667eea, #764ba2);
+             color: white;
+        }
+        
+        .dark-mode .search-input, .dark-mode #portfolioFilter, .dark-mode #portfolioSort {
+            background-color: #333;
+            border-color: #555;
+            color: #f1f1f1;
+        }
+
+        .dark-mode .portfolio-controls, .dark-mode .funds-controls, .dark-mode .watchlist-controls {
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        .dark-mode .portfolio-summary {
+            background: linear-gradient(135deg, #2c3e50, #4c5d70);
+            border-color: #667eea;
+        }
+
+        .dark-mode .summary-label {
+            color: #bbb;
+        }
+        
+        .dark-mode .stock-info, .dark-mode .total-pl {
+            border-top-color: #444;
+        }
+        
+        .dark-mode .transaction-entry {
+             background: #333;
+        }
+        
+        .dark-mode .gains-header {
+            background: linear-gradient(90deg, transparent, rgba(46, 213, 115, 0.05), transparent);
+        }
+        
+        .dark-mode .losses-header {
+            background: linear-gradient(90deg, transparent, rgba(255, 71, 87, 0.05), transparent);
+        }
         /* -- END OF STYLES -- */
 
         @media (max-width: 768px) {
@@ -899,6 +992,7 @@
                 <input type="file" id="importFile" accept=".json" style="display: none;">
                 <button class="add-btn" id="settingsBtn" style="background: linear-gradient(45deg, #6c757d, #343a40);">⚙️ Settings</button>
                 <button class="add-btn" id="listAllBtn" style="background: #9b59b6;">📋 List All Stocks</button>
+                <button class="add-btn" id="toggleDarkModeBtn" style="background: #333;">🌙 Toggle Theme</button>
             </div>
         </div>
 
@@ -1114,6 +1208,7 @@
                 this.userId = null; this.stocks = []; this.mutualFunds = []; this.watchlist = []; this.portfolioHistory = [];
                 this.currentTab = 'stocks'; this.onConfirm = null;
                 this.isLiveUpdatePaused = false;
+                this.isDarkMode = false;
                 this.countdownIntervalId = null;
                 this.refreshIntervalId = null;
                 this.init();
@@ -1125,6 +1220,7 @@
                     this.apiService = new ApiService(this.config);
                     this.cacheDOMElements();
                     this.setupEventListeners();
+                    this.applyTheme();
                     if (!db) { 
                         this.showError("Firebase is not configured. Please add your firebaseConfig object to the script tag.");
                         this.elements.loginContainer.style.display = 'block';
@@ -1228,6 +1324,7 @@
                     countdown: document.getElementById('countdown'),
                     smallCountdown: document.getElementById('smallCountdown'),
                     smallCountdownContainer: document.getElementById('small-countdown-container'),
+                    toggleDarkModeBtn: document.getElementById('toggleDarkModeBtn'),
                     // New Elements
                     quickLookupBtn: document.getElementById('quickLookupBtn'),
                     updateAllFundsBtn: document.getElementById('updateAllFundsBtn'),
@@ -1268,6 +1365,7 @@
                 this.elements.confirmModalConfirmBtn.addEventListener('click', () => this.handleConfirmAction());
                 this.elements.listAllBtn.addEventListener('click', () => this.openListAllModal());
                 this.elements.closeListAllBtn.addEventListener('click', () => this.closeListAllModal());
+                this.elements.toggleDarkModeBtn.addEventListener('click', () => this.toggleDarkMode());
 
 
                 // New Event Listeners for specific tabs
@@ -1293,8 +1391,6 @@
 
                 this.elements.portfolioSummary.style.display = 'none';
                 this.elements.fundsPortfolioSummary.style.display = 'none';
-                this.elements.diversificationChartContainer.style.display = 'none';
-                this.elements.historyChartContainer.style.display = 'none';
                 
                 let items, type;
                 if (this.currentTab === 'stocks') { [items, type] = [this.stocks, 'stock']; this.elements.portfolioSummary.style.display = 'block';} 
@@ -1309,15 +1405,17 @@
 
                 if (type === 'stock') {
                     this.renderPortfolioSummary();
-                    this.renderDiversificationChart();
-                    this.renderHistoryChart();
-                     this.renderGroupedStocks(filteredItems, grid, type);
+                    this.renderGroupedStocks(filteredItems, grid, type);
                 } else if (type ==='fund') {
                     this.renderFundsPortfolioSummary();
                     this.renderCards(filteredItems, grid, type);
                 } else if (type === 'watchlist') {
                     this.renderCards(filteredItems, grid, type);
                 }
+
+                // Always render charts after main content
+                this.renderDiversificationChart();
+                this.renderHistoryChart();
 
                 if (filteredItems.length === 0 && type !== 'stock') { 
                     grid.innerHTML = `<div class="loading">Your ${type} list is empty.</div>`; 
@@ -1570,10 +1668,25 @@
 
                 const header = document.createElement('div');
                 header.className = `group-header ${headerClass}`;
-                header.innerHTML = `
-                    <span>${title} (${list.length})</span>
-                    <span class="toggle-icon">▼</span>
-                `;
+                
+                const titleSpan = document.createElement('span');
+                titleSpan.textContent = `${title} (${list.length})`;
+
+                const headerControls = document.createElement('div');
+                headerControls.className = 'header-controls';
+
+                const headerCollapseBtn = document.createElement('button');
+                headerCollapseBtn.className = 'add-btn header-collapse-btn';
+                headerCollapseBtn.textContent = 'Collapse';
+
+                const toggleIcon = document.createElement('span');
+                toggleIcon.className = 'toggle-icon';
+                toggleIcon.innerHTML = '▼';
+
+                headerControls.appendChild(headerCollapseBtn);
+                headerControls.appendChild(toggleIcon);
+                header.appendChild(titleSpan);
+                header.appendChild(headerControls);
 
                 const content = document.createElement('div');
                 content.className = 'group-content';
@@ -1583,10 +1696,10 @@
                 
                 const footer = document.createElement('div');
                 footer.className = 'group-footer';
-                const collapseBtn = document.createElement('button');
-                collapseBtn.className = 'collapse-group-btn';
-                collapseBtn.textContent = 'Collapse';
-                footer.appendChild(collapseBtn);
+                const footerCollapseBtn = document.createElement('button');
+                footerCollapseBtn.className = 'collapse-group-btn';
+                footerCollapseBtn.textContent = 'Collapse';
+                footer.appendChild(footerCollapseBtn);
 
                 const totalPLToday = list.reduce((sum, item) => {
                     const stats = this.calculateTransactionStats(item.transactions, item.price);
@@ -1601,6 +1714,24 @@
                         <p>Total P/L Today: <span class="${plClass}">$${totalPLToday.toFixed(2)}</span></p>
                     </div>
                 `;
+
+                const toggleSummaryView = (e) => {
+                    e.stopPropagation(); 
+                    const isSummarized = content.style.display === 'none';
+                    if (isSummarized) {
+                        content.style.display = 'grid';
+                        summaryContent.style.display = 'none';
+                        headerCollapseBtn.textContent = 'Collapse';
+                        footerCollapseBtn.textContent = 'Collapse';
+                        footer.style.borderTop = '1px solid #eee';
+                    } else {
+                        content.style.display = 'none';
+                        summaryContent.style.display = 'block';
+                        headerCollapseBtn.textContent = 'Expand';
+                        footerCollapseBtn.textContent = 'Expand';
+                        footer.style.borderTop = 'none';
+                    }
+                };
                 
                 header.addEventListener('click', () => {
                     header.classList.toggle('collapsed');
@@ -1609,22 +1740,8 @@
                     footer.classList.toggle('collapsed');
                 });
 
-                collapseBtn.addEventListener('click', (e) => {
-                    e.stopPropagation(); 
-                    
-                    const isSummarized = content.style.display === 'none';
-                    if (isSummarized) {
-                        content.style.display = 'grid';
-                        summaryContent.style.display = 'none';
-                        collapseBtn.textContent = 'Collapse';
-                        footer.style.borderTop = '1px solid #eee';
-                    } else {
-                        content.style.display = 'none';
-                        summaryContent.style.display = 'block';
-                        collapseBtn.textContent = 'Expand';
-                        footer.style.borderTop = 'none';
-                    }
-                });
+                headerCollapseBtn.addEventListener('click', toggleSummaryView);
+                footerCollapseBtn.addEventListener('click', toggleSummaryView);
                 
                 groupWrapper.append(header, content, summaryContent, footer);
                 parent.appendChild(groupWrapper);
@@ -1921,8 +2038,11 @@
 
                 const chartColors = [
                     '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40',
-                    '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'
+                    '#2ecc71', '#e74c3c', '#8e44ad', '#f1c40f', '#1abc9c', '#d35400'
                 ];
+
+                const gridColor = this.isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+                const labelColor = this.isDarkMode ? '#f1f1f1' : '#666';
 
                 const ctx = this.elements.diversificationChart.getContext('2d');
                 this.diversificationChartInstance = new Chart(ctx, {
@@ -1940,10 +2060,13 @@
                         responsive: true, 
                         maintainAspectRatio: false, 
                         plugins: { 
-                            title: { display: true, text: 'Portfolio Breakdown by Industry' }, 
+                            title: { display: true, text: 'Portfolio Breakdown by Industry', color: labelColor }, 
                             legend: { display: false } 
                         }, 
-                        scales: { y: { beginAtZero: true }, x: {} } 
+                        scales: { 
+                            y: { beginAtZero: true, ticks: { color: labelColor }, grid: { color: gridColor } }, 
+                            x: { ticks: { color: labelColor }, grid: { color: gridColor } }
+                        } 
                     }
                 });
             }
@@ -1963,10 +2086,25 @@
                 const labels = this.portfolioHistory.map(entry => entry.date);
                 const data = this.portfolioHistory.map(entry => entry.value);
                 if (this.historyChartInstance) { this.historyChartInstance.destroy(); }
+
+                const gridColor = this.isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+                const labelColor = this.isDarkMode ? '#f1f1f1' : '#666';
+
                 const ctx = this.elements.historyChart.getContext('2d');
                 this.historyChartInstance = new Chart(ctx, {
                     type: 'line', data: { labels: labels, datasets: [{ label: 'Portfolio Value', data: data, fill: true, borderColor: 'rgb(75, 192, 192)', tension: 0.1 }] },
-                    options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Portfolio Value History' } }, scales: { y: {}, x: {} } }
+                    options: { 
+                        responsive: true, 
+                        maintainAspectRatio: false, 
+                        plugins: { 
+                            title: { display: true, text: 'Portfolio Value History', color: labelColor },
+                            legend: { labels: { color: labelColor }}
+                        }, 
+                        scales: { 
+                             y: { beginAtZero: true, ticks: { color: labelColor }, grid: { color: gridColor } }, 
+                             x: { ticks: { color: labelColor }, grid: { color: gridColor } }
+                        } 
+                    }
                 });
             }
             openConfirmModal(text, onConfirmAction) { this.elements.confirmModal.style.display = 'flex'; this.elements.confirmModalText.textContent = text; this.onConfirm = onConfirmAction; }
@@ -1992,6 +2130,25 @@
                 this.closeSettingsModal();
                 this.showSuccess('✅ Settings updated for this session!');
                 this.startLiveUpdate();
+            }
+            
+            toggleDarkMode() {
+                this.isDarkMode = !this.isDarkMode;
+                localStorage.setItem('darkMode', this.isDarkMode);
+                this.applyTheme();
+            }
+
+            applyTheme() {
+                const theme = localStorage.getItem('darkMode') === 'true';
+                this.isDarkMode = theme;
+                
+                document.body.classList.toggle('dark-mode', theme);
+                this.elements.appContainer.classList.toggle('dark-mode', theme);
+                
+                if (this.currentTab === 'stocks') {
+                    this.renderDiversificationChart();
+                    this.renderHistoryChart();
+                }
             }
 
             openListAllModal() {
