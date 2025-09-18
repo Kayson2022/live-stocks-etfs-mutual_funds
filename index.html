@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -317,8 +316,8 @@
         }
         
         .info-row {
-            display: grid;
-            grid-template-columns: auto 1fr;
+            display: flex;
+            justify-content: space-between;
             gap: 10px;
             align-items: center;
             margin-bottom: 8px;
@@ -328,6 +327,7 @@
         .info-label {
             color: #666;
             white-space: nowrap;
+            flex-shrink: 0;
         }
 
         .info-value {
@@ -337,6 +337,7 @@
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+            min-width: 0;
         }
         
         .loading, .error, .success {
@@ -941,18 +942,6 @@
                 max-width: 100vw;
                 box-sizing: border-box;
             }
-            .info-value {
-                text-align: left !important;
-                padding-left: 4px;
-                padding-right: 0 !important;
-                overflow: visible !important;
-                text-overflow: unset !important;
-                white-space: normal !important;
-            }
-            .info-row {
-                grid-template-columns: 120px 1fr !important;
-                gap: 8px !important;
-            }
         }
     </style>
 </head>
@@ -1063,7 +1052,7 @@
                     </div>
                      <div class="summary-item">
                         <span class="summary-label">Overall P/L %</span>
-                        <span id="funds-overall-pl-percent" class="summary-value positive">$0.00</span>
+                        <span id="funds-overall-pl-percent" class="summary-value positive">0.00%</span>
                     </div>
                 </div>
             </div>
@@ -1590,7 +1579,7 @@
                 const totalOverallPLPercent = totalCostBasis > 0 ? (totalOverallPL / totalCostBasis) * 100 : 0;
                 const totalPLPercentToday = totalPreviousDayValue > 0 ? (totalPLToday / totalPreviousDayValue) * 100 : 0;
                 
-                const setElement = (el, value, isPercent = false) => { if (el) { el.textContent = isPercent ? `${value.toFixed(2)}%` : `$${value.toFixed(2)}`; el.className = `summary-value ${value >= 0 ? 'positive' : 'negative'}`; } };
+                const setElement = (el, value, isPercent = false) => { if (el) { el.textContent = isPercent ? `${value.toFixed(2)}%` : `$${value.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`; el.className = `summary-value ${value >= 0 ? 'positive' : 'negative'}`; } };
                 
                 setElement(elements.totalValue, totalCurrentValue);
                 setElement(elements.plToday, totalPLToday);
@@ -1811,7 +1800,7 @@
                     <div class="summary-card">
                         <h4>${title} Summary</h4>
                         <p>Total Assets: ${list.length}</p>
-                        <p>Total P/L Today: <span class="${plClass}">$${totalPLToday.toFixed(2)}</span></p>
+                        <p>Total P/L Today: <span class="${plClass}">$${this.formatNumber(totalPLToday)}</span></p>
                     </div>
                 `;
 
@@ -1871,7 +1860,7 @@
                                 ${ (item.transactions || []).map((t, index) => `
                                     <div class="transaction-entry">
                                         <div class="transaction-info">
-                                            <span><strong class="${t.type}">${t.type.toUpperCase()}</strong>: ${t.shares} shares @ $${t.price.toFixed(2)}</span>
+                                            <span><strong class="${t.type}">${t.type.toUpperCase()}</strong>: ${t.shares} shares @ $${this.formatNumber(t.price)}</span>
                                             ${t.note ? `<span>Note: ${t.note}</span>` : ''}
                                         </div>
                                         <div class="transaction-entry-controls">
@@ -1886,7 +1875,7 @@
                             <button class="transaction-btn" onclick="window.stockTracker.openTransactionModal('${item.symbol}', '${type}', 'buy')">Buy</button>
                             <button class="transaction-btn" style="background: #ff4757;" onclick="window.stockTracker.openTransactionModal('${item.symbol}', '${type}', 'sell')">Sell</button>
                         </div>
-                        <div class="total-pl ${stats.unrealizedPL >= 0 ? 'positive' : 'negative'}">Overall P/L: $${stats.unrealizedPL.toFixed(2)} (${overallPLPercent.toFixed(2)}%)</div>
+                        <div class="total-pl ${stats.unrealizedPL >= 0 ? 'positive' : 'negative'}">Overall P/L: $${this.formatNumber(stats.unrealizedPL)} (${overallPLPercent.toFixed(2)}%)</div>
                         `;
                     } else if (type === 'watchlist') {
                          transactionDetailsHTML = `
@@ -1899,17 +1888,17 @@
                     let stockInfoHTML = '';
                      if (type === 'watchlist' || type === 'fund') {
                          stockInfoHTML = `
-                            <div class="info-row"><span class="info-label">Open:</span><span class="info-value">$${(item.open || 0).toFixed(2)}</span></div>
-                            <div class="info-row"><span class="info-label">High:</span><span class="info-value">$${(item.high || 0).toFixed(2)}</span></div>
-                            <div class="info-row"><span class="info-label">Low:</span><span class="info-value">$${(item.low || 0).toFixed(2)}</span></div>
-                            <div class="info-row"><span class="info-label">Prev. Close:</span><span class="info-value">$${(item.previousClose || 0).toFixed(2)}</span></div>
+                            <div class="info-row"><span class="info-label">Open:</span><span class="info-value">$${this.formatNumber(item.open || 0)}</span></div>
+                            <div class="info-row"><span class="info-label">High:</span><span class="info-value">$${this.formatNumber(item.high || 0)}</span></div>
+                            <div class="info-row"><span class="info-label">Low:</span><span class="info-value">$${this.formatNumber(item.low || 0)}</span></div>
+                            <div class="info-row"><span class="info-label">Prev. Close:</span><span class="info-value">$${this.formatNumber(item.previousClose || 0)}</span></div>
                          `;
                      } else { // stock
                          stockInfoHTML = `
-                            <div class="info-row"><span class="info-label">Open:</span><span class="info-value">$${(item.open || 0).toFixed(2)}</span></div>
-                            <div class="info-row"><span class="info-label">Total Shares:</span><span class="info-value">${stats.totalSharesOwned.toFixed(3)}</span></div>
-                            <div class="info-row"><span class="info-label">Total Value:</span><span class="info-value">$${stats.currentValue.toFixed(2)}</span></div>
-                            <div class="info-row"><span class="info-label">Avg. Cost Basis:</span><span class="info-value">$${stats.averageCostBasis.toFixed(2)}</span></div>
+                            <div class="info-row"><span class="info-label">Open:</span><span class="info-value">$${this.formatNumber(item.open || 0)}</span></div>
+                            <div class="info-row"><span class="info-label">Total Shares:</span><span class="info-value">${stats.totalSharesOwned.toLocaleString('en-US', {minimumFractionDigits: 3, maximumFractionDigits: 3})}</span></div>
+                            <div class="info-row"><span class="info-label">Total Value:</span><span class="info-value">$${this.formatNumber(stats.currentValue)}</span></div>
+                            <div class="info-row"><span class="info-label">Avg. Cost Basis:</span><span class="info-value">$${this.formatNumber(stats.averageCostBasis)}</span></div>
                          `;
                      }
 
@@ -1918,15 +1907,15 @@
                             <span class="stock-symbol">${item.symbol}</span>
                             <button class="remove-btn" onclick="window.stockTracker.${removalFunction}">×</button>
                         </div>
-                        <div class="stock-price">$${(item.price || 0).toFixed(2)}</div>
+                        <div class="stock-price">$${this.formatNumber(item.price || 0)}</div>
                         <div class="stock-change ${changeClass}">
-                            <span>${changeSymbol} ${(item.change || 0).toFixed(2)} (${(item.changePercent || 0).toFixed(2)}%)</span>
+                            <span>${changeSymbol} ${this.formatNumber(Math.abs(item.change || 0))} (${(item.changePercent || 0).toFixed(2)}%)</span>
                         </div>
                         <div class="stock-info">
                            ${stockInfoHTML}
                         </div>
                         ${transactionDetailsHTML}
-                        <div class="total-pl ${todayPL >= 0 ? 'positive' : 'negative'}">P/L Today: $${todayPL.toFixed(2)}</div>
+                        <div class="total-pl ${todayPL >= 0 ? 'positive' : 'negative'}">P/L Today: $${this.formatNumber(todayPL)}</div>
                     `;
                     card.innerHTML = cardHTML;
 
@@ -2122,6 +2111,15 @@
                     delete item.purchases;
                 }
             }
+            formatNumber(num, decimals = 2) {
+                if (typeof num !== 'number') {
+                    return num;
+                }
+                return num.toLocaleString('en-US', {
+                    minimumFractionDigits: decimals,
+                    maximumFractionDigits: decimals
+                });
+            }
             renderDiversificationChart() {
                 const hasTransactions = this.stocks.some(s => s.transactions && s.transactions.length > 0 && this.calculateTransactionStats(s.transactions).totalSharesOwned > 0);
                 if (!hasTransactions) { if (this.diversificationChartInstance) { this.diversificationChartInstance.destroy(); this.diversificationChartInstance = null; } this.elements.diversificationChartContainer.style.display = 'none'; return; }
@@ -2164,10 +2162,24 @@
                         maintainAspectRatio: false, 
                         plugins: { 
                             title: { display: true, text: 'Portfolio Breakdown by Industry', color: labelColor }, 
-                            legend: { display: false } 
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: (context) => {
+                                        let label = context.dataset.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        if (context.parsed.y !== null) {
+                                            label += '$' + this.formatNumber(context.parsed.y);
+                                        }
+                                        return label;
+                                    }
+                                }
+                            }
                         }, 
                         scales: { 
-                            y: { beginAtZero: true, ticks: { color: labelColor }, grid: { color: gridColor } }, 
+                            y: { beginAtZero: true, ticks: { color: labelColor, callback: (value) => '$' + value.toLocaleString('en-US') }, grid: { color: gridColor } }, 
                             x: { ticks: { color: labelColor }, grid: { color: gridColor } }
                         } 
                     }
@@ -2201,10 +2213,24 @@
                         maintainAspectRatio: false, 
                         plugins: { 
                             title: { display: true, text: 'Portfolio Value History', color: labelColor },
-                            legend: { labels: { color: labelColor }}
+                            legend: { labels: { color: labelColor }},
+                            tooltip: {
+                                callbacks: {
+                                    label: (context) => {
+                                        let label = context.dataset.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        if (context.parsed.y !== null) {
+                                            label += '$' + this.formatNumber(context.parsed.y);
+                                        }
+                                        return label;
+                                    }
+                                }
+                            }
                         }, 
                         scales: { 
-                             y: { beginAtZero: true, ticks: { color: labelColor }, grid: { color: gridColor } }, 
+                             y: { beginAtZero: true, ticks: { color: labelColor, callback: (value) => '$' + value.toLocaleString('en-US') }, grid: { color: gridColor } }, 
                              x: { ticks: { color: labelColor }, grid: { color: gridColor } }
                         } 
                     }
