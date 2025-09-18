@@ -1878,6 +1878,7 @@
                     const totalCost = stats.costOfRemainingShares; // Using the new value
                     const overallPLPercent = totalCost > 0 ? (stats.unrealizedPL / totalCost) * 100 : 0;
                     const todayPL = (item.change || 0) * stats.totalSharesOwned;
+                    const totalValueClass = stats.unrealizedPL >= 0 ? 'positive' : 'negative';
 
                     let transactionDetailsHTML = '';
                     if (type === 'stock' || type === 'fund') {
@@ -1929,7 +1930,7 @@
                             <div class="info-row"><span class="info-label">Open:</span><span class="info-value">${this.formatCurrency(item.open || 0)}</span></div>
                             <div class="info-row"><span class="info-label">Total Shares:</span><span class="info-value">${this.formatNumber(stats.totalSharesOwned, 3)}</span></div>
                             <div class="info-row"><span class="info-label">Total Cost:</span><span class="info-value">${this.formatCurrency(stats.costOfRemainingShares)}</span></div>
-                            <div class="info-row"><span class="info-label">Total Value:</span><span class="info-value">${this.formatCurrency(stats.currentValue)}</span></div>
+                            <div class="info-row"><span class="info-label">Total Value:</span><span class="info-value ${totalValueClass}">${this.formatCurrency(stats.currentValue)}</span></div>
                             <div class="info-row"><span class="info-label">Avg. Cost:</span><span class="info-value">${this.formatCurrency(stats.averageCostBasis)}</span></div>
                          `;
                      }
