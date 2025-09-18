@@ -1555,6 +1555,9 @@
                 if(elements.overallPL) setElement(elements.overallPL, totalOverallPL);
                 if(elements.overallPLPercent) setElement(elements.overallPLPercent, totalOverallPLPercent, true);
             }
+            isMutualFund(symbol) {
+                return symbol.length === 5 && symbol.endsWith('X');
+            }
             async addItemFromInput(type) {
                  const inputId = type === 'fund' ? 'mutualFundInput' : (type === 'stock' ? 'stockInput' : 'watchlistInput');
                  const input = this.elements[inputId];
@@ -1569,7 +1572,7 @@
                 this.showLoading(true, `Adding ${symbol}...`);
                 try {
                     // Use the correct API based on the type of asset
-                    const result = type === 'fund' 
+                    const result = this.isMutualFund(symbol)
                         ? await this.apiService.fetchFundData(symbol) 
                         : await this.apiService.fetchStockEtfData(symbol);
                     
@@ -1898,9 +1901,8 @@
                     else if (this.currentTab === 'watchlist') { listsToRefresh.push({ list: this.watchlist, type: 'watchlist' }); }
                 }
 
-                const allItemsWithType = listsToRefresh.flatMap(({ list, type }) => list.map(item => ({ item, type })));
-                const totalCount = allItemsWithType.length;
-
+                const allItems = listsToRefresh.flatMap(({ list }) => list);
+                const totalCount = allItems.length;
 
                 if (totalCount === 0) {
                     this.showError("Nothing to refresh.");
@@ -1914,19 +1916,19 @@
                 let processedCount = 0;
 
                 const batchSize = 10;
-                for (let i = 0; i < allItemsWithType.length; i += batchSize) {
-                    const batch = allItemsWithType.slice(i, i + batchSize);
+                for (let i = 0; i < allItems.length; i += batchSize) {
+                    const batch = allItems.slice(i, i + batchSize);
                     
-                    const refreshPromises = batch.map(({ item, type }) => {
-                        return type === 'fund' 
-                            ? this.apiService.fetchFundData(item.symbol) 
+                    const refreshPromises = batch.map(item => {
+                        return this.isMutualFund(item.symbol)
+                            ? this.apiService.fetchFundData(item.symbol)
                             : this.apiService.fetchStockEtfQuote(item.symbol);
                     });
                     
                     const results = await Promise.allSettled(refreshPromises);
 
                     for (const [index, result] of results.entries()) {
-                        const { item } = batch[index];
+                        const item = batch[index];
 
                         if (result.status === 'fulfilled' && result.value.success) {
                             const freshData = result.value.data;
@@ -1949,7 +1951,7 @@
                         await new Promise(resolve => setTimeout(resolve, 50));
                     }
                     
-                    if (i + batchSize < allItemsWithType.length) {
+                    if (i + batchSize < allItems.length) {
                         await new Promise(resolve => setTimeout(resolve, 1000));
                     }
                 }
