@@ -134,10 +134,12 @@
             border-radius: 15px;
             padding: 5px;
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            overflow-x: auto; /* Enable horizontal scrolling */
+            -webkit-overflow-scrolling: touch; /* for smooth scrolling on iOS */
         }
 
         .tab {
-            flex: 1;
+            flex-shrink: 0;
             padding: 15px 20px;
             background: transparent;
             border: none;
@@ -1368,13 +1370,12 @@
                     }
                     const data = await response.json();
                     
-                    // Check for API-specific errors in the JSON payload
                     if (data['Error Message'] || data.Note) {
                         return { success: false, reason: data['Error Message'] || data.Note };
                     }
                     
-                    if (!data.feed) {
-                        return { success: false, reason: 'Invalid or empty news API payload' };
+                    if (!data.feed || data.feed.length === 0) {
+                        return { success: true, data: [] };
                     }
                     return { success: true, data: data.feed };
                 } catch (error) {
@@ -2669,12 +2670,12 @@
                 const symbols = [...new Set([...this.stocks.map(s => s.symbol), ...this.watchlist.map(s => s.symbol)])];
                 const now = Date.now();
                 
-                // Only fetch news every 15 minutes to avoid rate limits
                 if (symbols.length === 0) {
                     this.elements.newsArticlesContainer.innerHTML = `<div class="loading">No symbols in your portfolio or watchlist to fetch news for.</div>`;
                     return;
                 }
 
+                // Only fetch news every 15 minutes to avoid rate limits
                 if (this.newsFeed.length > 0 && now - this.newsFetchTime < 15 * 60 * 1000) {
                     this.renderNews();
                     return;
