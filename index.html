@@ -427,12 +427,11 @@
 
         .group-header {
              cursor: pointer;
-             transition: all 0.3s ease;
+             transition: background-color: 0.3s ease;
         }
-        
+
         .group-header:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            background-color: rgba(0, 0, 0, 0.05);
         }
 
         .group-content {
@@ -466,24 +465,73 @@
         .group-header.collapsed .toggle-icon {
             transform: rotate(-90deg);
         }
-
-        /* New Performance Group Styles */
-        .big-winners-header { color: #2ecc71; background: linear-gradient(90deg, transparent, rgba(46, 213, 115, 0.1), transparent); }
-        .moderate-gains-header { color: #82ccdd; background: linear-gradient(90deg, transparent, rgba(130, 204, 221, 0.1), transparent); }
-        .steady-header { color: #3498db; background: linear-gradient(90deg, transparent, rgba(52, 152, 219, 0.1), transparent); }
-        .moderate-losses-header { color: #f39c12; background: linear-gradient(90deg, transparent, rgba(243, 156, 18, 0.1), transparent); }
-        .big-losses-header { color: #e74c3c; background: linear-gradient(90deg, transparent, rgba(231, 76, 60, 0.1), transparent); }
-
-        .big-winners-header::before, .moderate-gains-header::before, .steady-header::before, .moderate-losses-header::before, .big-losses-header::before {
-            content: ''; position: absolute; left: 50%; bottom: 5px; transform: translateX(-50%); width: 100px; height: 3px; border-radius: 2px;
+        
+        .losses-header {
+            color: #ff4757;
+            background: linear-gradient(90deg, transparent, rgba(255, 71, 87, 0.1), transparent);
         }
 
-        .big-winners-header::before { background: #2ecc71; }
-        .moderate-gains-header::before { background: #82ccdd; }
-        .steady-header::before { background: #3498db; }
-        .moderate-losses-header::before { background: #f39c12; }
-        .big-losses-header::before { background: #e74c3c; }
+        .gains-header {
+            color: #2ed573;
+            background: linear-gradient(90deg, transparent, rgba(46, 213, 115, 0.1), transparent);
+        }
+        
+        .big-winners-header {
+            color: #2ed573;
+            background: linear-gradient(90deg, transparent, rgba(46, 213, 115, 0.1), transparent);
+        }
 
+        .moderate-gains-header {
+            color: #1abc9c;
+            background: linear-gradient(90deg, transparent, rgba(26, 188, 156, 0.1), transparent);
+        }
+
+        .steady-header {
+            color: #3498db;
+            background: linear-gradient(90deg, transparent, rgba(52, 152, 219, 0.1), transparent);
+        }
+
+        .moderate-losses-header {
+            color: #e67e22;
+            background: linear-gradient(90deg, transparent, rgba(230, 126, 34, 0.1), transparent);
+        }
+
+        .big-losses-header {
+            color: #e74c3c;
+            background: linear-gradient(90deg, transparent, rgba(231, 76, 60, 0.1), transparent);
+        }
+        
+        .losses-header::before, .gains-header::before, .big-winners-header::before, .moderate-gains-header::before, .steady-header::before, .moderate-losses-header::before, .big-losses-header::before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            bottom: 5px;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 3px;
+            border-radius: 2px;
+        }
+        
+        .losses-header::before, .big-losses-header::before {
+            background: #ff4757;
+        }
+
+        .gains-header::before, .big-winners-header::before {
+            background: #2ed573;
+        }
+        
+        .moderate-gains-header::before {
+            background: #1abc9c;
+        }
+
+        .steady-header::before {
+            background: #3498db;
+        }
+        
+        .moderate-losses-header::before {
+            background: #e67e22;
+        }
+        
         .chart-container {
             margin-top: 20px;
             padding: 20px;
@@ -896,12 +944,24 @@
              background: #333;
         }
         
-        .dark-mode .gains-header {
+        .dark-mode .gains-header, .dark-mode .big-winners-header {
             background: linear-gradient(90deg, transparent, rgba(46, 213, 115, 0.05), transparent);
         }
         
-        .dark-mode .losses-header {
+        .dark-mode .losses-header, .dark-mode .big-losses-header {
             background: linear-gradient(90deg, transparent, rgba(255, 71, 87, 0.05), transparent);
+        }
+
+        .dark-mode .moderate-gains-header {
+            background: linear-gradient(90deg, transparent, rgba(26, 188, 156, 0.05), transparent);
+        }
+        
+        .dark-mode .steady-header {
+            background: linear-gradient(90deg, transparent, rgba(52, 152, 219, 0.05), transparent);
+        }
+        
+        .dark-mode .moderate-losses-header {
+            background: linear-gradient(90deg, transparent, rgba(230, 126, 34, 0.05), transparent);
         }
         /* -- END OF STYLES -- */
 
@@ -928,6 +988,18 @@
                 padding: 5px !important;
                 max-width: 100vw;
                 box-sizing: border-box;
+            }
+            .info-value {
+                text-align: left !important;
+                padding-left: 4px;
+                padding-right: 0 !important;
+                overflow: visible !important;
+                text-overflow: unset !important;
+                white-space: normal !important;
+            }
+            .info-row {
+                grid-template-columns: 120px 1fr !important;
+                gap: 8px !important;
             }
         }
     </style>
@@ -1039,7 +1111,7 @@
                     </div>
                      <div class="summary-item">
                         <span class="summary-label">Overall P/L %</span>
-                        <span id="funds-overall-pl-percent" class="summary-value positive">0.00%</span>
+                        <span id="funds-overall-pl-percent" class="summary-value positive">$0.00</span>
                     </div>
                 </div>
             </div>
@@ -1069,7 +1141,6 @@
 
         <div class="stocks-grid" id="stocksGrid"></div>
 
-        <!-- Charts moved to the bottom of the app container -->
         <div id="diversification-chart-container" class="chart-container" style="display: none;">
             <canvas id="diversificationChart"></canvas>
         </div>
@@ -1446,9 +1517,12 @@
                 const filterTerm = (this.currentTab === 'stocks' ? this.elements.portfolioFilter.value : '').toLowerCase();
                 const filteredItems = items.filter(item => item.symbol.toLowerCase().includes(filterTerm) || (item.name && item.name.toLowerCase().includes(filterTerm)));
 
-                if (type === 'stock' || type === 'fund') {
+                if (type === 'stock') {
                     this.renderPortfolioSummary();
                     this.renderGroupedStocks(filteredItems, grid, type);
+                } else if (type ==='fund') {
+                    this.renderFundsPortfolioSummary();
+                    this.renderCards(filteredItems, grid, type);
                 } else if (type === 'watchlist') {
                     this.renderCards(filteredItems, grid, type);
                 }
@@ -1563,7 +1637,7 @@
                 const totalOverallPLPercent = totalCostBasis > 0 ? (totalOverallPL / totalCostBasis) * 100 : 0;
                 const totalPLPercentToday = totalPreviousDayValue > 0 ? (totalPLToday / totalPreviousDayValue) * 100 : 0;
                 
-                const setElement = (el, value, isPercent = false) => { if (el) { el.textContent = isPercent ? `${value.toFixed(2)}%` : `$${value.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`; el.className = `summary-value ${value >= 0 ? 'positive' : 'negative'}`; } };
+                const setElement = (el, value, isPercent = false) => { if (el) { el.textContent = isPercent ? `${value.toFixed(2)}%` : `$${value.toFixed(2)}`; el.className = `summary-value ${value >= 0 ? 'positive' : 'negative'}`; } };
                 
                 setElement(elements.totalValue, totalCurrentValue);
                 setElement(elements.plToday, totalPLToday);
@@ -1718,20 +1792,22 @@
                 });
             }
             renderGroupedStocks(items, container, type) {
-                const gains = items.filter(s => s.changePercent >= 0).sort((a, b) => b.changePercent - a.changePercent);
-                const losses = items.filter(s => s.changePercent < 0).sort((a, b) => a.changePercent - b.changePercent);
+                const bigWinners = items.filter(s => s.changePercent > 10).sort((a, b) => b.changePercent - a.changePercent);
+                const moderateGains = items.filter(s => s.changePercent > 3 && s.changePercent <= 10).sort((a, b) => b.changePercent - a.changePercent);
+                const steady = items.filter(s => s.changePercent > -3 && s.changePercent <= 3).sort((a, b) => b.changePercent - a.changePercent);
+                const moderateLosses = items.filter(s => s.changePercent > -10 && s.changePercent <= -3).sort((a, b) => a.changePercent - b.changePercent);
+                const bigLosses = items.filter(s => s.changePercent <= -10).sort((a, b) => a.changePercent - b.changePercent);
                 
-                if (gains.length === 0 && losses.length === 0 && items.length > 0) {
-                     this.createGroup('Today', items, 'gains-header', container, type);
-                     return;
-                }
-                 if (gains.length === 0 && losses.length === 0) {
+                if (items.length === 0) {
                      container.innerHTML = `<div class="loading">Your ${type} list is empty.</div>`;
                      return;
                 }
 
-                this.createGroup('📉 Losses Today', losses, 'losses-header', container, type);
-                this.createGroup('📈 Gains Today', gains, 'gains-header', container, type);
+                this.createGroup('💥 Big Losers Today', bigLosses, 'big-losses-header', container, type);
+                this.createGroup('📉 Moderate Losses Today', moderateLosses, 'moderate-losses-header', container, type);
+                this.createGroup('➡️ Steady Today', steady, 'steady-header', container, type);
+                this.createGroup('📈 Moderate Gains Today', moderateGains, 'moderate-gains-header', container, type);
+                this.createGroup('🚀 Big Winners Today', bigWinners, 'big-winners-header', container, type);
             }
             createGroup(title, list, headerClass, parent, type) {
                 if(list.length === 0) return;
@@ -1784,7 +1860,7 @@
                     <div class="summary-card">
                         <h4>${title} Summary</h4>
                         <p>Total Assets: ${list.length}</p>
-                        <p>Total P/L Today: <span class="${plClass}">$${this.formatNumber(totalPLToday)}</span></p>
+                        <p>Total P/L Today: <span class="${plClass}">$${totalPLToday.toFixed(2)}</span></p>
                     </div>
                 `;
 
@@ -1844,7 +1920,7 @@
                                 ${ (item.transactions || []).map((t, index) => `
                                     <div class="transaction-entry">
                                         <div class="transaction-info">
-                                            <span><strong class="${t.type}">${t.type.toUpperCase()}</strong>: ${t.shares} shares @ $${this.formatNumber(t.price)}</span>
+                                            <span><strong class="${t.type}">${t.type.toUpperCase()}</strong>: ${t.shares} shares @ $${t.price.toFixed(2)}</span>
                                             ${t.note ? `<span>Note: ${t.note}</span>` : ''}
                                         </div>
                                         <div class="transaction-entry-controls">
@@ -1859,7 +1935,7 @@
                             <button class="transaction-btn" onclick="window.stockTracker.openTransactionModal('${item.symbol}', '${type}', 'buy')">Buy</button>
                             <button class="transaction-btn" style="background: #ff4757;" onclick="window.stockTracker.openTransactionModal('${item.symbol}', '${type}', 'sell')">Sell</button>
                         </div>
-                        <div class="total-pl ${stats.unrealizedPL >= 0 ? 'positive' : 'negative'}">Overall P/L: $${this.formatNumber(stats.unrealizedPL)} (${overallPLPercent.toFixed(2)}%)</div>
+                        <div class="total-pl ${stats.unrealizedPL >= 0 ? 'positive' : 'negative'}">Overall P/L: $${stats.unrealizedPL.toFixed(2)} (${overallPLPercent.toFixed(2)}%)</div>
                         `;
                     } else if (type === 'watchlist') {
                          transactionDetailsHTML = `
@@ -1872,17 +1948,17 @@
                     let stockInfoHTML = '';
                      if (type === 'watchlist' || type === 'fund') {
                          stockInfoHTML = `
-                            <div class="info-row"><span class="info-label">Open:</span><span class="info-value">$${this.formatNumber(item.open || 0)}</span></div>
-                            <div class="info-row"><span class="info-label">High:</span><span class="info-value">$${this.formatNumber(item.high || 0)}</span></div>
-                            <div class="info-row"><span class="info-label">Low:</span><span class="info-value">$${this.formatNumber(item.low || 0)}</span></div>
-                            <div class="info-row"><span class="info-label">Prev. Close:</span><span class="info-value">$${this.formatNumber(item.previousClose || 0)}</span></div>
+                            <div class="info-row"><span class="info-label">Open:</span><span class="info-value">$${(item.open || 0).toFixed(2)}</span></div>
+                            <div class="info-row"><span class="info-label">High:</span><span class="info-value">$${(item.high || 0).toFixed(2)}</span></div>
+                            <div class="info-row"><span class="info-label">Low:</span><span class="info-value">$${(item.low || 0).toFixed(2)}</span></div>
+                            <div class="info-row"><span class="info-label">Prev. Close:</span><span class="info-value">$${(item.previousClose || 0).toFixed(2)}</span></div>
                          `;
                      } else { // stock
                          stockInfoHTML = `
-                            <div class="info-row"><span class="info-label">Open:</span><span class="info-value">$${this.formatNumber(item.open || 0)}</span></div>
-                            <div class="info-row"><span class="info-label">Total Shares:</span><span class="info-value">${stats.totalSharesOwned.toLocaleString('en-US', {minimumFractionDigits: 3, maximumFractionDigits: 3})}</span></div>
-                            <div class="info-row"><span class="info-label">Total Value:</span><span class="info-value">$${this.formatNumber(stats.currentValue)}</span></div>
-                            <div class="info-row"><span class="info-label">Avg. Cost Basis:</span><span class="info-value">$${this.formatNumber(stats.averageCostBasis)}</span></div>
+                            <div class="info-row"><span class="info-label">Open:</span><span class="info-value">$${(item.open || 0).toFixed(2)}</span></div>
+                            <div class="info-row"><span class="info-label">Total Shares:</span><span class="info-value">${stats.totalSharesOwned.toFixed(3)}</span></div>
+                            <div class="info-row"><span class="info-label">Total Value:</span><span class="info-value">$${stats.currentValue.toFixed(2)}</span></div>
+                            <div class="info-row"><span class="info-label">Avg. Cost Basis:</span><span class="info-value">$${stats.averageCostBasis.toFixed(2)}</span></div>
                          `;
                      }
 
@@ -1891,15 +1967,15 @@
                             <span class="stock-symbol">${item.symbol}</span>
                             <button class="remove-btn" onclick="window.stockTracker.${removalFunction}">×</button>
                         </div>
-                        <div class="stock-price">$${this.formatNumber(item.price || 0)}</div>
+                        <div class="stock-price">$${(item.price || 0).toFixed(2)}</div>
                         <div class="stock-change ${changeClass}">
-                            <span>${changeSymbol} ${this.formatNumber(Math.abs(item.change || 0))} (${(item.changePercent || 0).toFixed(2)}%)</span>
+                            <span>${changeSymbol} ${(item.change || 0).toFixed(2)} (${(item.changePercent || 0).toFixed(2)}%)</span>
                         </div>
                         <div class="stock-info">
                            ${stockInfoHTML}
                         </div>
                         ${transactionDetailsHTML}
-                        <div class="total-pl ${todayPL >= 0 ? 'positive' : 'negative'}">P/L Today: $${this.formatNumber(todayPL)}</div>
+                        <div class="total-pl ${todayPL >= 0 ? 'positive' : 'negative'}">P/L Today: $${todayPL.toFixed(2)}</div>
                     `;
                     card.innerHTML = cardHTML;
 
@@ -2095,15 +2171,6 @@
                     delete item.purchases;
                 }
             }
-            formatNumber(num, decimals = 2) {
-                if (typeof num !== 'number') {
-                    return num;
-                }
-                return num.toLocaleString('en-US', {
-                    minimumFractionDigits: decimals,
-                    maximumFractionDigits: decimals
-                });
-            }
             renderDiversificationChart() {
                 const hasTransactions = this.stocks.some(s => s.transactions && s.transactions.length > 0 && this.calculateTransactionStats(s.transactions).totalSharesOwned > 0);
                 if (!hasTransactions) { if (this.diversificationChartInstance) { this.diversificationChartInstance.destroy(); this.diversificationChartInstance = null; } this.elements.diversificationChartContainer.style.display = 'none'; return; }
@@ -2146,24 +2213,10 @@
                         maintainAspectRatio: false, 
                         plugins: { 
                             title: { display: true, text: 'Portfolio Breakdown by Industry', color: labelColor }, 
-                            legend: { display: false },
-                            tooltip: {
-                                callbacks: {
-                                    label: (context) => {
-                                        let label = context.dataset.label || '';
-                                        if (label) {
-                                            label += ': ';
-                                        }
-                                        if (context.parsed.y !== null) {
-                                            label += '$' + this.formatNumber(context.parsed.y);
-                                        }
-                                        return label;
-                                    }
-                                }
-                            }
+                            legend: { display: false } 
                         }, 
                         scales: { 
-                            y: { beginAtZero: true, ticks: { color: labelColor, callback: (value) => '$' + value.toLocaleString('en-US') }, grid: { color: gridColor } }, 
+                            y: { beginAtZero: true, ticks: { color: labelColor }, grid: { color: gridColor } }, 
                             x: { ticks: { color: labelColor }, grid: { color: gridColor } }
                         } 
                     }
@@ -2197,24 +2250,10 @@
                         maintainAspectRatio: false, 
                         plugins: { 
                             title: { display: true, text: 'Portfolio Value History', color: labelColor },
-                            legend: { labels: { color: labelColor }},
-                            tooltip: {
-                                callbacks: {
-                                    label: (context) => {
-                                        let label = context.dataset.label || '';
-                                        if (label) {
-                                            label += ': ';
-                                        }
-                                        if (context.parsed.y !== null) {
-                                            label += '$' + this.formatNumber(context.parsed.y);
-                                        }
-                                        return label;
-                                    }
-                                }
-                            }
+                            legend: { labels: { color: labelColor }}
                         }, 
                         scales: { 
-                             y: { beginAtZero: true, ticks: { color: labelColor, callback: (value) => '$' + value.toLocaleString('en-US') }, grid: { color: gridColor } }, 
+                             y: { beginAtZero: true, ticks: { color: labelColor }, grid: { color: gridColor } }, 
                              x: { ticks: { color: labelColor }, grid: { color: gridColor } }
                         } 
                     }
@@ -2313,4 +2352,3 @@
     </script>
 </body>
 </html>
-
