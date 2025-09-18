@@ -316,8 +316,8 @@
         }
         
         .info-row {
-            display: grid;
-            grid-template-columns: auto 1fr;
+            display: flex;
+            justify-content: space-between;
             gap: 10px;
             align-items: center;
             margin-bottom: 8px;
@@ -327,6 +327,7 @@
         .info-label {
             color: #666;
             white-space: nowrap;
+            flex-shrink: 0;
         }
 
         .info-value {
@@ -336,6 +337,8 @@
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+            min-width: 0;
+            flex-grow: 1;
         }
         
         .loading, .error, .success {
