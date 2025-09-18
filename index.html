@@ -875,14 +875,6 @@
                 </div>
             </div>
             
-            <div id="diversification-chart-container" class="chart-container" style="display: none;">
-                <canvas id="diversificationChart"></canvas>
-            </div>
-
-            <div id="history-chart-container" class="chart-container" style="display: none;">
-                <canvas id="historyChart"></canvas>
-            </div>
-
             <div class="search-section">
                 <input type="text" class="search-input" id="stockInput" placeholder="Enter stock symbol (e.g., AAPL, GOOGL, TSLA)">
                 <button class="add-btn" id="addBtn">Add Stock</button>
@@ -961,6 +953,15 @@
         </div>
 
         <div class="stocks-grid" id="stocksGrid"></div>
+
+        <!-- Charts moved to the bottom of the app container -->
+        <div id="diversification-chart-container" class="chart-container" style="display: none;">
+            <canvas id="diversificationChart"></canvas>
+        </div>
+
+        <div id="history-chart-container" class="chart-container" style="display: none;">
+            <canvas id="historyChart"></canvas>
+        </div>
     </div>
 
     <div class="small-countdown" id="small-countdown-container">Next update: <span id="smallCountdown">90s</span></div>
@@ -1763,39 +1764,47 @@
                 }
 
                 this.showLoading(true, `Refreshing 0/${totalCount} items...`);
-
-                const refreshPromises = allItems.map(item => this.apiService.fetchQuoteData(item.symbol));
-                const results = await Promise.allSettled(refreshPromises);
-
+                
                 let stats = { success: 0, gains: 0, losses: 0, unchanged: 0, failed: 0 };
                 let failedSymbols = [];
                 let processedCount = 0;
 
-                // Loop through results sequentially to show progress in the UI
-                for (const [index, result] of results.entries()) {
-                    const item = allItems[index];
+                // NEW: Process requests in batches to avoid rate limiting
+                const batchSize = 10; // Number of requests to send at once
+                for (let i = 0; i < allItems.length; i += batchSize) {
+                    const batch = allItems.slice(i, i + batchSize);
+                    
+                    const refreshPromises = batch.map(item => this.apiService.fetchQuoteData(item.symbol));
+                    const results = await Promise.allSettled(refreshPromises);
 
-                    if (result.status === 'fulfilled' && result.value.success) {
-                        const freshData = result.value.data;
-                        Object.assign(item, freshData);
+                    // Loop through batch results to update UI sequentially
+                    for (const [index, result] of results.entries()) {
+                        const item = batch[index];
+
+                        if (result.status === 'fulfilled' && result.value.success) {
+                            const freshData = result.value.data;
+                            Object.assign(item, freshData);
+                            
+                            stats.success++;
+                            if ((freshData.change || 0) > 0) stats.gains++;
+                            else if ((freshData.change || 0) < 0) stats.losses++;
+                            else stats.unchanged++;
+
+                        } else {
+                            stats.failed++;
+                            failedSymbols.push(item.symbol);
+                            const reason = result.reason ? result.reason.message : (result.value ? result.value.reason : 'Unknown error');
+                            console.error(`Failed to refresh ${item.symbol}:`, reason);
+                        }
                         
-                        stats.success++;
-                        if ((freshData.change || 0) > 0) stats.gains++;
-                        else if ((freshData.change || 0) < 0) stats.losses++;
-                        else stats.unchanged++;
-
-                    } else {
-                        stats.failed++;
-                        failedSymbols.push(item.symbol);
-                        const reason = result.reason ? result.reason.message : (result.value ? result.value.reason : 'Unknown error');
-                        console.error(`Failed to refresh ${item.symbol}:`, reason);
+                        processedCount++;
+                        this.showLoading(true, `Refreshing ${item.symbol}... (${processedCount}/${totalCount})`);
+                        await new Promise(resolve => setTimeout(resolve, 50)); // Small delay for UI
                     }
                     
-                    processedCount++;
-                    this.showLoading(true, `Refreshing ${item.symbol}... (${processedCount}/${totalCount})`);
-                    
-                    // A small non-blocking delay to allow the UI to update
-                    await new Promise(resolve => setTimeout(resolve, 50));
+                    if (i + batchSize < allItems.length) {
+                        await new Promise(resolve => setTimeout(resolve, 1000)); // 1-second delay between batches
+                    }
                 }
 
 
@@ -1896,7 +1905,9 @@
             renderDiversificationChart() {
                 const hasTransactions = this.stocks.some(s => s.transactions && s.transactions.length > 0 && this.calculateTransactionStats(s.transactions).totalSharesOwned > 0);
                 if (!hasTransactions) { if (this.diversificationChartInstance) { this.diversificationChartInstance.destroy(); this.diversificationChartInstance = null; } this.elements.diversificationChartContainer.style.display = 'none'; return; }
-                this.elements.diversificationChartContainer.style.display = 'block';
+                
+                this.elements.diversificationChartContainer.style.display = this.currentTab === 'stocks' ? 'block' : 'none';
+                
                 const industryData = this.stocks.reduce((acc, stock) => {
                     const { currentValue, totalSharesOwned } = this.calculateTransactionStats(stock.transactions, stock.price);
                     if (totalSharesOwned > 0) { acc[stock.industry || 'Other'] = (acc[stock.industry || 'Other'] || 0) + currentValue; }
@@ -1905,11 +1916,35 @@
                 const sortedData = Object.entries(industryData).sort(([, a], [, b]) => b - a);
                 const labels = sortedData.map(([label]) => label);
                 const data = sortedData.map(([, value]) => value);
+                
                 if (this.diversificationChartInstance) { this.diversificationChartInstance.destroy(); }
+
+                const chartColors = [
+                    '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40',
+                    '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'
+                ];
+
                 const ctx = this.elements.diversificationChart.getContext('2d');
                 this.diversificationChartInstance = new Chart(ctx, {
-                    type: 'bar', data: { labels: labels, datasets: [{ label: 'Portfolio Value', data: data, backgroundColor: data.map(() => `rgba(52, 152, 219, 0.7)`), borderWidth: 1 }] },
-                    options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Portfolio Breakdown by Industry' }, legend: { display: false } }, scales: { y: { beginAtZero: true }, x: {} } }
+                    type: 'bar', 
+                    data: { 
+                        labels: labels, 
+                        datasets: [{ 
+                            label: 'Portfolio Value', 
+                            data: data, 
+                            backgroundColor: data.map((_, index) => chartColors[index % chartColors.length]), 
+                            borderWidth: 1 
+                        }] 
+                    },
+                    options: { 
+                        responsive: true, 
+                        maintainAspectRatio: false, 
+                        plugins: { 
+                            title: { display: true, text: 'Portfolio Breakdown by Industry' }, 
+                            legend: { display: false } 
+                        }, 
+                        scales: { y: { beginAtZero: true }, x: {} } 
+                    }
                 });
             }
             async updatePortfolioHistory() {
@@ -1922,7 +1957,9 @@
             }
             renderHistoryChart() {
                 if (this.portfolioHistory.length < 2) { this.elements.historyChartContainer.style.display = 'none'; return; }
-                this.elements.historyChartContainer.style.display = 'block';
+                
+                this.elements.historyChartContainer.style.display = this.currentTab === 'stocks' ? 'block' : 'none';
+
                 const labels = this.portfolioHistory.map(entry => entry.date);
                 const data = this.portfolioHistory.map(entry => entry.value);
                 if (this.historyChartInstance) { this.historyChartInstance.destroy(); }
