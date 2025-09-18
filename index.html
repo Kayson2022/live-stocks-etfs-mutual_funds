@@ -984,7 +984,7 @@
             </div>
 
             <div class="utility-buttons-grid">
-                <button class="add-btn" id="liveUpdateBtn" style="background: linear-gradient(45deg, #2ed573, #17c0eb);">🔄 Live Update Tab</button>
+                <button class="add-btn" id="liveUpdateBtn" style="background: linear-gradient(45deg, #2ed573, #17c0eb);">🔄 Live Update</button>
                 <button class="add-btn" id="toggleLiveUpdateBtn" style="background: linear-gradient(45deg, #f7b731, #ff5e3a);">⏸️ Pause Live Update</button>
                 <button class="add-btn" id="clearAllBtn" style="background: #ff4757;">🗑️ Clear All Data</button>
                 <button class="add-btn" id="exportBtn" style="background: linear-gradient(45deg, #3498db, #2980b9);">📥 Export Data</button>
@@ -1029,7 +1029,7 @@
                 <button class="add-btn" id="quickLookupBtn" style="background: linear-gradient(45deg, #f7b731, #ff9f43);">Quick Lookup</button>
             </div>
              <div class="funds-controls">
-                <button class="add-btn" id="updateAllFundsBtn">🔄 Update All Funds</button>
+                <button class="add-btn" id="updateAllFundsBtn">🔄 Update Funds</button>
                 <button class="add-btn" id="clearAllFundsBtn" style="background: #ff4757;">🗑️ Clear All Funds</button>
             </div>
         </div>
@@ -1448,8 +1448,7 @@
             startLiveUpdate() {
                 this.stopLiveUpdate();
                 this.refreshIntervalId = setInterval(() => {
-                    // FIX: Do not auto-refresh mutual funds
-                    if (this.isLiveUpdatePaused || this.currentTab === 'funds') return;
+                    if (this.isLiveUpdatePaused) return;
                     this.refreshAllData();
                 }, this.config.refreshIntervalMs);
                 this.isLiveUpdatePaused = false;
@@ -1866,7 +1865,7 @@
                     listsToRefresh.push({ list: this.mutualFunds, type: 'fund' });
                     listsToRefresh.push({ list: this.watchlist, type: 'watchlist' });
                 } else {
-                    this.elements.liveUpdateBtn.textContent = '🔄 Live Update Tab';
+                    this.elements.liveUpdateBtn.textContent = '🔄 Live Update';
                     if (this.currentTab === 'stocks') { listsToRefresh.push({ list: this.stocks, type: 'stock' }); }
                     else if (this.currentTab === 'funds') { listsToRefresh.push({ list: this.mutualFunds, type: 'fund' }); }
                     else if (this.currentTab === 'watchlist') { listsToRefresh.push({ list: this.watchlist, type: 'watchlist' }); }
