@@ -1092,6 +1092,7 @@
 
         <div class="stocks-grid" id="stocksGrid"></div>
 
+        <!-- Charts moved to the bottom of the app container -->
         <div id="diversification-chart-container" class="chart-container" style="display: none;">
             <canvas id="diversificationChart"></canvas>
         </div>
@@ -1720,7 +1721,7 @@
                 let averageCostBasis = totalSharesOwned > 0 ? costOfRemainingShares / totalSharesOwned : 0;
                 let currentValue = totalSharesOwned * currentPrice;
                 let unrealizedPL = totalSharesOwned > 0 ? currentValue - costOfRemainingShares : 0;
-                return { totalSharesOwned, averageCostBasis, realizedPL, unrealizedPL, currentValue };
+                return { totalSharesOwned, averageCostBasis, realizedPL, unrealizedPL, currentValue, costOfRemainingShares };
             }
             openTransactionModal(symbol, type, transactionType, transactionIndex = -1) {
                 this.elements.transactionModal.style.display = 'flex';
@@ -1874,7 +1875,7 @@
                     const changeClass = (item.changePercent || 0) >= 0 ? 'positive' : 'negative';
                     const changeSymbol = (item.change || 0) >= 0 ? '▲' : '▼';
                     const stats = this.calculateTransactionStats(item.transactions, item.price);
-                    const totalCost = stats.totalSharesOwned * stats.averageCostBasis;
+                    const totalCost = stats.costOfRemainingShares; // Using the new value
                     const overallPLPercent = totalCost > 0 ? (stats.unrealizedPL / totalCost) * 100 : 0;
                     const todayPL = (item.change || 0) * stats.totalSharesOwned;
 
@@ -1927,8 +1928,9 @@
                          stockInfoHTML = `
                             <div class="info-row"><span class="info-label">Open:</span><span class="info-value">${this.formatCurrency(item.open || 0)}</span></div>
                             <div class="info-row"><span class="info-label">Total Shares:</span><span class="info-value">${this.formatNumber(stats.totalSharesOwned, 3)}</span></div>
+                            <div class="info-row"><span class="info-label">Total Cost:</span><span class="info-value">${this.formatCurrency(stats.costOfRemainingShares)}</span></div>
                             <div class="info-row"><span class="info-label">Total Value:</span><span class="info-value">${this.formatCurrency(stats.currentValue)}</span></div>
-                            <div class="info-row"><span class="info-label">Avg. Cost Basis:</span><span class="info-value">${this.formatCurrency(stats.averageCostBasis)}</span></div>
+                            <div class="info-row"><span class="info-label">Avg. Cost:</span><span class="info-value">${this.formatCurrency(stats.averageCostBasis)}</span></div>
                          `;
                      }
 
