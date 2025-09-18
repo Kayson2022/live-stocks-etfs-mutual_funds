@@ -310,19 +310,26 @@
         }
         
         .info-row {
-            display: flex;
-            justify-content: space-between;
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 10px;
+            align-items: center;
             margin-bottom: 8px;
             font-size: 0.9rem;
         }
 
         .info-label {
             color: #666;
+            white-space: nowrap;
         }
 
         .info-value {
             font-weight: 600;
             color: #333;
+            text-align: right;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
         
         .loading, .error, .success {
@@ -1571,28 +1578,54 @@
                 input.value = '';
                 await this.addItem(symbol, type);
             }
-            async addItem(symbol, type) { // FIX: Added 'async' keyword
-                 const list = (type === 'stock') ? this.stocks : (type === 'fund') ? this.mutualFunds : this.watchlist;
-                if (list.some(item => item.symbol === symbol)) { this.showError(`❌ ${symbol} is already in your list.`); return; }
+            async addItem(symbol, type) {
                 this.showLoading(true, `Adding ${symbol}...`);
+
                 try {
-                    // Use the correct API based on the type of asset
+                    // Step 1: Determine which list to add the item to, based on the tab.
+                    let targetList;
+                    let listName = '';
+                    if (type === 'stock') {
+                        targetList = this.stocks;
+                        listName = 'portfolio';
+                    } else if (type === 'fund') {
+                        targetList = this.mutualFunds;
+                        listName = 'mutual funds list';
+                    } else {
+                        targetList = this.watchlist;
+                        listName = 'watchlist';
+                    }
+
+                    // Step 2: Check if the symbol already exists in THIS SPECIFIC list.
+                    if (targetList.some(item => item.symbol === symbol)) {
+                        this.showError(`❌ ${symbol} is already in your ${listName}.`);
+                        this.showLoading(false);
+                        return;
+                    }
+
+                    // Step 3: Fetch data using the appropriate API based on the symbol format.
                     const result = this.isMutualFund(symbol)
-                        ? await this.apiService.fetchFundData(symbol) 
+                        ? await this.apiService.fetchFundData(symbol)
                         : await this.apiService.fetchStockEtfData(symbol);
                     
                     if (!result.success) {
                         throw new Error(result.reason);
                     }
 
+                    // Step 4: Add the new item to the selected list.
                     const newItem = type === 'watchlist' ? result.data : { ...result.data, transactions: [] };
-                    list.push(newItem);
+                    targetList.push(newItem);
 
+                    // Step 5: Save and re-render.
                     await this.saveData();
                     this.renderContent();
-                    this.showSuccess(`✅ Added ${symbol}!`);
-                } catch (error) { this.showError(`❌ Failed to add ${symbol}. Reason: ${error.message}`); } 
-                finally { this.showLoading(false); }
+                    this.showSuccess(`✅ Added ${symbol} to your ${listName}!`);
+
+                } catch (error) {
+                    this.showError(`❌ Failed to add ${symbol}. Reason: ${error.message}`);
+                } finally {
+                    this.showLoading(false);
+                }
             }
             removeItem(symbol, type) {
                 this.openConfirmModal(`Are you sure you want to remove ${symbol}?`, async () => {
@@ -2146,7 +2179,12 @@
             }
             openConfirmModal(text, onConfirmAction) { this.elements.confirmModal.style.display = 'flex'; this.elements.confirmModalText.textContent = text; this.onConfirm = onConfirmAction; }
             closeConfirmModal() { this.elements.confirmModal.style.display = 'none'; this.onConfirm = null; }
-            handleConfirmAction() { if (this.onConfirm) { this.onConfirm(); } this.closeConfirmModal(); }
+            handleConfirmAction() {
+                if (this.onConfirm) {
+                    this.onConfirm();
+                }
+                this.closeConfirmModal();
+            }
             openSettingsModal(){
                 this.elements.modalFinnhubKey.value = this.config.finnhubApiKey;
                 this.elements.modalAlphaVantageKey.value = this.config.alphaVantageApiKey;
