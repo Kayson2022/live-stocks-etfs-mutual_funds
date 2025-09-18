@@ -1144,8 +1144,8 @@
         class ApiService {
             constructor(config) { this.config = config; }
 
-            // This function is now optimized to fetch profile data (which rarely changes) only once.
-            async fetchInitialStockData(symbol) {
+            // Finnhub for Stocks/ETFs
+            async fetchStockEtfData(symbol) {
                 const quoteUrl = `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${this.config.finnhubApiKey}`;
                 const profileUrl = `https://finnhub.io/api/v1/stock/profile2?symbol=${symbol}&token=${this.config.finnhubApiKey}`;
                 try {
@@ -1155,28 +1155,21 @@
                     const [quoteData, profileData] = await Promise.all([quoteResponse.json(), profileResponse.json()]);
                     if ((quoteData.c === 0 && quoteData.pc === 0) || !profileData.name) return { success: false, symbol, reason: 'Invalid or empty API payload' };
 
-                    // SANITIZE DATA: Use nullish coalescing (??) to prevent 'undefined' values.
                     const data = {
-                        symbol: symbol,
-                        name: profileData.name ?? symbol,
-                        price: quoteData.c ?? 0,
-                        change: quoteData.d ?? 0,
-                        changePercent: quoteData.dp ?? 0,
-                        open: quoteData.o ?? 0,
-                        high: quoteData.h ?? 0,
-                        low: quoteData.l ?? 0,
-                        previousClose: quoteData.pc ?? 0,
+                        symbol: symbol, name: profileData.name ?? symbol, price: quoteData.c ?? 0,
+                        change: quoteData.d ?? 0, changePercent: quoteData.dp ?? 0, open: quoteData.o ?? 0,
+                        high: quoteData.h ?? 0, low: quoteData.l ?? 0, previousClose: quoteData.pc ?? 0,
                         industry: profileData.finnhubIndustry ?? 'N/A'
                     };
                     return { success: true, data };
                 } catch (error) { 
-                    console.error("Error fetching initial stock data for " + symbol, error); 
+                    console.error("Error fetching stock/ETF data for " + symbol, error); 
                     return { success: false, symbol, reason: error.message };
                 }
             }
 
-            // This is a new, lightweight function for refreshing only the price data.
-            async fetchQuoteData(symbol) {
+            // Finnhub for Stock/ETF price-only refresh
+            async fetchStockEtfQuote(symbol) {
                 const quoteUrl = `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${this.config.finnhubApiKey}`;
                 try {
                     const response = await fetch(quoteUrl);
@@ -1185,19 +1178,48 @@
                     const quoteData = await response.json();
                      if (quoteData.c === 0 && quoteData.pc === 0) return { success: false, symbol, reason: 'Invalid or empty API payload' };
 
-                    // SANITIZE DATA: Ensure no 'undefined' values are returned.
                     const data = {
-                        price: quoteData.c ?? 0,
-                        change: quoteData.d ?? 0,
-                        changePercent: quoteData.dp ?? 0,
-                        open: quoteData.o ?? 0,
-                        high: quoteData.h ?? 0,
-                        low: quoteData.l ?? 0,
+                        price: quoteData.c ?? 0, change: quoteData.d ?? 0, changePercent: quoteData.dp ?? 0,
+                        open: quoteData.o ?? 0, high: quoteData.h ?? 0, low: quoteData.l ?? 0,
                         previousClose: quoteData.pc ?? 0,
                     };
                     return { success: true, data };
                 } catch (error) {
-                    console.error("Error fetching quote data for " + symbol, error);
+                    console.error("Error fetching stock/ETF quote for " + symbol, error);
+                    return { success: false, symbol, reason: error.message };
+                }
+            }
+
+            // Alpha Vantage for Mutual Funds
+            async fetchFundData(symbol) {
+                const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${this.config.alphaVantageApiKey}`;
+                try {
+                    const response = await fetch(url);
+                    if (!response.ok) return { success: false, symbol, reason: `HTTP Error: ${response.status}` };
+                    
+                    const json = await response.json();
+                    const quote = json['Global Quote'];
+
+                    if (!quote || Object.keys(quote).length === 0) {
+                         return { success: false, symbol, reason: 'Invalid or empty API payload from Alpha Vantage. This could also be a rate limit.' };
+                    }
+
+                    const data = {
+                        symbol: quote['01. symbol'] ?? symbol,
+                        name: quote['01. symbol'] ?? symbol, // Alpha Vantage does not provide a fund name in this endpoint
+                        price: parseFloat(quote['05. price']) || 0,
+                        change: parseFloat(quote['09. change']) || 0,
+                        changePercent: parseFloat(quote['10. change percent'].replace('%', '')) || 0,
+                        open: parseFloat(quote['02. open']) || 0,
+                        high: parseFloat(quote['03. high']) || 0,
+                        low: parseFloat(quote['04. low']) || 0,
+                        previousClose: parseFloat(quote['08. previous close']) || 0,
+                        industry: 'Mutual Fund'
+                    };
+                    return { success: true, data };
+
+                } catch (error) {
+                    console.error("Error fetching fund data for " + symbol, error);
                     return { success: false, symbol, reason: error.message };
                 }
             }
@@ -1546,13 +1568,18 @@
                 if (list.some(item => item.symbol === symbol)) { this.showError(`❌ ${symbol} is already in your list.`); return; }
                 this.showLoading(true, `Adding ${symbol}...`);
                 try {
-                    // Use the more comprehensive fetch when adding a new item
-                    const result = await this.apiService.fetchInitialStockData(symbol); 
+                    // Use the correct API based on the type of asset
+                    const result = type === 'fund' 
+                        ? await this.apiService.fetchFundData(symbol) 
+                        : await this.apiService.fetchStockEtfData(symbol);
+                    
                     if (!result.success) {
                         throw new Error(result.reason);
                     }
+
                     const newItem = type === 'watchlist' ? result.data : { ...result.data, transactions: [] };
                     list.push(newItem);
+
                     await this.saveData();
                     this.renderContent();
                     this.showSuccess(`✅ Added ${symbol}!`);
@@ -1871,8 +1898,9 @@
                     else if (this.currentTab === 'watchlist') { listsToRefresh.push({ list: this.watchlist, type: 'watchlist' }); }
                 }
 
-                const allItems = listsToRefresh.flatMap(({ list }) => list);
-                const totalCount = allItems.length;
+                const allItemsWithType = listsToRefresh.flatMap(({ list, type }) => list.map(item => ({ item, type })));
+                const totalCount = allItemsWithType.length;
+
 
                 if (totalCount === 0) {
                     this.showError("Nothing to refresh.");
@@ -1885,17 +1913,20 @@
                 let failedSymbols = [];
                 let processedCount = 0;
 
-                // NEW: Process requests in batches to avoid rate limiting
-                const batchSize = 10; // Number of requests to send at once
-                for (let i = 0; i < allItems.length; i += batchSize) {
-                    const batch = allItems.slice(i, i + batchSize);
+                const batchSize = 10;
+                for (let i = 0; i < allItemsWithType.length; i += batchSize) {
+                    const batch = allItemsWithType.slice(i, i + batchSize);
                     
-                    const refreshPromises = batch.map(item => this.apiService.fetchQuoteData(item.symbol));
+                    const refreshPromises = batch.map(({ item, type }) => {
+                        return type === 'fund' 
+                            ? this.apiService.fetchFundData(item.symbol) 
+                            : this.apiService.fetchStockEtfQuote(item.symbol);
+                    });
+                    
                     const results = await Promise.allSettled(refreshPromises);
 
-                    // Loop through batch results to update UI sequentially
                     for (const [index, result] of results.entries()) {
-                        const item = batch[index];
+                        const { item } = batch[index];
 
                         if (result.status === 'fulfilled' && result.value.success) {
                             const freshData = result.value.data;
@@ -1915,11 +1946,11 @@
                         
                         processedCount++;
                         this.showLoading(true, `Refreshing ${item.symbol}... (${processedCount}/${totalCount})`);
-                        await new Promise(resolve => setTimeout(resolve, 50)); // Small delay for UI
+                        await new Promise(resolve => setTimeout(resolve, 50));
                     }
                     
-                    if (i + batchSize < allItems.length) {
-                        await new Promise(resolve => setTimeout(resolve, 1000)); // 1-second delay between batches
+                    if (i + batchSize < allItemsWithType.length) {
+                        await new Promise(resolve => setTimeout(resolve, 1000));
                     }
                 }
 
