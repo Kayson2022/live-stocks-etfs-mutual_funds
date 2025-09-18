@@ -12,6 +12,12 @@
             box-sizing: border-box;
         }
 
+        html, body {
+            width: 100vw;
+            max-width: 100vw;
+            overflow-x: hidden;
+        }
+
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -223,7 +229,7 @@
 
         .stocks-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); /* Reduce for mobile */
             gap: 20px;
             margin-top: 20px;
         }
@@ -310,8 +316,8 @@
         }
         
         .info-row {
-            display: grid;
-            grid-template-columns: auto 1fr;
+            display: flex;
+            justify-content: space-between;
             gap: 10px;
             align-items: center;
             margin-bottom: 8px;
@@ -321,6 +327,7 @@
         .info-label {
             color: #666;
             white-space: nowrap;
+            flex-shrink: 0;
         }
 
         .info-value {
@@ -330,6 +337,8 @@
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+            min-width: 0;
+            flex-grow: 1;
         }
         
         .loading, .error, .success {
@@ -919,6 +928,20 @@
                 flex-wrap: wrap;
                 padding: 15px;
                 font-size: 1.2rem;
+            }
+        }
+        @media (max-width: 480px) {
+            .stocks-grid {
+                grid-template-columns: 1fr; /* Force stacked cards */
+                gap: 16px;
+            }
+            .stock-card, .fund-card, .watchlist-card {
+                padding: 12px;
+            }
+            .container {
+                padding: 5px !important;
+                max-width: 100vw;
+                box-sizing: border-box;
             }
         }
     </style>
