@@ -1356,6 +1356,9 @@
             }
             
             async fetchNews(symbols) {
+                 if (symbols.length === 0) {
+                     return { success: true, data: [] };
+                 }
                 const newsUrl = `https://www.alphavantage.co/query?function=NEWS_SENTIMENT&topics=economy_global&tickers=${symbols.join(',')}&apikey=${this.config.alphaVantageApiKey}`;
                 try {
                     const response = await fetch(newsUrl);
@@ -1364,6 +1367,12 @@
                          return { success: false, reason: `HTTP Error: ${response.status}` };
                     }
                     const data = await response.json();
+                    
+                    // Check for API-specific errors in the JSON payload
+                    if (data['Error Message'] || data.Note) {
+                        return { success: false, reason: data['Error Message'] || data.Note };
+                    }
+                    
                     if (!data.feed) {
                         return { success: false, reason: 'Invalid or empty news API payload' };
                     }
@@ -1573,7 +1582,7 @@
                 this.elements.signOutBtn.addEventListener('click', () => this.signOut());
                 this.elements.addBtn.addEventListener('click', () => this.addItemFromInput('stock'));
                 this.elements.stockInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') this.addItemFromInput('stock'); });
-                this.elements.liveUpdateBtn.addEventListener('click', () => this.refreshAllData(true));
+                this.elements.liveUpdateBtn.addEventListener('click', () => this.refreshCurrentTab()); // Updated to refresh only the current tab
                 this.elements.clearAllBtn.addEventListener('click', () => this.clearAllItems('stock'));
                 this.elements.toggleLiveUpdateBtn.addEventListener('click', () => this.toggleLiveUpdate());
                 this.elements.exportBtn.addEventListener('click', () => this.exportData());
@@ -1595,12 +1604,10 @@
                 this.elements.closeListAllBtn.addEventListener('click', () => this.closeListAllModal());
                 this.elements.toggleDarkModeBtn.addEventListener('click', () => this.toggleDarkMode());
                 this.elements.saveAlertBtn.addEventListener('click', () => this.savePriceAlert());
-
-
-                // New Event Listeners for specific tabs
-                this.elements.updateAllFundsBtn.addEventListener('click', () => this.refreshAllData());
+                
+                this.elements.updateAllFundsBtn.addEventListener('click', () => this.refreshFunds()); // New button listener
                 this.elements.clearAllFundsBtn.addEventListener('click', () => this.clearAllItems('fund'));
-                this.elements.updateWatchlistBtn.addEventListener('click', () => this.refreshAllData());
+                this.elements.updateWatchlistBtn.addEventListener('click', () => this.refreshWatchlist()); // New button listener
                 this.elements.clearWatchlistBtn.addEventListener('click', () => this.clearAllItems('watchlist'));
             }
             
@@ -1696,7 +1703,7 @@
                 this.stopLiveUpdate();
                 this.refreshIntervalId = setInterval(() => {
                     if (this.isLiveUpdatePaused) return;
-                    this.refreshAllData();
+                    this.refreshCurrentTab();
                     this.checkPriceAlerts();
                 }, this.config.refreshIntervalMs);
                 this.isLiveUpdatePaused = false;
@@ -1735,6 +1742,95 @@
                  if(this.elements.smallCountdownContainer) this.elements.smallCountdownContainer.textContent = 'Updates Paused';
             }
             toggleLiveUpdate() { this.isLiveUpdatePaused ? this.startLiveUpdate() : this.stopLiveUpdate(); }
+            
+            async refreshCurrentTab() {
+                if (this.currentTab === 'stocks') {
+                    this.refreshStocks();
+                } else if (this.currentTab === 'funds') {
+                    this.refreshFunds();
+                } else if (this.currentTab === 'watchlist') {
+                    this.refreshWatchlist();
+                }
+            }
+
+            async refreshStocks() {
+                await this.refreshItems(this.stocks, 'stock');
+            }
+
+            async refreshFunds() {
+                await this.refreshItems(this.mutualFunds, 'fund');
+            }
+
+            async refreshWatchlist() {
+                 await this.refreshItems(this.watchlist, 'watchlist');
+            }
+            
+            async refreshItems(items, type) {
+                const totalCount = items.length;
+                if (totalCount === 0) {
+                    this.showError(`No ${type}s to refresh.`);
+                    return;
+                }
+
+                this.showLoading(true, `Refreshing 0/${totalCount} items...`);
+                
+                let stats = { success: 0, gains: 0, losses: 0, unchanged: 0, failed: 0 };
+                let failedSymbols = [];
+                let processedCount = 0;
+
+                const batchSize = 10;
+                for (let i = 0; i < items.length; i += batchSize) {
+                    const batch = items.slice(i, i + batchSize);
+                    
+                    const refreshPromises = batch.map(item => {
+                        return this.isMutualFund(item.symbol)
+                            ? this.apiService.fetchFundData(item.symbol)
+                            : this.apiService.fetchStockEtfQuote(item.symbol);
+                    });
+                    
+                    const results = await Promise.allSettled(refreshPromises);
+
+                    for (const [index, result] of results.entries()) {
+                        const item = batch[index];
+
+                        if (result.status === 'fulfilled' && result.value.success) {
+                            const freshData = result.value.data;
+                            Object.assign(item, freshData);
+                            
+                            stats.success++;
+                            if ((freshData.change || 0) > 0) stats.gains++;
+                            else if ((freshData.change || 0) < 0) stats.losses++;
+                            else stats.unchanged++;
+
+                        } else {
+                            stats.failed++;
+                            failedSymbols.push(item.symbol);
+                            const reason = result.reason ? result.reason.message : (result.value ? result.value.reason : 'Unknown error');
+                            console.error(`Failed to refresh ${item.symbol}:`, reason);
+                        }
+                        
+                        processedCount++;
+                        this.showLoading(true, `Refreshing ${item.symbol}... (${processedCount}/${totalCount})`);
+                        await new Promise(resolve => setTimeout(resolve, 50));
+                    }
+                    
+                    if (i + batchSize < items.length) {
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                    }
+                }
+                
+                this.showLoading(false);
+                this.showRefreshStatus(type, stats);
+
+                if (failedSymbols.length > 0) {
+                    console.log(`--- Failed to Refresh ${type} ---`);
+                    failedSymbols.forEach(s => console.log(s));
+                }
+                
+                await this.saveData();
+                this.renderContent();
+            }
+
             renderPortfolioSummary() {
                 const totalContributions = this.calculateTotalContributions();
                  this.renderSummary(this.stocks, {
@@ -2178,26 +2274,11 @@
                     this.showSuccess(`✅ Moved ${symbol} to portfolio!`);
                 }
             }
-            async refreshAllData(refreshAll = false) {
-                let listsToRefresh = [];
-                
-                if (refreshAll) {
-                    this.elements.liveUpdateBtn.textContent = '🔄 Live Update All';
-                    listsToRefresh.push({ list: this.stocks, type: 'stock' });
-                    listsToRefresh.push({ list: this.mutualFunds, type: 'fund' });
-                    listsToRefresh.push({ list: this.watchlist, type: 'watchlist' });
-                } else {
-                    this.elements.liveUpdateBtn.textContent = '🔄 Live Update';
-                    if (this.currentTab === 'stocks') { listsToRefresh.push({ list: this.stocks, type: 'stock' }); }
-                    else if (this.currentTab === 'funds') { listsToRefresh.push({ list: this.mutualFunds, type: 'fund' }); }
-                    else if (this.currentTab === 'watchlist') { listsToRefresh.push({ list: this.watchlist, type: 'watchlist' }); }
-                }
-
-                const allItems = listsToRefresh.flatMap(({ list }) => list);
-                const totalCount = allItems.length;
-
+            
+            async refreshItems(items, type) {
+                const totalCount = items.length;
                 if (totalCount === 0) {
-                    this.showError("Nothing to refresh.");
+                    this.showError(`No ${type}s to refresh.`);
                     return;
                 }
 
@@ -2208,8 +2289,8 @@
                 let processedCount = 0;
 
                 const batchSize = 10;
-                for (let i = 0; i < allItems.length; i += batchSize) {
-                    const batch = allItems.slice(i, i + batchSize);
+                for (let i = 0; i < items.length; i += batchSize) {
+                    const batch = items.slice(i, i + batchSize);
                     
                     const refreshPromises = batch.map(item => {
                         return this.isMutualFund(item.symbol)
@@ -2243,24 +2324,36 @@
                         await new Promise(resolve => setTimeout(resolve, 50));
                     }
                     
-                    if (i + batchSize < allItems.length) {
+                    if (i + batchSize < items.length) {
                         await new Promise(resolve => setTimeout(resolve, 1000));
                     }
                 }
-
-
+                
                 this.showLoading(false);
-                this.showRefreshStatus(refreshAll ? 'all' : this.currentTab, stats);
+                this.showRefreshStatus(type, stats);
 
                 if (failedSymbols.length > 0) {
-                    console.log("--- Failed to Refresh ---");
+                    console.log(`--- Failed to Refresh ${type} ---`);
                     failedSymbols.forEach(s => console.log(s));
                 }
                 
                 await this.saveData();
                 this.renderContent();
             }
-            
+
+            async refreshStocks() {
+                await this.refreshItems(this.stocks, 'stock');
+            }
+
+            async refreshFunds() {
+                await this.refreshItems(this.mutualFunds, 'fund');
+            }
+
+            async refreshWatchlist() {
+                 await this.refreshItems(this.watchlist, 'watchlist');
+            }
+
+
             showRefreshStatus(type, stats) {
                 const statusDiv = this.elements.refreshStatusPopup;
                 let itemType = 'item(s)';
@@ -2571,32 +2664,18 @@
                     }
                 });
             }
-
-            showPriceAlert(item, alert) {
-                const message = `Price alert for ${item.symbol}: ${item.name} is now ${this.formatCurrency(item.price)}! (Condition: ${alert.condition} ${this.formatCurrency(alert.price)})`;
-                const alertDiv = this.elements.alertNotification;
-                alertDiv.textContent = message;
-                alertDiv.classList.add('active');
-
-                // Add a class for coloring based on if it's a gain or a loss
-                const gain = (item.price - alert.price) * (alert.condition === 'above' ? 1 : -1);
-                if (gain < 0) {
-                    alertDiv.classList.add('negative');
-                } else {
-                    alertDiv.classList.remove('negative');
-                }
-
-                setTimeout(() => {
-                    alertDiv.classList.remove('active');
-                }, 10000);
-            }
             
             async fetchAndRenderNews() {
                 const symbols = [...new Set([...this.stocks.map(s => s.symbol), ...this.watchlist.map(s => s.symbol)])];
                 const now = Date.now();
                 
                 // Only fetch news every 15 minutes to avoid rate limits
-                if (symbols.length === 0 || (this.newsFeed.length > 0 && now - this.newsFetchTime < 15 * 60 * 1000)) {
+                if (symbols.length === 0) {
+                    this.elements.newsArticlesContainer.innerHTML = `<div class="loading">No symbols in your portfolio or watchlist to fetch news for.</div>`;
+                    return;
+                }
+
+                if (this.newsFeed.length > 0 && now - this.newsFetchTime < 15 * 60 * 1000) {
                     this.renderNews();
                     return;
                 }
