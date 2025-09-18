@@ -1349,8 +1349,9 @@
             startLiveUpdate() {
                 this.stopLiveUpdate();
                 this.refreshIntervalId = setInterval(() => {
-                    if (this.isLiveUpdatePaused) return;
-                    this.refreshAllData(); // FIX: No longer forces refreshAll=true for timed updates
+                    // FIX: Do not auto-refresh mutual funds
+                    if (this.isLiveUpdatePaused || this.currentTab === 'funds') return;
+                    this.refreshAllData();
                 }, this.config.refreshIntervalMs);
                 this.isLiveUpdatePaused = false;
                 this.elements.toggleLiveUpdateBtn.textContent = '⏸️ Pause Live Update';
@@ -1821,8 +1822,16 @@
             }
             
             showLoading(show, message = 'Loading...') { this.elements.loadingDiv.style.display = show ? 'block' : 'none'; this.elements.loadingDiv.textContent = message; }
-            showError(message) { this.elements.errorDiv.style.display = 'block'; this.elements.errorDiv.innerHTML = `<h4>Error</h4><p>${message}</p>`; setTimeout(() => this.elements.errorDiv.style.display = 'none', 10000); }
-            showSuccess(message) { this.elements.successDiv.style.display = 'block'; this.elements.successDiv.innerHTML = `<h4>Success</h4><p>${message}</p>`; setTimeout(() => this.elements.successDiv.style.display = 'none', 3000); }
+            showError(message) {
+                this.elements.errorDiv.style.display = 'block';
+                this.elements.errorDiv.innerHTML = `<h4>Error</h4><p>${message}</p>`;
+                setTimeout(() => this.elements.errorDiv.style.display = 'none', 10000);
+            }
+            showSuccess(message) {
+                this.elements.successDiv.style.display = 'block';
+                this.elements.successDiv.innerHTML = `<h4>Success</h4><p>${message}</p>`;
+                setTimeout(() => this.elements.successDiv.style.display = 'none', 3000);
+            }
             async exportData() {
                 const dataStr = JSON.stringify({ stocks: this.stocks, mutualFunds: this.mutualFunds, watchlist: this.watchlist, portfolioHistory: this.portfolioHistory }, null, 2);
                 const blob = new Blob([dataStr], {type: 'application/json'});
