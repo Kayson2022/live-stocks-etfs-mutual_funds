@@ -316,8 +316,8 @@
         }
         
         .info-row {
-            display: flex;
-            justify-content: space-between;
+            display: grid;
+            grid-template-columns: auto 1fr;
             gap: 10px;
             align-items: center;
             margin-bottom: 8px;
@@ -327,7 +327,6 @@
         .info-label {
             color: #666;
             white-space: nowrap;
-            flex-shrink: 0;
         }
 
         .info-value {
@@ -337,7 +336,6 @@
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            min-width: 0;
         }
         
         .loading, .error, .success {
@@ -429,11 +427,12 @@
 
         .group-header {
              cursor: pointer;
-             transition: background-color: 0.3s ease;
+             transition: all 0.3s ease;
         }
-
+        
         .group-header:hover {
-            background-color: rgba(0, 0, 0, 0.05);
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
         }
 
         .group-content {
@@ -467,36 +466,24 @@
         .group-header.collapsed .toggle-icon {
             transform: rotate(-90deg);
         }
-        
-        .losses-header {
-            color: #ff4757;
-            background: linear-gradient(90deg, transparent, rgba(255, 71, 87, 0.1), transparent);
+
+        /* New Performance Group Styles */
+        .big-winners-header { color: #2ecc71; background: linear-gradient(90deg, transparent, rgba(46, 213, 115, 0.1), transparent); }
+        .moderate-gains-header { color: #82ccdd; background: linear-gradient(90deg, transparent, rgba(130, 204, 221, 0.1), transparent); }
+        .steady-header { color: #3498db; background: linear-gradient(90deg, transparent, rgba(52, 152, 219, 0.1), transparent); }
+        .moderate-losses-header { color: #f39c12; background: linear-gradient(90deg, transparent, rgba(243, 156, 18, 0.1), transparent); }
+        .big-losses-header { color: #e74c3c; background: linear-gradient(90deg, transparent, rgba(231, 76, 60, 0.1), transparent); }
+
+        .big-winners-header::before, .moderate-gains-header::before, .steady-header::before, .moderate-losses-header::before, .big-losses-header::before {
+            content: ''; position: absolute; left: 50%; bottom: 5px; transform: translateX(-50%); width: 100px; height: 3px; border-radius: 2px;
         }
 
-        .gains-header {
-            color: #2ed573;
-            background: linear-gradient(90deg, transparent, rgba(46, 213, 115, 0.1), transparent);
-        }
-        
-        .losses-header::before, .gains-header::before {
-            content: '';
-            position: absolute;
-            left: 50%;
-            bottom: 5px;
-            transform: translateX(-50%);
-            width: 100px;
-            height: 3px;
-            border-radius: 2px;
-        }
-        
-        .losses-header::before {
-            background: #ff4757;
-        }
+        .big-winners-header::before { background: #2ecc71; }
+        .moderate-gains-header::before { background: #82ccdd; }
+        .steady-header::before { background: #3498db; }
+        .moderate-losses-header::before { background: #f39c12; }
+        .big-losses-header::before { background: #e74c3c; }
 
-        .gains-header::before {
-            background: #2ed573;
-        }
-        
         .chart-container {
             margin-top: 20px;
             padding: 20px;
@@ -1459,12 +1446,9 @@
                 const filterTerm = (this.currentTab === 'stocks' ? this.elements.portfolioFilter.value : '').toLowerCase();
                 const filteredItems = items.filter(item => item.symbol.toLowerCase().includes(filterTerm) || (item.name && item.name.toLowerCase().includes(filterTerm)));
 
-                if (type === 'stock') {
+                if (type === 'stock' || type === 'fund') {
                     this.renderPortfolioSummary();
                     this.renderGroupedStocks(filteredItems, grid, type);
-                } else if (type ==='fund') {
-                    this.renderFundsPortfolioSummary();
-                    this.renderCards(filteredItems, grid, type);
                 } else if (type === 'watchlist') {
                     this.renderCards(filteredItems, grid, type);
                 }
