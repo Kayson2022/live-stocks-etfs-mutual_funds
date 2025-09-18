@@ -1053,10 +1053,28 @@
                 const profileUrl = `https://finnhub.io/api/v1/stock/profile2?symbol=${symbol}&token=${this.config.finnhubApiKey}`;
                 try {
                     const [quoteResponse, profileResponse] = await Promise.all([fetch(quoteUrl), fetch(profileUrl)]);
+                    
+                    // Harden the check for non-ok responses
+                    if (!quoteResponse.ok || !profileResponse.ok) {
+                        // Return a failure object instead of throwing
+                        return { success: false, symbol, reason: `HTTP Error: ${quoteResponse.status}` };
+                    }
+
                     const [quoteData, profileData] = await Promise.all([quoteResponse.json(), profileResponse.json()]);
-                    if ((quoteData.c === 0 && quoteData.pc === 0) || !profileData.name) throw new Error('No data for ' + symbol);
-                    return { symbol: symbol, name: profileData.name || symbol, price: quoteData.c, change: quoteData.d, changePercent: quoteData.dp, open: quoteData.o, high: quoteData.h, low: quoteData.l, previousClose: quoteData.pc, industry: profileData.finnhubIndustry || 'N/A' };
-                } catch (error) { console.error("Error fetching stock data for " + symbol, error); throw error; }
+
+                    // Harden the validation of the payload itself
+                    if ((quoteData.c === 0 && quoteData.pc === 0) || !profileData.name) {
+                         // Return a failure object for invalid data
+                        return { success: false, symbol, reason: 'Invalid or empty API payload' };
+                    }
+                    
+                    const data = { symbol: symbol, name: profileData.name || symbol, price: quoteData.c, change: quoteData.d, changePercent: quoteData.dp, open: quoteData.o, high: quoteData.h, low: quoteData.l, previousClose: quoteData.pc, industry: profileData.finnhubIndustry || 'N/A' };
+                    return { success: true, data };
+                } catch (error) { 
+                    console.error("Error fetching stock data for " + symbol, error); 
+                    // Return a failure object for network errors
+                    return { success: false, symbol, reason: error.message };
+                }
             }
         }
 
@@ -1694,6 +1712,7 @@
                     listsToRefresh.push({ list: this.mutualFunds, type: 'fund' });
                     listsToRefresh.push({ list: this.watchlist, type: 'watchlist' });
                 } else {
+                    // This correctly identifies the list for the active tab
                     if (this.currentTab === 'stocks') { listsToRefresh.push({ list: this.stocks, type: 'stock' }); }
                     else if (this.currentTab === 'funds') { listsToRefresh.push({ list: this.mutualFunds, type: 'fund' }); }
                     else if (this.currentTab === 'watchlist') { listsToRefresh.push({ list: this.watchlist, type: 'watchlist' }); }
@@ -1707,46 +1726,51 @@
                     return;
                 }
 
-                this.showLoading(true, `Preparing to refresh... (0/${totalCount})`);
+                this.showLoading(true, `Refreshing 0/${totalCount} items...`);
+
+                // 1. Create all fetch promises to run in parallel.
+                const refreshPromises = allItems.map(item => this.apiService.fetchStockData(item.symbol));
                 
-                let stats = { success: 0, gains: 0, losses: 0, unchanged: 0 };
-                let processedCount = 0;
+                // 2. Use Promise.allSettled to wait for all promises to finish.
+                const results = await Promise.allSettled(refreshPromises);
+
+                let stats = { success: 0, gains: 0, losses: 0, unchanged: 0, failed: 0 };
                 let failedSymbols = [];
-                
-                for (const item of allItems) {
-                    processedCount++;
-                    this.showLoading(true, `Refreshing ${item.symbol}... (${processedCount}/${totalCount})`);
-                    try {
-                        const freshData = await this.apiService.fetchStockData(item.symbol);
+
+                // 3. Process results after all fetches are complete.
+                results.forEach((result, index) => {
+                    const item = allItems[index]; // Get the corresponding original item
+
+                    if (result.status === 'fulfilled' && result.value.success) {
+                        const freshData = result.value.data;
+                        // Update the original item in the list
                         Object.assign(item, { ...freshData, transactions: item.transactions });
                         
                         stats.success++;
-                        if ((freshData.change || 0) > 0) { 
-                            stats.gains++;
-                        } else if ((freshData.change || 0) < 0) {
-                            stats.losses++;
-                        } else {
-                            stats.unchanged++;
-                        }
-                        
-                    } catch (error) {
+                        if ((freshData.change || 0) > 0) stats.gains++;
+                        else if ((freshData.change || 0) < 0) stats.losses++;
+                        else stats.unchanged++;
+
+                    } else {
+                        // This block now catches JS errors, network errors, AND invalid data failures
+                        stats.failed++;
                         failedSymbols.push(item.symbol);
-                        console.error(`Failed to refresh ${item.symbol}:`, error);
+                        const reason = result.reason ? result.reason.message : (result.value ? result.value.reason : 'Unknown error');
+                        console.error(`Failed to refresh ${item.symbol}:`, reason);
                     }
-                }
+                });
 
-                stats.failed = totalCount - stats.success;
-
+                // 4. Perform a single, atomic UI update at the end.
                 this.showLoading(false);
                 this.showRefreshStatus(refreshAll ? 'all' : this.currentTab, stats);
 
-                if (stats.failed > 0) {
+                if (failedSymbols.length > 0) {
                     console.log("--- Failed to Refresh ---");
                     failedSymbols.forEach(s => console.log(s));
                 }
                 
                 await this.saveData();
-                this.renderContent();
+                this.renderContent(); // Single render call to ensure UI is in sync.
             }
             
             showRefreshStatus(type, stats) {
@@ -1876,7 +1900,7 @@
             }
             saveSettings(){
                 this.config.finnhubApiKey = this.elements.modalFinnhubKey.value.trim();
-                this.config.alphaVantageApiKey = this.elements.modalAlphaVantageKey.value.trim();
+                this.config.alphaVantageKey = this.elements.modalAlphaVantageKey.value.trim();
                 const interval = parseInt(this.elements.modalRefreshInterval.value, 10);
                 this.config.refreshIntervalMs = (interval && interval >= 10) ? interval * 1000 : 60000;
                 
@@ -1931,4 +1955,5 @@
     </script>
 </body>
 </html>
+
 
