@@ -471,37 +471,12 @@
             background: linear-gradient(90deg, transparent, rgba(255, 71, 87, 0.1), transparent);
         }
 
-        .gains-header {
-            color: #2ed573;
-            background: linear-gradient(90deg, transparent, rgba(46, 213, 115, 0.1), transparent);
-        }
-        
-        .big-winners-header {
+        .gains-header, .biggest-gain-header {
             color: #2ed573;
             background: linear-gradient(90deg, transparent, rgba(46, 213, 115, 0.1), transparent);
         }
 
-        .moderate-gains-header {
-            color: #1abc9c;
-            background: linear-gradient(90deg, transparent, rgba(26, 188, 156, 0.1), transparent);
-        }
-
-        .steady-header {
-            color: #3498db;
-            background: linear-gradient(90deg, transparent, rgba(52, 152, 219, 0.1), transparent);
-        }
-
-        .moderate-losses-header {
-            color: #e67e22;
-            background: linear-gradient(90deg, transparent, rgba(230, 126, 34, 0.1), transparent);
-        }
-
-        .big-losses-header {
-            color: #e74c3c;
-            background: linear-gradient(90deg, transparent, rgba(231, 76, 60, 0.1), transparent);
-        }
-        
-        .losses-header::before, .gains-header::before, .big-winners-header::before, .moderate-gains-header::before, .steady-header::before, .moderate-losses-header::before, .big-losses-header::before {
+        .losses-header::before, .biggest-gain-header::before, .gains-header::before {
             content: '';
             position: absolute;
             left: 50%;
@@ -512,24 +487,12 @@
             border-radius: 2px;
         }
         
-        .losses-header::before, .big-losses-header::before {
+        .losses-header::before {
             background: #ff4757;
         }
 
-        .gains-header::before, .big-winners-header::before {
+        .gains-header::before, .biggest-gain-header::before {
             background: #2ed573;
-        }
-        
-        .moderate-gains-header::before {
-            background: #1abc9c;
-        }
-
-        .steady-header::before {
-            background: #3498db;
-        }
-        
-        .moderate-losses-header::before {
-            background: #e67e22;
         }
         
         .chart-container {
@@ -944,24 +907,12 @@
              background: #333;
         }
         
-        .dark-mode .gains-header, .dark-mode .big-winners-header {
+        .dark-mode .gains-header, .dark-mode .biggest-gain-header {
             background: linear-gradient(90deg, transparent, rgba(46, 213, 115, 0.05), transparent);
         }
         
-        .dark-mode .losses-header, .dark-mode .big-losses-header {
+        .dark-mode .losses-header {
             background: linear-gradient(90deg, transparent, rgba(255, 71, 87, 0.05), transparent);
-        }
-
-        .dark-mode .moderate-gains-header {
-            background: linear-gradient(90deg, transparent, rgba(26, 188, 156, 0.05), transparent);
-        }
-        
-        .dark-mode .steady-header {
-            background: linear-gradient(90deg, transparent, rgba(52, 152, 219, 0.05), transparent);
-        }
-        
-        .dark-mode .moderate-losses-header {
-            background: linear-gradient(90deg, transparent, rgba(230, 126, 34, 0.05), transparent);
         }
         /* -- END OF STYLES -- */
 
@@ -1343,6 +1294,17 @@
                     this.handleAuthentication();
                 });
             }
+            
+            formatCurrency(num) {
+                if (typeof num !== 'number') return num;
+                return num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+            }
+
+            formatNumber(num, decimals = 2) {
+                if (typeof num !== 'number') return num;
+                return num.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+            }
+
 
             handleAuthentication() {
                  onAuthStateChanged(auth, user => {
@@ -1637,7 +1599,16 @@
                 const totalOverallPLPercent = totalCostBasis > 0 ? (totalOverallPL / totalCostBasis) * 100 : 0;
                 const totalPLPercentToday = totalPreviousDayValue > 0 ? (totalPLToday / totalPreviousDayValue) * 100 : 0;
                 
-                const setElement = (el, value, isPercent = false) => { if (el) { el.textContent = isPercent ? `${value.toFixed(2)}%` : `$${value.toFixed(2)}`; el.className = `summary-value ${value >= 0 ? 'positive' : 'negative'}`; } };
+                const setElement = (el, value, isPercent = false) => { 
+                    if (el) { 
+                        if (isPercent) {
+                            el.textContent = this.formatNumber(value, 2) + '%';
+                        } else {
+                            el.textContent = this.formatCurrency(value);
+                        }
+                        el.className = `summary-value ${value >= 0 ? 'positive' : 'negative'}`; 
+                    } 
+                };
                 
                 setElement(elements.totalValue, totalCurrentValue);
                 setElement(elements.plToday, totalPLToday);
@@ -1792,22 +1763,21 @@
                 });
             }
             renderGroupedStocks(items, container, type) {
-                const bigWinners = items.filter(s => s.changePercent > 10).sort((a, b) => b.changePercent - a.changePercent);
-                const moderateGains = items.filter(s => s.changePercent > 3 && s.changePercent <= 10).sort((a, b) => b.changePercent - a.changePercent);
-                const steady = items.filter(s => s.changePercent > -3 && s.changePercent <= 3).sort((a, b) => b.changePercent - a.changePercent);
-                const moderateLosses = items.filter(s => s.changePercent > -10 && s.changePercent <= -3).sort((a, b) => a.changePercent - b.changePercent);
-                const bigLosses = items.filter(s => s.changePercent <= -10).sort((a, b) => a.changePercent - b.changePercent);
+                const gains = items.filter(s => s.changePercent >= 0).sort((a, b) => b.changePercent - a.changePercent);
+                const losses = items.filter(s => s.changePercent < 0).sort((a, b) => a.changePercent - b.changePercent);
+                const biggestGain = gains.length > 0 ? [gains[0]] : [];
                 
                 if (items.length === 0) {
                      container.innerHTML = `<div class="loading">Your ${type} list is empty.</div>`;
                      return;
                 }
 
-                this.createGroup('💥 Big Losers Today', bigLosses, 'big-losses-header', container, type);
-                this.createGroup('📉 Moderate Losses Today', moderateLosses, 'moderate-losses-header', container, type);
-                this.createGroup('➡️ Steady Today', steady, 'steady-header', container, type);
-                this.createGroup('📈 Moderate Gains Today', moderateGains, 'moderate-gains-header', container, type);
-                this.createGroup('🚀 Big Winners Today', bigWinners, 'big-winners-header', container, type);
+                if (biggestGain.length > 0) {
+                    this.createGroup('🚀 Biggest Gain Today', biggestGain, 'biggest-gain-header', container, type);
+                }
+                
+                this.createGroup('📈 Gains Today', gains, 'gains-header', container, type);
+                this.createGroup('📉 Losses Today', losses, 'losses-header', container, type);
             }
             createGroup(title, list, headerClass, parent, type) {
                 if(list.length === 0) return;
@@ -1860,7 +1830,7 @@
                     <div class="summary-card">
                         <h4>${title} Summary</h4>
                         <p>Total Assets: ${list.length}</p>
-                        <p>Total P/L Today: <span class="${plClass}">$${totalPLToday.toFixed(2)}</span></p>
+                        <p>Total P/L Today: <span class="${plClass}">${this.formatCurrency(totalPLToday)}</span></p>
                     </div>
                 `;
 
@@ -1920,7 +1890,7 @@
                                 ${ (item.transactions || []).map((t, index) => `
                                     <div class="transaction-entry">
                                         <div class="transaction-info">
-                                            <span><strong class="${t.type}">${t.type.toUpperCase()}</strong>: ${t.shares} shares @ $${t.price.toFixed(2)}</span>
+                                            <span><strong class="${t.type}">${t.type.toUpperCase()}</strong>: ${this.formatNumber(t.shares, 3)} shares @ ${this.formatCurrency(t.price)}</span>
                                             ${t.note ? `<span>Note: ${t.note}</span>` : ''}
                                         </div>
                                         <div class="transaction-entry-controls">
@@ -1935,7 +1905,7 @@
                             <button class="transaction-btn" onclick="window.stockTracker.openTransactionModal('${item.symbol}', '${type}', 'buy')">Buy</button>
                             <button class="transaction-btn" style="background: #ff4757;" onclick="window.stockTracker.openTransactionModal('${item.symbol}', '${type}', 'sell')">Sell</button>
                         </div>
-                        <div class="total-pl ${stats.unrealizedPL >= 0 ? 'positive' : 'negative'}">Overall P/L: $${stats.unrealizedPL.toFixed(2)} (${overallPLPercent.toFixed(2)}%)</div>
+                        <div class="total-pl ${stats.unrealizedPL >= 0 ? 'positive' : 'negative'}">Overall P/L: ${this.formatCurrency(stats.unrealizedPL)} (${this.formatNumber(overallPLPercent, 2)}%)</div>
                         `;
                     } else if (type === 'watchlist') {
                          transactionDetailsHTML = `
@@ -1948,17 +1918,17 @@
                     let stockInfoHTML = '';
                      if (type === 'watchlist' || type === 'fund') {
                          stockInfoHTML = `
-                            <div class="info-row"><span class="info-label">Open:</span><span class="info-value">$${(item.open || 0).toFixed(2)}</span></div>
-                            <div class="info-row"><span class="info-label">High:</span><span class="info-value">$${(item.high || 0).toFixed(2)}</span></div>
-                            <div class="info-row"><span class="info-label">Low:</span><span class="info-value">$${(item.low || 0).toFixed(2)}</span></div>
-                            <div class="info-row"><span class="info-label">Prev. Close:</span><span class="info-value">$${(item.previousClose || 0).toFixed(2)}</span></div>
+                            <div class="info-row"><span class="info-label">Open:</span><span class="info-value">${this.formatCurrency(item.open || 0)}</span></div>
+                            <div class="info-row"><span class="info-label">High:</span><span class="info-value">${this.formatCurrency(item.high || 0)}</span></div>
+                            <div class="info-row"><span class="info-label">Low:</span><span class="info-value">${this.formatCurrency(item.low || 0)}</span></div>
+                            <div class="info-row"><span class="info-label">Prev. Close:</span><span class="info-value">${this.formatCurrency(item.previousClose || 0)}</span></div>
                          `;
                      } else { // stock
                          stockInfoHTML = `
-                            <div class="info-row"><span class="info-label">Open:</span><span class="info-value">$${(item.open || 0).toFixed(2)}</span></div>
-                            <div class="info-row"><span class="info-label">Total Shares:</span><span class="info-value">${stats.totalSharesOwned.toFixed(3)}</span></div>
-                            <div class="info-row"><span class="info-label">Total Value:</span><span class="info-value">$${stats.currentValue.toFixed(2)}</span></div>
-                            <div class="info-row"><span class="info-label">Avg. Cost Basis:</span><span class="info-value">$${stats.averageCostBasis.toFixed(2)}</span></div>
+                            <div class="info-row"><span class="info-label">Open:</span><span class="info-value">${this.formatCurrency(item.open || 0)}</span></div>
+                            <div class="info-row"><span class="info-label">Total Shares:</span><span class="info-value">${this.formatNumber(stats.totalSharesOwned, 3)}</span></div>
+                            <div class="info-row"><span class="info-label">Total Value:</span><span class="info-value">${this.formatCurrency(stats.currentValue)}</span></div>
+                            <div class="info-row"><span class="info-label">Avg. Cost Basis:</span><span class="info-value">${this.formatCurrency(stats.averageCostBasis)}</span></div>
                          `;
                      }
 
@@ -1967,15 +1937,15 @@
                             <span class="stock-symbol">${item.symbol}</span>
                             <button class="remove-btn" onclick="window.stockTracker.${removalFunction}">×</button>
                         </div>
-                        <div class="stock-price">$${(item.price || 0).toFixed(2)}</div>
+                        <div class="stock-price">${this.formatCurrency(item.price || 0)}</div>
                         <div class="stock-change ${changeClass}">
-                            <span>${changeSymbol} ${(item.change || 0).toFixed(2)} (${(item.changePercent || 0).toFixed(2)}%)</span>
+                            <span>${changeSymbol} ${this.formatCurrency(item.change || 0)} (${(item.changePercent || 0).toFixed(2)}%)</span>
                         </div>
                         <div class="stock-info">
                            ${stockInfoHTML}
                         </div>
                         ${transactionDetailsHTML}
-                        <div class="total-pl ${todayPL >= 0 ? 'positive' : 'negative'}">P/L Today: $${todayPL.toFixed(2)}</div>
+                        <div class="total-pl ${todayPL >= 0 ? 'positive' : 'negative'}">P/L Today: ${this.formatCurrency(todayPL)}</div>
                     `;
                     card.innerHTML = cardHTML;
 
