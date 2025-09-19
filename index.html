@@ -2129,12 +2129,15 @@
                      container.innerHTML = `<div class="loading">Your ${type} list is empty.</div>`;
                      return;
                 }
-
+                
                 if (biggestGain.length > 0) {
                     this.createGroup('🚀 Biggest Gain Today', biggestGain, 'biggest-gain-header', container, type);
                 }
                 
-                this.createGroup('📈 Gains Today', gains, 'gains-header', container, type);
+                // Filter out the biggest gain from the general gains list
+                const otherGains = gains.filter(s => biggestGain.length === 0 || s.symbol !== biggestGain[0].symbol);
+                this.createGroup('📈 Gains Today', otherGains, 'gains-header', container, type);
+                
                 this.createGroup('📉 Losses Today', losses, 'losses-header', container, type);
             }
             createGroup(title, list, headerClass, parent, type) {
