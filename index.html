@@ -1093,6 +1093,10 @@
                         <span id="total-contributions" class="summary-value total-contributions">$0.00</span>
                     </div>
                     <div class="summary-item">
+                        <span class="summary-label">Total Dividends</span>
+                        <span id="total-dividends" class="summary-value positive">$0.00</span>
+                    </div>
+                    <div class="summary-item">
                         <span class="summary-label">Total P/L Today</span>
                         <span id="total-pl-today" class="summary-value positive">$0.00</span>
                     </div>
@@ -1223,6 +1227,10 @@
             <div class="transaction-input-group">
                 <label for="modal-note">Note:</label>
                 <input type="text" class="search-input" id="modal-note" placeholder="e.g., Fidelity, Robinhood, 1/15/2024">
+            </div>
+             <div class="transaction-input-group" id="modal-dividend-fields" style="display: none;">
+                <label for="modal-dividend-amount">Dividend Amount (per share):</label>
+                <input type="number" class="search-input" id="modal-dividend-amount" placeholder="e.g., 0.50" min="0">
             </div>
             <button class="add-btn" id="modal-save-btn">Save Transaction</button>
         </div>
@@ -1575,6 +1583,8 @@
                     alertNotification: document.getElementById('alert-notification'),
                     newsTab: document.getElementById('news-tab'),
                     newsArticlesContainer: document.getElementById('news-articles-container'),
+                    modalDividendFields: document.getElementById('modal-dividend-fields'),
+                    modalDividendAmount: document.getElementById('modal-dividend-amount')
                 };
             }
 
@@ -1834,9 +1844,11 @@
 
             renderPortfolioSummary() {
                 const totalContributions = this.calculateTotalContributions();
+                const totalDividends = this.calculateTotalDividends();
                  this.renderSummary(this.stocks, {
                     totalValue: document.getElementById('total-value'),
                     totalContributions: document.getElementById('total-contributions'),
+                    totalDividends: document.getElementById('total-dividends'),
                     plToday: document.getElementById('total-pl-today'),
                     plPercentToday: document.getElementById('total-pl-percent-today'),
                     plUnrealized: document.getElementById('total-pl-unrealized'),
@@ -1889,6 +1901,7 @@
                 
                 setTotalValueElement(elements.totalValue, totalCurrentValue);
                 if (elements.totalContributions) { elements.totalContributions.textContent = this.formatCurrency(totalContributions); }
+                if (elements.totalDividends) { elements.totalDividends.textContent = this.formatCurrency(this.calculateTotalDividends()); }
                 setElement(elements.plToday, totalPLToday);
                 if(elements.plPercentToday) setElement(elements.plPercentToday, totalPLPercentToday, true);
                 if(elements.plUnrealized) setElement(elements.plUnrealized, totalUnrealizedPL);
@@ -1942,7 +1955,7 @@
                     }
 
                     // Step 4: Add the new item to the selected list.
-                    const newItem = type === 'watchlist' ? result.data : { ...result.data, transactions: [] };
+                    const newItem = type === 'watchlist' ? result.data : { ...result.data, transactions: [], dividends: [] };
                     targetList.push(newItem);
 
                     // Step 5: Save and re-render.
@@ -2016,31 +2029,81 @@
                 });
                 return contributions;
             }
+            
+            calculateTotalDividends() {
+                return this.stocks.reduce((sum, stock) => {
+                    if (!stock.dividends) return sum;
+                    return sum + stock.dividends.reduce((divSum, div) => divSum + div.totalAmount, 0);
+                }, 0);
+            }
+
+            calculateAnnualizedDividendYield(item) {
+                 if (!item.dividends || item.dividends.length === 0 || item.price === 0) return 0;
+                 const now = new Date();
+                 const lastYear = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+
+                 const totalDividendsLastYear = item.dividends.filter(d => new Date(d.date) > lastYear)
+                                                                 .reduce((sum, d) => sum + d.totalAmount, 0);
+                
+                 if (totalDividendsLastYear === 0) return 0;
+
+                 return (totalDividendsLastYear / item.price) * 100;
+            }
 
             openTransactionModal(symbol, type, transactionType, transactionIndex = -1) {
                 this.elements.transactionModal.style.display = 'flex';
                 this.elements.modalSymbol.textContent = symbol;
-                this.elements.modalTitleAction.textContent = transactionIndex > -1 ? 'Edit' : (transactionType === 'buy' ? 'Buy' : 'Sell');
+                this.elements.modalTitleAction.textContent = transactionIndex > -1 ? 'Edit' : transactionType.charAt(0).toUpperCase() + transactionType.slice(1);
                 this.elements.modalShares.value = ''; this.elements.modalPrice.value = ''; this.elements.modalNote.value = '';
+                
+                // Show/hide fields based on transaction type
+                this.elements.modalDividendFields.style.display = 'none';
+                if (transactionType === 'buy' || transactionType === 'sell') {
+                    this.elements.modalShares.parentNode.style.display = 'block';
+                    this.elements.modalPrice.parentNode.style.display = 'block';
+                    this.elements.modalShares.value = '';
+                    this.elements.modalPrice.value = '';
+                } else if (transactionType === 'dividend') {
+                    this.elements.modalShares.parentNode.style.display = 'block';
+                    this.elements.modalPrice.parentNode.style.display = 'none';
+                    this.elements.modalDividendFields.style.display = 'block';
+                    this.elements.modalShares.value = '';
+                    this.elements.modalDividendAmount.value = '';
+                }
+                
+                // Set data attributes for saving
                 this.elements.modalSaveBtn.dataset.symbol = symbol;
                 this.elements.modalSaveBtn.dataset.type = type;
                 this.elements.modalSaveBtn.dataset.transactionType = transactionType;
                 this.elements.modalSaveBtn.dataset.transactionIndex = transactionIndex;
             }
+            
             closeTransactionModal() { this.elements.transactionModal.style.display = 'none'; }
             async saveTransaction() {
                 const { symbol, type, transactionType, transactionIndex: indexStr } = this.elements.modalSaveBtn.dataset;
                 const index = parseInt(indexStr);
-                const shares = parseFloat(this.elements.modalShares.value);
-                const price = parseFloat(this.elements.modalPrice.value);
-                if (isNaN(shares) || shares <= 0 || isNaN(price) || price < 0) { this.showError('Invalid input.'); return; }
                 const list = (type === 'stock') ? this.stocks : this.mutualFunds;
                 const item = list.find(i => i.symbol === symbol);
+                
                 if (item) {
-                    if (!item.transactions) item.transactions = [];
-                    const newTransaction = { type: transactionType, shares, price, note: this.elements.modalNote.value.trim(), date: new Date().toISOString() };
-                    if (index > -1) item.transactions[index] = newTransaction;
-                    else item.transactions.push(newTransaction);
+                     if (transactionType === 'buy' || transactionType === 'sell') {
+                        const shares = parseFloat(this.elements.modalShares.value);
+                        const price = parseFloat(this.elements.modalPrice.value);
+                         if (isNaN(shares) || shares <= 0 || isNaN(price) || price < 0) { this.showError('Invalid input.'); return; }
+                        if (!item.transactions) item.transactions = [];
+                        const newTransaction = { type: transactionType, shares, price, note: this.elements.modalNote.value.trim(), date: new Date().toISOString() };
+                        if (index > -1) item.transactions[index] = newTransaction;
+                        else item.transactions.push(newTransaction);
+                    } else if (transactionType === 'dividend') {
+                        const shares = parseFloat(this.elements.modalShares.value);
+                        const amountPerShare = parseFloat(this.elements.modalDividendAmount.value);
+                        if (isNaN(shares) || shares <= 0 || isNaN(amountPerShare) || amountPerShare < 0) { this.showError('Invalid input.'); return; }
+                        if (!item.dividends) item.dividends = [];
+                         const totalAmount = shares * amountPerShare;
+                        const newDividend = { shares, amountPerShare, totalAmount, date: new Date().toISOString() };
+                        item.dividends.push(newDividend);
+                    }
+                    
                     await this.saveData();
                     this.renderContent();
                     this.closeTransactionModal();
@@ -2173,6 +2236,7 @@
                     const overallPLPercent = totalCost > 0 ? (stats.unrealizedPL / totalCost) * 100 : 0;
                     const todayPL = (item.change || 0) * stats.totalSharesOwned;
                     const totalValueClass = stats.unrealizedPL >= 0 ? 'positive' : 'negative';
+                    const annualizedDividendYield = this.calculateAnnualizedDividendYield(item);
 
                     let transactionDetailsHTML = '';
                     if (type === 'stock' || type === 'fund') {
@@ -2196,12 +2260,30 @@
                                     </div>
                                 `).join('')}
                             </div>
+                            <div class="transaction-header">
+                                <h4>Dividends:</h4>
+                                <span class="toggle-icon">▼</span>
+                            </div>
+                            <div class="transactions-container">
+                                ${ (item.dividends || []).map((d, index) => `
+                                    <div class="transaction-entry">
+                                        <div class="transaction-info">
+                                            <span><strong>DIVIDEND</strong>: ${this.formatCurrency(d.totalAmount)} on ${this.formatNumber(d.shares, 3)} shares</span>
+                                            <span>Amount per share: ${this.formatCurrency(d.amountPerShare)}</span>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
                         </div>
                         <div class="card-actions">
                             <button class="transaction-btn" onclick="window.stockTracker.openTransactionModal('${item.symbol}', '${type}', 'buy')">Buy</button>
                             <button class="transaction-btn" style="background: #ff4757;" onclick="window.stockTracker.openTransactionModal('${item.symbol}', '${type}', 'sell')">Sell</button>
                         </div>
+                        <div class="card-actions">
+                            <button class="transaction-btn" style="background: #2ed573;" onclick="window.stockTracker.openTransactionModal('${item.symbol}', '${type}', 'dividend')">Add Dividend</button>
+                        </div>
                         <div class="total-pl ${stats.unrealizedPL >= 0 ? 'positive' : 'negative'}">Overall P/L: ${this.formatCurrency(stats.unrealizedPL)} (${this.formatNumber(overallPLPercent, 2)}%)</div>
+                        <div class="total-pl positive">Annualized Div. Yield: ${this.formatNumber(annualizedDividendYield, 2)}%</div>
                         <button class="add-btn" style="margin-top: 10px;" onclick="window.stockTracker.openPriceAlertModal('${item.symbol}')">Set Price Alert</button>
                         `;
                     } else if (type === 'watchlist') {
