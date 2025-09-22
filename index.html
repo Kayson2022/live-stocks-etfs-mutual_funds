@@ -1261,6 +1261,10 @@
                 <label for="modal-refresh-interval">Auto-Refresh Interval (seconds):</label>
                 <input type="number" class="search-input" id="modal-refresh-interval" placeholder="e.g., 60" min="10">
             </div>
+             <div class="transaction-input-group">
+                <label for="enable-push-notifications-btn">Enable Push Notifications:</label>
+                <button class="add-btn" id="enable-push-notifications-btn" style="background: linear-gradient(45deg, #9b59b6, #8e44ad);">🔔 Enable Notifications</button>
+            </div>
             <button class="add-btn" id="modal-save-settings-btn">Save Settings</button>
         </div>
     </div>
@@ -2630,7 +2634,8 @@
             openSettingsModal(){
                 this.elements.modalFinnhubKey.value = this.config.finnhubApiKey;
                 this.elements.modalAlphaVantageKey.value = this.config.alphaVantageApiKey;
-                this.elements.modalRefreshInterval.value = this.config.refreshIntervalMs / 1000;
+                const interval = parseInt(this.elements.modalRefreshInterval.value, 10);
+                this.config.refreshIntervalMs = (interval && interval >= 10) ? interval * 1000 : 60000;
                 this.elements.settingsModal.style.display = 'flex';
             }
             closeSettingsModal(){
