@@ -1937,7 +1937,6 @@
             async addItem(symbol, type) {
                 this.showLoading(true, `Adding ${symbol}...`);
                 try {
-                    // Step 1: Determine which list to add the item to, based on the tab.
                     let targetList;
                     let listName = '';
                     if (type === 'stock') {
@@ -1951,42 +1950,45 @@
                         listName = 'watchlist';
                     }
 
-                    // Step 2: Check if the symbol already exists in THIS SPECIFIC list.
                     if (targetList.some(item => item.symbol === symbol)) {
                         this.showError(`❌ ${symbol} is already in your ${listName}.`);
                         return;
                     }
 
-                    // Step 3: Fetch data using the appropriate API based on the user's intent (the tab they are on).
-                    // This is more reliable than guessing based on the ticker format.
-                    // It also includes a fallback to the other API if the first one fails.
                     let result;
+                    let primaryReason = '';
+                    let fallbackReason = '';
+
                     if (type === 'fund') {
-                        // User is on the Mutual Funds tab, so Alpha Vantage is the primary API.
                         result = await this.apiService.fetchFundData(symbol);
                         if (!result.success) {
+                            primaryReason = result.reason;
                             console.warn(`Fund API (Alpha Vantage) failed for ${symbol}. Trying Stock/ETF API (Finnhub) as a fallback.`);
                             result = await this.apiService.fetchStockEtfData(symbol);
+                            if (!result.success) fallbackReason = result.reason;
                         }
-                    } else {
-                        // User is on the Stocks or Watchlist tab, so Finnhub is the primary API.
+                    } else { // 'stock' or 'watchlist'
                         result = await this.apiService.fetchStockEtfData(symbol);
                         if (!result.success) {
+                            primaryReason = result.reason;
                             console.warn(`Stock/ETF API (Finnhub) failed for ${symbol}. Trying Fund API (Alpha Vantage) as a fallback.`);
                             result = await this.apiService.fetchFundData(symbol);
+                            if (!result.success) {
+                                fallbackReason = result.reason;
+                            } else {
+                                // Fallback succeeded, fix industry classification.
+                                result.data.industry = this.isMutualFund(symbol) ? 'Mutual Fund' : 'ETF/Stock';
+                            }
                         }
                     }
                     
                     if (!result.success) {
-                        // If both APIs fail, show the reason from the last attempt.
-                        throw new Error(result.reason);
+                        throw new Error(`Primary API failed: ${primaryReason}. Fallback API also failed: ${fallbackReason}`);
                     }
 
-                    // Step 4: Add the new item to the selected list.
                     const newItem = type === 'watchlist' ? result.data : { ...result.data, transactions: [], dividends: [] };
                     targetList.push(newItem);
 
-                    // Step 5: Save and re-render.
                     await this.saveData();
                     this.renderContent();
                     this.showSuccess(`✅ Added ${symbol} to your ${listName}!`);
@@ -2757,3 +2759,4 @@
     </script>
 </body>
 </html>
+
