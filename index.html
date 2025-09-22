@@ -1479,6 +1479,34 @@
                 return num.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
             }
 
+            resetState() {
+                this.stopLiveUpdate();
+                this.userId = null;
+                this.stocks = [];
+                this.mutualFunds = [];
+                this.watchlist = [];
+                this.portfolioHistory = [];
+                this.priceAlerts = [];
+                this.newsFeed = [];
+                this.newsFetchTime = 0;
+
+                if (this.diversificationChartInstance) {
+                    this.diversificationChartInstance.destroy();
+                    this.diversificationChartInstance = null;
+                }
+                if (this.historyChartInstance) {
+                    this.historyChartInstance.destroy();
+                    this.historyChartInstance = null;
+                }
+
+                this.elements.stocksGrid.innerHTML = '';
+                this.elements.userName.textContent = '';
+                
+                this.elements.appContainer.style.display = 'none';
+                this.elements.userInfo.style.display = 'none';
+                this.elements.loginContainer.style.display = 'block';
+            }
+
 
             handleAuthentication() {
                  onAuthStateChanged(auth, user => {
@@ -1491,12 +1519,7 @@
                         this.loadData();
                         this.startLiveUpdate();
                     } else {
-                        this.userId = null;
-                        this.elements.loginContainer.style.display = 'block';
-                        this.elements.appContainer.style.display = 'none';
-                        this.elements.userInfo.style.display = 'none';
-                        this.stocks = []; this.mutualFunds = []; this.watchlist = [];
-                        this.renderContent();
+                        this.resetState();
                     }
                 });
             }
@@ -2759,4 +2782,5 @@
     </script>
 </body>
 </html>
+
 
