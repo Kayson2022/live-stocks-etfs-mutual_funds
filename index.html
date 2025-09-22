@@ -1479,34 +1479,6 @@
                 return num.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
             }
 
-            resetState() {
-                this.stopLiveUpdate();
-                this.userId = null;
-                this.stocks = [];
-                this.mutualFunds = [];
-                this.watchlist = [];
-                this.portfolioHistory = [];
-                this.priceAlerts = [];
-                this.newsFeed = [];
-                this.newsFetchTime = 0;
-
-                if (this.diversificationChartInstance) {
-                    this.diversificationChartInstance.destroy();
-                    this.diversificationChartInstance = null;
-                }
-                if (this.historyChartInstance) {
-                    this.historyChartInstance.destroy();
-                    this.historyChartInstance = null;
-                }
-
-                this.elements.stocksGrid.innerHTML = '';
-                this.elements.userName.textContent = '';
-                
-                this.elements.appContainer.style.display = 'none';
-                this.elements.userInfo.style.display = 'none';
-                this.elements.loginContainer.style.display = 'block';
-            }
-
 
             handleAuthentication() {
                  onAuthStateChanged(auth, user => {
@@ -1519,7 +1491,12 @@
                         this.loadData();
                         this.startLiveUpdate();
                     } else {
-                        this.resetState();
+                        this.userId = null;
+                        this.elements.loginContainer.style.display = 'block';
+                        this.elements.appContainer.style.display = 'none';
+                        this.elements.userInfo.style.display = 'none';
+                        this.stocks = []; this.mutualFunds = []; this.watchlist = [];
+                        this.renderContent();
                     }
                 });
             }
@@ -1959,7 +1936,9 @@
             }
             async addItem(symbol, type) {
                 this.showLoading(true, `Adding ${symbol}...`);
+
                 try {
+                    // Step 1: Determine which list to add the item to, based on the tab.
                     let targetList;
                     let listName = '';
                     if (type === 'stock') {
@@ -1973,45 +1952,32 @@
                         listName = 'watchlist';
                     }
 
+                    // Step 2: Check if the symbol already exists in THIS SPECIFIC list.
                     if (targetList.some(item => item.symbol === symbol)) {
                         this.showError(`❌ ${symbol} is already in your ${listName}.`);
+                        this.showLoading(false);
                         return;
                     }
 
+                    // Step 3: Fetch data using the appropriate API based on the symbol format.
+                    // This is the core logic that has been updated to handle ETFs and mutual funds
                     let result;
-                    let primaryReason = '';
-                    let fallbackReason = '';
-
-                    if (type === 'fund') {
-                        result = await this.apiService.fetchFundData(symbol);
-                        if (!result.success) {
-                            primaryReason = result.reason;
-                            console.warn(`Fund API (Alpha Vantage) failed for ${symbol}. Trying Stock/ETF API (Finnhub) as a fallback.`);
-                            result = await this.apiService.fetchStockEtfData(symbol);
-                            if (!result.success) fallbackReason = result.reason;
-                        }
-                    } else { // 'stock' or 'watchlist'
-                        result = await this.apiService.fetchStockEtfData(symbol);
-                        if (!result.success) {
-                            primaryReason = result.reason;
-                            console.warn(`Stock/ETF API (Finnhub) failed for ${symbol}. Trying Fund API (Alpha Vantage) as a fallback.`);
-                            result = await this.apiService.fetchFundData(symbol);
-                            if (!result.success) {
-                                fallbackReason = result.reason;
-                            } else {
-                                // Fallback succeeded, fix industry classification.
-                                result.data.industry = this.isMutualFund(symbol) ? 'Mutual Fund' : 'ETF/Stock';
-                            }
-                        }
+                    if (this.isMutualFund(symbol)) {
+                         result = await this.apiService.fetchFundData(symbol);
+                    } else {
+                        // All other tickers (stocks, ETFs) are handled by the stock API
+                         result = await this.apiService.fetchStockEtfData(symbol);
                     }
                     
                     if (!result.success) {
-                        throw new Error(`Primary API failed: ${primaryReason}. Fallback API also failed: ${fallbackReason}`);
+                        throw new Error(result.reason);
                     }
 
+                    // Step 4: Add the new item to the selected list.
                     const newItem = type === 'watchlist' ? result.data : { ...result.data, transactions: [], dividends: [] };
                     targetList.push(newItem);
 
+                    // Step 5: Save and re-render.
                     await this.saveData();
                     this.renderContent();
                     this.showSuccess(`✅ Added ${symbol} to your ${listName}!`);
@@ -2413,6 +2379,85 @@
                     this.showSuccess(`✅ Moved ${symbol} to portfolio!`);
                 }
             }
+            
+            async refreshItems(items, type) {
+                const totalCount = items.length;
+                if (totalCount === 0) {
+                    this.showError(`No ${type}s to refresh.`);
+                    return;
+                }
+
+                this.showLoading(true, `Refreshing 0/${totalCount} items...`);
+                
+                let stats = { success: 0, gains: 0, losses: 0, unchanged: 0, failed: 0 };
+                let failedSymbols = [];
+                let processedCount = 0;
+
+                const batchSize = 10;
+                for (let i = 0; i < items.length; i += batchSize) {
+                    const batch = items.slice(i, i + batchSize);
+                    
+                    const refreshPromises = batch.map(item => {
+                        return this.isMutualFund(item.symbol)
+                            ? this.apiService.fetchFundData(item.symbol)
+                            : this.apiService.fetchStockEtfQuote(item.symbol);
+                    });
+                    
+                    const results = await Promise.allSettled(refreshPromises);
+
+                    for (const [index, result] of results.entries()) {
+                        const item = batch[index];
+
+                        if (result.status === 'fulfilled' && result.value.success) {
+                            const freshData = result.value.data;
+                            Object.assign(item, freshData);
+                            
+                            stats.success++;
+                            if ((freshData.change || 0) > 0) stats.gains++;
+                            else if ((freshData.change || 0) < 0) stats.losses++;
+                            else stats.unchanged++;
+
+                        } else {
+                            stats.failed++;
+                            failedSymbols.push(item.symbol);
+                            const reason = result.reason ? result.reason.message : (result.value ? result.value.reason : 'Unknown error');
+                            console.error(`Failed to refresh ${item.symbol}:`, reason);
+                        }
+                        
+                        processedCount++;
+                        this.showLoading(true, `Refreshing ${item.symbol}... (${processedCount}/${totalCount})`);
+                        await new Promise(resolve => setTimeout(resolve, 50));
+                    }
+                    
+                    if (i + batchSize < items.length) {
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                    }
+                }
+                
+                this.showLoading(false);
+                this.showRefreshStatus(type, stats);
+
+                if (failedSymbols.length > 0) {
+                    console.log(`--- Failed to Refresh ${type} ---`);
+                    failedSymbols.forEach(s => console.log(s));
+                }
+                
+                await this.saveData();
+                this.renderContent();
+            }
+
+            async refreshStocks() {
+                await this.refreshItems(this.stocks, 'stock');
+            }
+
+            async refreshFunds() {
+                await this.refreshItems(this.mutualFunds, 'fund');
+            }
+
+            async refreshWatchlist() {
+                 await this.refreshItems(this.watchlist, 'watchlist');
+            }
+
 
             showRefreshStatus(type, stats) {
                 const statusDiv = this.elements.refreshStatusPopup;
@@ -2782,5 +2827,3 @@
     </script>
 </body>
 </html>
-
-
