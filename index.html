@@ -1209,7 +1209,6 @@
 
         <div class="stocks-grid" id="stocksGrid"></div>
 
-        <!-- Charts moved to the bottom of the app container -->
         <div id="diversification-chart-container" class="chart-container" style="display: none;">
             <canvas id="diversificationChart"></canvas>
         </div>
@@ -1923,6 +1922,7 @@
                 if(elements.overallPLPercent) setElement(elements.overallPLPercent, totalOverallPLPercent, true);
             }
             isMutualFund(symbol) {
+                // Mutual funds typically have a 5-letter ticker ending in 'X'. This is an imperfect but often effective heuristic.
                 return symbol.length === 5 && symbol.endsWith('X');
             }
             async addItemFromInput(type) {
@@ -1959,9 +1959,14 @@
                     }
 
                     // Step 3: Fetch data using the appropriate API based on the symbol format.
-                    const result = this.isMutualFund(symbol)
-                        ? await this.apiService.fetchFundData(symbol)
-                        : await this.apiService.fetchStockEtfData(symbol);
+                    // This is the core logic that has been updated to handle ETFs and mutual funds
+                    let result;
+                    if (this.isMutualFund(symbol)) {
+                         result = await this.apiService.fetchFundData(symbol);
+                    } else {
+                        // All other tickers (stocks, ETFs) are handled by the stock API
+                         result = await this.apiService.fetchStockEtfData(symbol);
+                    }
                     
                     if (!result.success) {
                         throw new Error(result.reason);
