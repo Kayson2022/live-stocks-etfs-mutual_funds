@@ -1143,7 +1143,7 @@
                 <button class="add-btn" id="liveUpdateBtn" style="background: linear-gradient(45deg, #2ed573, #17c0eb);">🔄 Live Update</button>
                 <button class="add-btn" id="toggleLiveUpdateBtn" style="background: linear-gradient(45deg, #f7b731, #ff5e3a);">⏸️ Pause Live Update</button>
                 <button class="add-btn" id="clearAllBtn" style="background: #ff4757;">🗑️ Clear All Data</button>
-                <button class="add-btn" id="exportBtn" style="background: linear-gradient(45deg, #3498db, #2980b9);">📥 Export Data</button>
+                <button class="add-btn" id="exportBtn" style="background: linear-gradient(45deg, #3498db, #2980b9);">📥 Export Data</label>
                 <label for="importFile" class="add-btn" style="background: linear-gradient(45deg, #2ecc71, #27ae60); cursor: pointer; text-align: center; display: flex; align-items: center; justify-content: center;">📤 Import Data</label>
                 <input type="file" id="importFile" accept=".json" style="display: none;">
                 <button class="add-btn" id="settingsBtn" style="background: linear-gradient(45deg, #6c757d, #343a40);">⚙️ Settings</button>
@@ -1209,6 +1209,7 @@
 
         <div class="stocks-grid" id="stocksGrid"></div>
 
+        <!-- Charts moved to the bottom of the app container -->
         <div id="diversification-chart-container" class="chart-container" style="display: none;">
             <canvas id="diversificationChart"></canvas>
         </div>
