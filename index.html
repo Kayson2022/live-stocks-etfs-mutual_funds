@@ -20,7 +20,8 @@
 <body class="bg-gray-100 flex items-center justify-center min-h-screen">
 
     <div class="w-full max-w-4xl p-4 bg-white rounded-xl shadow-lg text-center">
-        <h1 class="text-3xl font-bold text-gray-800 mb-2">Collaborative Drawing Board</h1>
+        <!-- [FIX] Added a version number to visually confirm the code is updated. -->
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">Collaborative Drawing Board v1.1</h1>
         <p id="userIdDisplay" class="text-sm text-gray-500 mb-4">Connecting to the canvas...</p>
         
         <canvas id="drawingCanvas"></canvas>
@@ -68,7 +69,6 @@
         // --- Firebase Config ---
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         
-        // [FIX] User's Firebase configuration has been added.
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
             apiKey: "AIzaSyB3SIrzA5Y3nZhjZXvzKiW3irJubfNdD7g",
             authDomain: "live-stocks-etfs-mutual-funds.firebaseapp.com",
