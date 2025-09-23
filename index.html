@@ -1312,6 +1312,7 @@
         import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
+        // IMPORTANT: Replace these with your own Firebase project configuration.
         const firebaseConfig = {
             apiKey: "AIzaSyB3SIrzA5Y3nZhjZXvzKiW3irJubfNdD7g",
             authDomain: "live-stocks-etfs-mutual-funds.firebaseapp.com",
@@ -1322,6 +1323,7 @@
         };
         
         let app, auth, db;
+        // This check prevents the app from breaking if the config is not filled out.
         if (firebaseConfig.apiKey !== "YOUR_API_KEY") {
             app = initializeApp(firebaseConfig);
             auth = getAuth(app);
@@ -1489,6 +1491,13 @@
                         this.elements.userName.textContent = `Welcome, ${user.displayName || 'User'}`;
                         this.loadData();
                         this.startLiveUpdate();
+
+                        // **FIX:** Check for API keys after login
+                        if (!this.config.finnhubApiKey || !this.config.alphaVantageApiKey) {
+                            this.showError("API keys are missing. Please enter them in the settings modal to fetch data.");
+                            this.openSettingsModal();
+                        }
+
                     } else {
                         this.userId = null;
                         this.elements.loginContainer.style.display = 'block';
@@ -1531,10 +1540,11 @@
             }
             
             loadConfig() {
+                // **FIX:** Load keys from localStorage instead of hardcoding them.
                 this.config = {
-                    refreshIntervalMs: 90000, // Changed from 60000 to 90000 (90 seconds)
-                    finnhubApiKey: "d316lc1r01qnu2r0opjgd316lc1r01qnu2r0opk0",
-                    alphaVantageApiKey: "0ZPH51BZ2N5O9G8Q",
+                    refreshIntervalMs: parseInt(localStorage.getItem('refreshIntervalMs')) || 90000,
+                    finnhubApiKey: localStorage.getItem('finnhubApiKey') || "",
+                    alphaVantageApiKey: localStorage.getItem('alphaVantageApiKey') || "",
                 };
             }
 
@@ -2637,25 +2647,36 @@
                 this.closeConfirmModal();
             }
             openSettingsModal(){
+                // **FIX:** Load current values from config into modal when it opens
                 this.elements.modalFinnhubKey.value = this.config.finnhubApiKey;
                 this.elements.modalAlphaVantageKey.value = this.config.alphaVantageApiKey;
-                const interval = parseInt(this.elements.modalRefreshInterval.value, 10);
-                this.config.refreshIntervalMs = (interval && interval >= 10) ? interval * 1000 : 60000;
+                this.elements.modalRefreshInterval.value = this.config.refreshIntervalMs / 1000;
                 this.elements.settingsModal.style.display = 'flex';
             }
             closeSettingsModal(){
                 this.elements.settingsModal.style.display = 'none';
             }
             saveSettings(){
-                this.config.finnhubApiKey = this.elements.modalFinnhubKey.value.trim();
-                this.config.alphaVantageKey = this.elements.modalAlphaVantageKey.value.trim();
+                const finnhubKey = this.elements.modalFinnhubKey.value.trim();
+                const alphaVantageKey = this.elements.modalAlphaVantageKey.value.trim();
                 const interval = parseInt(this.elements.modalRefreshInterval.value, 10);
-                this.config.refreshIntervalMs = (interval && interval >= 10) ? interval * 1000 : 60000;
+                
+                // **FIX:** Save keys to localStorage for persistence
+                localStorage.setItem('finnhubApiKey', finnhubKey);
+                localStorage.setItem('alphaVantageApiKey', alphaVantageKey);
+                if (interval && interval >= 10) {
+                    localStorage.setItem('refreshIntervalMs', interval * 1000);
+                }
+
+                // Update runtime config
+                this.config.finnhubApiKey = finnhubKey;
+                this.config.alphaVantageApiKey = alphaVantageKey;
+                this.config.refreshIntervalMs = (interval && interval >= 10) ? interval * 1000 : 90000;
                 
                 this.apiService = new ApiService(this.config);
 
                 this.closeSettingsModal();
-                this.showSuccess('✅ Settings updated for this session!');
+                this.showSuccess('✅ Settings saved!');
                 this.startLiveUpdate();
             }
             
