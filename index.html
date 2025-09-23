@@ -2067,9 +2067,15 @@
             }
 
             renderGroupedStocks(items, container, type) {
-                const gains = items.filter(item => (item.change || 0) > 0);
+                let gains = items.filter(item => (item.change || 0) > 0);
                 const losses = items.filter(item => (item.change || 0) < 0);
                 const unchanged = items.filter(item => (item.change || 0) === 0);
+
+                if (gains.length > 0) {
+                    const biggestGainer = gains.reduce((max, stock) => (stock.change > max.change) ? stock : max, gains[0]);
+                    this.createGroup('Biggest Gain Today', [biggestGainer], 'biggest-gain-header', container, type);
+                    gains = gains.filter(stock => stock.symbol !== biggestGainer.symbol);
+                }
 
                 this.createGroup('Daily Gains', gains.sort((a, b) => b.changePercent - a.changePercent), 'gains-header', container, type);
                 this.createGroup('Daily Losses', losses.sort((a, b) => a.changePercent - b.changePercent), 'losses-header', container, type);
@@ -2508,3 +2514,4 @@
     </script>
 </body>
 </html>
+
