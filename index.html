@@ -68,16 +68,14 @@
         // --- Firebase Config ---
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         
-        // [FIX] Added a placeholder for local development.
-        // The app expects __firebase_config to be injected by the environment.
-        // To run this locally, replace the placeholder values with your own Firebase project config.
+        // [FIX] User's Firebase configuration has been added.
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_AUTH_DOMAIN",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_STORAGE_BUCKET",
-            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-            appId: "YOUR_APP_ID"
+            apiKey: "AIzaSyB3SIrzA5Y3nZhjZXvzKiW3irJubfNdD7g",
+            authDomain: "live-stocks-etfs-mutual-funds.firebaseapp.com",
+            projectId: "live-stocks-etfs-mutual-funds",
+            storageBucket: "live-stocks-etfs-mutual-funds.firebasestorage.app",
+            messagingSenderId: "148439147431",
+            appId: "1:148439147431:web:06d34e54a4e12af7cd8c82"
         };
         
         let db;
@@ -237,16 +235,6 @@
          * Main function to initialize the app.
          */
         async function main() {
-             // Check if running locally and placeholders haven't been replaced
-            if (firebaseConfig.apiKey === "YOUR_API_KEY") {
-                document.body.innerHTML = `
-                    <div class="p-8 text-center bg-white rounded-lg shadow-md">
-                        <h1 class="text-2xl font-bold mb-2 text-red-600">Configuration Needed</h1>
-                        <p class="text-gray-700">To run this app, you need to replace the placeholder values in the <code>firebaseConfig</code> object in the script with your own Firebase project's configuration.</p>
-                    </div>`;
-                return;
-            }
-
             try {
                 const app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
