@@ -2066,13 +2066,22 @@
                 });
             }
 
+            // [MODIFIED] Added Biggest Gain logic
             renderGroupedStocks(items, container, type) {
-                const gains = items.filter(item => (item.change || 0) > 0);
-                const losses = items.filter(item => (item.change || 0) < 0);
+                const gains = items.filter(item => (item.change || 0) > 0).sort((a, b) => b.changePercent - a.changePercent);
+                const losses = items.filter(item => (item.change || 0) < 0).sort((a, b) => a.changePercent - b.changePercent);
                 const unchanged = items.filter(item => (item.change || 0) === 0);
 
-                this.createGroup('Daily Gains', gains.sort((a, b) => b.changePercent - a.changePercent), 'gains-header', container, type);
-                this.createGroup('Daily Losses', losses.sort((a, b) => a.changePercent - b.changePercent), 'losses-header', container, type);
+                let biggestGainer = [];
+                let otherGains = [];
+                if (gains.length > 0) {
+                    biggestGainer.push(gains[0]);
+                    otherGains = gains.slice(1);
+                }
+                
+                this.createGroup('Biggest Gain Today', biggestGainer, 'biggest-gain-header', container, type);
+                this.createGroup('Daily Gains', otherGains, 'gains-header', container, type);
+                this.createGroup('Daily Losses', losses, 'losses-header', container, type);
                 this.createGroup('Unchanged', unchanged, '', container, type);
             }
 
