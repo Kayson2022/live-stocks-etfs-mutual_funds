@@ -1944,10 +1944,9 @@
 
             // MODIFIED: Optimized this function to prevent freezing.
             calculateTransactionStats(transactions = [], currentPrice = 0) {
-                // Use faster shallow copies instead of deep cloning with JSON methods.
                 const buys = (transactions || [])
                     .filter(t => t.type === 'buy')
-                    .map(t => ({ ...t })) // Create a shallow copy
+                    .map(t => ({ ...t })) 
                     .sort((a,b) => new Date(a.date) - new Date(b.date));
 
                 const sells = (transactions || [])
@@ -2425,10 +2424,3 @@
     </script>
 </body>
 </html>
-" and have a query.I have fixed the freezing issue you reported. I've updated the code in your Canvas to resolve the performance problem. Here is a summary of what I changed:
-
-* **Optimized Calculations:** I've rewritten the function that calculates your portfolio stats to be much more efficient. This was the primary cause of the freezing, and the app will now remain fast and responsive even with a large number of transactions.
-* **Minor Fixes:** I made a few other small adjustments to improve the overall stability and performance of the application.
-
-You should no longer experience any freezing when adding new "Buy" transactions or at any other time. Please let me know if you have any other questions.
-
