@@ -473,12 +473,12 @@
             background: linear-gradient(90deg, transparent, rgba(255, 71, 87, 0.1), transparent);
         }
 
-        .gains-header, .biggest-gain-header {
+        .gains-header {
             color: #2ed573;
             background: linear-gradient(90deg, transparent, rgba(46, 213, 115, 0.1), transparent);
         }
-
-        .losses-header::before, .biggest-gain-header::before, .gains-header::before {
+        
+        .losses-header::before, .gains-header::before {
             content: '';
             position: absolute;
             left: 50%;
@@ -493,7 +493,7 @@
             background: #ff4757;
         }
 
-        .gains-header::before, .biggest-gain-header::before {
+        .gains-header::before {
             background: #2ed573;
         }
         
@@ -1876,6 +1876,7 @@
                     const totalCost = stats.totalSharesOwned * stats.averageCostBasis;
                     const overallPLPercent = totalCost > 0 ? (stats.unrealizedPL / totalCost) * 100 : 0;
                     const todayPL = (item.change || 0) * stats.totalSharesOwned;
+                    const unrealizedPLClass = stats.unrealizedPL >= 0 ? 'positive' : 'negative'; // NEW: Class for unrealized P/L coloring
 
                     let transactionDetailsHTML = '';
                     if (type === 'stock' || type === 'fund') {
@@ -1904,7 +1905,7 @@
                             <button class="transaction-btn" onclick="window.stockTracker.openTransactionModal('${item.symbol}', '${type}', 'buy')">Buy</button>
                             <button class="transaction-btn" style="background: #ff4757;" onclick="window.stockTracker.openTransactionModal('${item.symbol}', '${type}', 'sell')">Sell</button>
                         </div>
-                        <div class="total-pl ${stats.unrealizedPL >= 0 ? 'positive' : 'negative'}">Overall P/L: <span class="circle ${stats.unrealizedPL >= 0 ? 'positive' : 'negative'}"></span>$${stats.unrealizedPL.toFixed(2)} (${overallPLPercent.toFixed(2)}%)</div>
+                        <div class="total-pl ${stats.unrealizedPL >= 0 ? 'positive' : 'negative'}">Overall P/L: $${stats.unrealizedPL.toFixed(2)} (${overallPLPercent.toFixed(2)}%)</div>
                         `;
                     } else if (type === 'watchlist') {
                          transactionDetailsHTML = `
