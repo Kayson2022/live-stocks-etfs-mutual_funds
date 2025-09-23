@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Khanh Live Stocks/ETFs & Mutual Funds Tracker</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💰</text></svg>">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         * {
@@ -339,21 +338,246 @@
             white-space: nowrap;
         }
         
-        .circle {
-            width: 10px;
-            height: 10px;
+        .loading, .error, .success {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 2000;
+            width: 90%;
+            max-width: 500px;
+            text-align: center;
+            padding: 15px;
+            border-radius: 10px;
+        }
+
+        .loading {
+            color: #667eea;
+            background-color: white;
+        }
+
+        .error {
+            background: #ff4757;
+            color: white;
+            white-space: pre-line;
+            text-align: left;
+        }
+        
+        .success {
+             background: #2ed573;
+             color: white;
+             white-space: pre-line;
+             text-align: left;
+        }
+        
+        .error h4, .success h4 {
+            margin-bottom: 5px;
+        }
+
+        .refresh-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
             border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .refresh-btn:hover {
+            transform: scale(1.1) rotate(180deg);
+        }
+        
+        .group-wrapper {
+            display: contents; /* Allows children to be direct grid items of .stocks-grid */
+        }
+
+        .group-header, .watchlist-title {
+            grid-column: 1 / -1;
+            font-size: 1.5rem;
+            font-weight: bold;
+            padding: 20px;
+            text-align: left;
+            margin-top: 20px;
+            position: relative;
+            border-radius: 10px;
+            user-select: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .group-header .header-controls {
+            display: flex;
+            align-items: center;
+        }
+
+        .header-collapse-btn {
+            padding: 5px 15px;
+            font-size: 0.9rem;
+            min-width: auto;
+            margin-right: 15px;
+        }
+
+        .group-header {
+             cursor: pointer;
+             transition: background-color: 0.3s ease;
+        }
+
+        .group-header:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+
+        .group-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            transition: max-height 0.5s ease-in-out, opacity 0.3s ease-in-out, margin-top 0.3s ease;
+            max-height: 50000px;
+            opacity: 1;
+            overflow: hidden;
+            margin-top: 0;
+            grid-column: 1 / -1;
+        }
+
+        .group-content.collapsed, .group-footer.collapsed {
+            max-height: 0;
+            opacity: 0;
+            margin-top: 0;
+            padding: 0;
+            border: none;
+            pointer-events: none;
+            display: none;
+        }
+        
+        .group-header .toggle-icon {
+            transition: transform 0.3s ease;
             display: inline-block;
-            margin-right: 5px;
-            vertical-align: middle;
+            font-size: 1.2rem;
+        }
+
+        .group-header.collapsed .toggle-icon {
+            transform: rotate(-90deg);
         }
         
-        .circle.positive {
-            background-color: #2ed573;
+        .losses-header {
+            color: #ff4757;
+            background: linear-gradient(90deg, transparent, rgba(255, 71, 87, 0.1), transparent);
+        }
+
+        .gains-header, .biggest-gain-header {
+            color: #2ed573;
+            background: linear-gradient(90deg, transparent, rgba(46, 213, 115, 0.1), transparent);
+        }
+
+        .losses-header::before, .biggest-gain-header::before, .gains-header::before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            bottom: 5px;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 3px;
+            border-radius: 2px;
         }
         
-        .circle.negative {
-            background-color: #ff4757;
+        .losses-header::before {
+            background: #ff4757;
+        }
+
+        .gains-header::before, .biggest-gain-header::before {
+            background: #2ed573;
+        }
+        
+        .chart-container {
+            margin-top: 20px;
+            padding: 20px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            position: relative;
+            height: 400px; /* Constrains the chart height */
+        }
+        
+        .transaction-details {
+            padding-bottom: 15px;
+        }
+
+        .transaction-entry {
+            background: #f9f9f9;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            padding: 10px;
+        }
+
+        .transaction-info span {
+            display: block;
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+        }
+        
+        .transaction-entry-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 8px;
+        }
+        
+        .transaction-entry .info-value.buy { color: #2ed573; font-weight: bold; }
+        .transaction-entry .info-value.sell { color: #ff4757; font-weight: bold; }
+
+        .total-pl {
+            font-weight: 700;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+            font-size: 1.1rem;
+        }
+
+        .portfolio-summary {
+            background: linear-gradient(135deg, #f0f4ff, #e0e8ff);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            border: 2px solid #667eea;
+        }
+
+        .portfolio-summary h3 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.8rem;
+        }
+
+        .summary-stats {
+            display: flex;
+            justify-content: space-around;
+            text-align: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .summary-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .summary-label {
+            font-size: 1rem;
+            color: #666;
+        }
+
+        .summary-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-top: 5px;
         }
 
         .transaction-btn {
@@ -683,7 +907,7 @@
              background: #333;
         }
         
-        .dark-mode .gains-header {
+        .dark-mode .gains-header, .dark-mode .biggest-gain-header {
             background: linear-gradient(90deg, transparent, rgba(46, 213, 115, 0.05), transparent);
         }
         
@@ -861,7 +1085,7 @@
             </div>
              <div class="watchlist-controls">
                 <button class="add-btn" id="updateWatchlistBtn">🔄 Update Watchlist</button>
-                <button class="add-btn" id="clearWatchlistBtn" style="background: #ff4757;">🗑️️ Clear Watchlist</button>
+                <button class="add-btn" id="clearWatchlistBtn" style="background: #ff4757;">🗑️ Clear Watchlist</button>
             </div>
             <h3 class="watchlist-title">Your Watchlist (<span id="watchlist-count">0</span>)</h3>
         </div>
@@ -1071,6 +1295,17 @@
                     this.handleAuthentication();
                 });
             }
+            
+            formatCurrency(num) {
+                if (typeof num !== 'number') return num;
+                return num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+            }
+
+            formatNumber(num, decimals = 2) {
+                if (typeof num !== 'number') return num;
+                return num.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+            }
+
 
             handleAuthentication() {
                  onAuthStateChanged(auth, user => {
@@ -1365,7 +1600,16 @@
                 const totalOverallPLPercent = totalCostBasis > 0 ? (totalOverallPL / totalCostBasis) * 100 : 0;
                 const totalPLPercentToday = totalPreviousDayValue > 0 ? (totalPLToday / totalPreviousDayValue) * 100 : 0;
                 
-                const setElement = (el, value, isPercent = false) => { if (el) { el.textContent = isPercent ? `${value.toFixed(2)}%` : `$${value.toFixed(2)}`; el.className = `summary-value ${value >= 0 ? 'positive' : 'negative'}`; } };
+                const setElement = (el, value, isPercent = false) => { 
+                    if (el) { 
+                        if (isPercent) {
+                            el.textContent = this.formatNumber(value, 2) + '%';
+                        } else {
+                            el.textContent = this.formatCurrency(value);
+                        }
+                        el.className = `summary-value ${value >= 0 ? 'positive' : 'negative'}`; 
+                    } 
+                };
                 
                 setElement(elements.totalValue, totalCurrentValue);
                 setElement(elements.plToday, totalPLToday);
@@ -1477,7 +1721,7 @@
                 let averageCostBasis = totalSharesOwned > 0 ? costOfRemainingShares / totalSharesOwned : 0;
                 let currentValue = totalSharesOwned * currentPrice;
                 let unrealizedPL = totalSharesOwned > 0 ? currentValue - costOfRemainingShares : 0;
-                return { totalSharesOwned, averageCostBasis, realizedPL, unrealizedPL, currentValue };
+                return { totalSharesOwned, averageCostBasis, realizedPL, unrealizedPL, currentValue, costOfRemainingShares };
             }
             openTransactionModal(symbol, type, transactionType, transactionIndex = -1) {
                 this.elements.transactionModal.style.display = 'flex';
@@ -1522,18 +1766,19 @@
             renderGroupedStocks(items, container, type) {
                 const gains = items.filter(s => s.changePercent >= 0).sort((a, b) => b.changePercent - a.changePercent);
                 const losses = items.filter(s => s.changePercent < 0).sort((a, b) => a.changePercent - b.changePercent);
+                const biggestGain = gains.length > 0 ? [gains[0]] : [];
                 
-                if (gains.length === 0 && losses.length === 0 && items.length > 0) {
-                     this.createGroup('Today', items, 'gains-header', container, type);
-                     return;
-                }
-                 if (gains.length === 0 && losses.length === 0) {
+                if (items.length === 0) {
                      container.innerHTML = `<div class="loading">Your ${type} list is empty.</div>`;
                      return;
                 }
 
-                this.createGroup('📉 Losses Today', losses, 'losses-header', container, type);
+                if (biggestGain.length > 0) {
+                    this.createGroup('🚀 Biggest Gain Today', biggestGain, 'biggest-gain-header', container, type);
+                }
+                
                 this.createGroup('📈 Gains Today', gains, 'gains-header', container, type);
+                this.createGroup('📉 Losses Today', losses, 'losses-header', container, type);
             }
             createGroup(title, list, headerClass, parent, type) {
                 if(list.length === 0) return;
@@ -1586,7 +1831,7 @@
                     <div class="summary-card">
                         <h4>${title} Summary</h4>
                         <p>Total Assets: ${list.length}</p>
-                        <p>Total P/L Today: <span class="${plClass}">$${totalPLToday.toFixed(2)}</span></p>
+                        <p>Total P/L Today: <span class="${plClass}">${this.formatCurrency(totalPLToday)}</span></p>
                     </div>
                 `;
 
@@ -1630,10 +1875,9 @@
                     const changeClass = (item.changePercent || 0) >= 0 ? 'positive' : 'negative';
                     const changeSymbol = (item.change || 0) >= 0 ? '▲' : '▼';
                     const stats = this.calculateTransactionStats(item.transactions, item.price);
-                    const totalCost = stats.totalSharesOwned * stats.averageCostBasis;
+                    const totalCost = stats.costOfRemainingShares; // Using the new value
                     const overallPLPercent = totalCost > 0 ? (stats.unrealizedPL / totalCost) * 100 : 0;
                     const todayPL = (item.change || 0) * stats.totalSharesOwned;
-                    const unrealizedPLClass = stats.unrealizedPL >= 0 ? 'positive' : 'negative';
 
                     let transactionDetailsHTML = '';
                     if (type === 'stock' || type === 'fund') {
@@ -1647,7 +1891,7 @@
                                 ${ (item.transactions || []).map((t, index) => `
                                     <div class="transaction-entry">
                                         <div class="transaction-info">
-                                            <span><strong class="${t.type}">${t.type.toUpperCase()}</strong>: ${t.shares} shares @ $${t.price.toFixed(2)}</span>
+                                            <span><strong class="${t.type}">${t.type.toUpperCase()}</strong>: ${this.formatNumber(t.shares, 3)} shares @ ${this.formatCurrency(t.price)}</span>
                                             ${t.note ? `<span>Note: ${t.note}</span>` : ''}
                                         </div>
                                         <div class="transaction-entry-controls">
@@ -1662,7 +1906,7 @@
                             <button class="transaction-btn" onclick="window.stockTracker.openTransactionModal('${item.symbol}', '${type}', 'buy')">Buy</button>
                             <button class="transaction-btn" style="background: #ff4757;" onclick="window.stockTracker.openTransactionModal('${item.symbol}', '${type}', 'sell')">Sell</button>
                         </div>
-                        <div class="total-pl">Overall P/L: <span class="${unrealizedPLClass}"><span class="circle ${unrealizedPLClass}"></span>$${stats.unrealizedPL.toFixed(2)} (${overallPLPercent.toFixed(2)}%)</span></div>
+                        <div class="total-pl ${stats.unrealizedPL >= 0 ? 'positive' : 'negative'}">Overall P/L: ${this.formatCurrency(stats.unrealizedPL)} (${this.formatNumber(overallPLPercent, 2)}%)</div>
                         `;
                     } else if (type === 'watchlist') {
                          transactionDetailsHTML = `
@@ -1675,17 +1919,18 @@
                     let stockInfoHTML = '';
                      if (type === 'watchlist' || type === 'fund') {
                          stockInfoHTML = `
-                            <div class="info-row"><span class="info-label">Open:</span><span class="info-value">$${(item.open || 0).toFixed(2)}</span></div>
-                            <div class="info-row"><span class="info-label">High:</span><span class="info-value">$${(item.high || 0).toFixed(2)}</span></div>
-                            <div class="info-row"><span class="info-label">Low:</span><span class="info-value">$${(item.low || 0).toFixed(2)}</span></div>
-                            <div class="info-row"><span class="info-label">Prev. Close:</span><span class="info-value">$${(item.previousClose || 0).toFixed(2)}</span></div>
+                            <div class="info-row"><span class="info-label">Open:</span><span class="info-value">${this.formatCurrency(item.open || 0)}</span></div>
+                            <div class="info-row"><span class="info-label">High:</span><span class="info-value">${this.formatCurrency(item.high || 0)}</span></div>
+                            <div class="info-row"><span class="info-label">Low:</span><span class="info-value">${this.formatCurrency(item.low || 0)}</span></div>
+                            <div class="info-row"><span class="info-label">Prev. Close:</span><span class="info-value">${this.formatCurrency(item.previousClose || 0)}</span></div>
                          `;
                      } else { // stock
                          stockInfoHTML = `
-                            <div class="info-row"><span class="info-label">Open:</span><span class="info-value">$${(item.open || 0).toFixed(2)}</span></div>
-                            <div class="info-row"><span class="info-label">Total Shares:</span><span class="info-value">${stats.totalSharesOwned.toFixed(3)}</span></div>
-                            <div class="info-row"><span class="info-label">Total Value:</span><span class="info-value">$${stats.currentValue.toFixed(2)}</span></div>
-                            <div class="info-row"><span class="info-label">Avg. Cost Basis:</span><span class="info-value">$${stats.averageCostBasis.toFixed(2)}</span></div>
+                            <div class="info-row"><span class="info-label">Open:</span><span class="info-value">${this.formatCurrency(item.open || 0)}</span></div>
+                            <div class="info-row"><span class="info-label">Total Shares:</span><span class="info-value">${this.formatNumber(stats.totalSharesOwned, 3)}</span></div>
+                            <div class="info-row"><span class="info-label">Total Cost:</span><span class="info-value">${this.formatCurrency(stats.costOfRemainingShares)}</span></div>
+                            <div class="info-row"><span class="info-label">Total Value:</span><span class="info-value">${this.formatCurrency(stats.currentValue)}</span></div>
+                            <div class="info-row"><span class="info-label">Avg. Cost:</span><span class="info-value">${this.formatCurrency(stats.averageCostBasis)}</span></div>
                          `;
                      }
 
@@ -1694,15 +1939,15 @@
                             <span class="stock-symbol">${item.symbol}</span>
                             <button class="remove-btn" onclick="window.stockTracker.${removalFunction}">×</button>
                         </div>
-                        <div class="stock-price">$${(item.price || 0).toFixed(2)}</div>
+                        <div class="stock-price">${this.formatCurrency(item.price || 0)}</div>
                         <div class="stock-change ${changeClass}">
-                            <span>${changeSymbol} ${(item.change || 0).toFixed(2)} (${(item.changePercent || 0).toFixed(2)}%)</span>
+                            <span>${changeSymbol} ${this.formatCurrency(item.change || 0)} (${(item.changePercent || 0).toFixed(2)}%)</span>
                         </div>
                         <div class="stock-info">
                            ${stockInfoHTML}
                         </div>
                         ${transactionDetailsHTML}
-                        <div class="total-pl ${todayPL >= 0 ? 'positive' : 'negative'}">P/L Today: $${todayPL.toFixed(2)}</div>
+                        <div class="total-pl ${todayPL >= 0 ? 'positive' : 'negative'}">P/L Today: ${this.formatCurrency(todayPL)}</div>
                     `;
                     card.innerHTML = cardHTML;
 
