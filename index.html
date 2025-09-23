@@ -1,11 +1,10 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Khanh Live Stocks/ETFs & Mutual Funds Tracker</title>
-    <!-- MODIFIED: Added a favicon to prevent the 404 error -->
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💰</text></svg>">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         * {
@@ -1694,14 +1693,10 @@
 
                 const sortBy = this.elements.portfolioSort.value;
                 const sortedItems = this.sortItems([...filteredItems], sortBy); 
-                
-                // MODIFIED: Calculate stats ONCE before rendering.
-                sortedItems.forEach(item => {
-                    item.stats = this.calculateTransactionStats(item.transactions, item.price);
-                });
 
                 if (type === 'stock') {
-                    this.renderPortfolioSummary(sortedItems);
+                    this.renderPortfolioSummary();
+                    // MODIFIED: Check for platform sort and render grouped view
                     if (sortBy === 'platform') {
                         this.renderGroupedByPlatform(sortedItems, grid, type);
                     } else if (sortBy === 'performance') {
@@ -1710,13 +1705,13 @@
                         this.renderCards(sortedItems, grid, type);
                     }
                 } else if (type ==='fund') {
-                    this.renderFundsPortfolioSummary(sortedItems);
+                    this.renderFundsPortfolioSummary();
                     this.renderCards(sortedItems, grid, type);
                 } else if (type === 'watchlist') {
                     this.renderCards(sortedItems, grid, type);
                 }
 
-                this.renderDiversificationChart(sortedItems);
+                this.renderDiversificationChart();
                 this.renderHistoryChart();
 
                 if (sortedItems.length === 0 && type !== 'stock') { 
@@ -1727,19 +1722,11 @@
             async saveData() {
                 if (!this.userId) return;
                 const userDocRef = doc(db, "users", this.userId);
-                // Create a deep copy and remove temporary stats before saving
-                const cleanData = { 
-                    stocks: JSON.parse(JSON.stringify(this.stocks)), 
-                    mutualFunds: JSON.parse(JSON.stringify(this.mutualFunds)), 
-                    watchlist: JSON.parse(JSON.stringify(this.watchlist)), 
-                    portfolioHistory: this.portfolioHistory, 
-                    priceAlerts: this.priceAlerts,
+                const data = { 
+                    stocks: this.stocks, mutualFunds: this.mutualFunds, watchlist: this.watchlist, 
+                    portfolioHistory: this.portfolioHistory, priceAlerts: this.priceAlerts,
                 };
-                cleanData.stocks.forEach(s => delete s.stats);
-                cleanData.mutualFunds.forEach(f => delete f.stats);
-                cleanData.watchlist.forEach(w => delete w.stats);
-
-                await setDoc(userDocRef, cleanData);
+                await setDoc(userDocRef, data);
             }
 
             async loadData() {
@@ -1837,8 +1824,8 @@
                 this.renderContent();
             }
 
-            renderPortfolioSummary(items) {
-                this.renderSummary(items, {
+            renderPortfolioSummary() {
+                this.renderSummary(this.stocks, {
                     totalValue: document.getElementById('total-value'),
                     totalContributions: document.getElementById('total-contributions'),
                     totalDividends: document.getElementById('total-dividends'),
@@ -1849,8 +1836,8 @@
                 });
             }
 
-            renderFundsPortfolioSummary(items) {
-                 this.renderSummary(items, {
+            renderFundsPortfolioSummary() {
+                 this.renderSummary(this.mutualFunds, {
                     totalValue: document.getElementById('funds-total-value'),
                     plToday: document.getElementById('funds-total-pl-today'),
                     plPercentToday: document.getElementById('funds-total-pl-percent-today'),
@@ -1862,7 +1849,7 @@
             renderSummary(items, elements) {
                 let totalCurrentValue = 0, totalUnrealizedPL = 0, totalRealizedPL = 0, totalPLToday = 0, totalPreviousDayValue = 0, totalCostBasis = 0;
                 items.forEach(item => {
-                    const stats = item.stats; // Use pre-calculated stats
+                    const stats = this.calculateTransactionStats(item.transactions, item.price);
                     if(stats.totalSharesOwned > 0) {
                         totalCurrentValue += stats.currentValue;
                         totalUnrealizedPL += stats.unrealizedPL;
@@ -1957,22 +1944,12 @@
             }
 
             calculateTransactionStats(transactions = [], currentPrice = 0) {
-                const buys = (transactions || [])
-                    .filter(t => t.type === 'buy')
-                    .map(t => ({ ...t })) 
-                    .sort((a,b) => new Date(a.date) - new Date(b.date));
-
-                const sells = (transactions || [])
-                    .filter(t => t.type === 'sell')
-                    .map(t => ({ ...t }));
-
+                const buys = JSON.parse(JSON.stringify((transactions || []).filter(t => t.type === 'buy').sort((a,b) => new Date(a.date) - new Date(b.date))));
+                const sells = JSON.parse(JSON.stringify((transactions || []).filter(t => t.type === 'sell')));
                 let totalSharesOwned = buys.reduce((s, t) => s + t.shares, 0) - sells.reduce((s, t) => s + t.shares, 0);
-                
                 let realizedPL = 0;
                 for (const sell of sells) {
-                    let sharesToSell = sell.shares; 
-                    let saleProceeds = sharesToSell * sell.price;
-                    let costOfSoldShares = 0;
+                    let sharesToSell = sell.shares, saleProceeds = sharesToSell * sell.price, costOfSoldShares = 0;
                     for (let buy of buys) {
                         if (buy.shares > 0 && sharesToSell > 0) {
                             let sharesFromThisLot = Math.min(sharesToSell, buy.shares);
@@ -1983,12 +1960,10 @@
                     }
                     realizedPL += saleProceeds - costOfSoldShares;
                 }
-                
                 let costOfRemainingShares = buys.reduce((s, t) => s + (t.shares * t.price), 0);
                 let averageCostBasis = totalSharesOwned > 0 ? costOfRemainingShares / totalSharesOwned : 0;
                 let currentValue = totalSharesOwned * currentPrice;
                 let unrealizedPL = totalSharesOwned > 0 ? currentValue - costOfRemainingShares : 0;
-                
                 return { totalSharesOwned, averageCostBasis, realizedPL, unrealizedPL, currentValue, costOfRemainingShares };
             }
 
@@ -2067,8 +2042,8 @@
             }
 
             renderGroupedStocks(items, container, type) {
-                const gains = items.filter(s => s.stats.unrealizedPL >= 0).sort((a, b) => b.stats.unrealizedPL - a.stats.unrealizedPL);
-                const losses = items.filter(s => s.stats.unrealizedPL < 0).sort((a, b) => a.stats.unrealizedPL - b.stats.unrealizedPL);
+                const gains = items.filter(s => s.changePercent >= 0).sort((a, b) => b.changePercent - a.changePercent);
+                const losses = items.filter(s => s.changePercent < 0).sort((a, b) => a.changePercent - b.changePercent);
                 if (items.length === 0) { container.innerHTML = `<div class="loading">Your portfolio is empty.</div>`; return; }
                 const biggestGain = gains.length > 0 ? [gains[0]] : [];
                 if (biggestGain.length > 0) this.createGroup('🚀 Biggest Gain Today', biggestGain, 'biggest-gain-header', container, type);
@@ -2077,6 +2052,7 @@
                 this.createGroup('📉 Losses Today', losses, 'losses-header', container, type);
             }
 
+            // NEW: Function to render stocks grouped by platform
             renderGroupedByPlatform(items, container, type) {
                 if (items.length === 0) { container.innerHTML = `<div class="loading">Your portfolio is empty.</div>`; return; }
                 
@@ -2089,6 +2065,7 @@
                     return acc;
                 }, {});
 
+                // Render each platform group
                 for (const platformName in platformGroups) {
                     this.createGroup(platformName, platformGroups[platformName], 'platform-header', container, type);
                 }
@@ -2121,7 +2098,7 @@
                 itemList.forEach(item => {
                     const card = document.createElement('div');
                     card.className = `${type}-card`;
-                    const stats = item.stats; // Use pre-calculated stats
+                    const stats = this.calculateTransactionStats(item.transactions, item.price);
                     
                     const platformHTML = item.platform ? `<div class="info-row"><span class="info-label">Platform:</span><span class="info-value">${item.platform}</span></div>` : '';
 
@@ -2132,6 +2109,7 @@
                          stockInfoHTML = `<div class="info-row"><span class="info-label">Open:</span><span class="info-value">${this.formatCurrency(item.open || 0)}</span></div><div class="info-row"><span class="info-label">Total Shares:</span><span class="info-value">${this.formatNumber(stats.totalSharesOwned, 3)}</span></div><div class="info-row"><span class="info-label">Total Value:</span><span class="info-value ${stats.unrealizedPL >= 0 ? 'positive' : 'negative'}">${this.formatCurrency(stats.currentValue)}</span></div><div class="info-row"><span class="info-label">Avg. Cost:</span><span class="info-value">${this.formatCurrency(stats.averageCostBasis)}</span></div>${platformHTML}`;
                      }
                     
+                    // NEW: Add Edit button to transaction details
                     let transactionDetailsHTML = '';
                     if (type === 'stock' || type === 'fund') {
                         transactionDetailsHTML = `
@@ -2223,16 +2201,15 @@
                 reader.readAsText(file);
             }
             
-            renderDiversificationChart(items) {
+            renderDiversificationChart() {
                 const container = this.elements.diversificationChartContainer;
-                const hasTransactions = items.some(s => s.stats.currentValue > 0);
+                const hasTransactions = this.stocks.some(s => s.transactions && s.transactions.length > 0 && this.calculateTransactionStats(s.transactions).currentValue > 0);
                 container.style.display = this.currentTab === 'stocks' && hasTransactions ? 'block' : 'none';
-                if (container.style.display === 'none') return;
+                if (!container.style.display || container.style.display === 'none') return;
 
-                const industryData = items.reduce((acc, stock) => {
-                    if (stock.stats.currentValue > 0) {
-                        acc[stock.industry || 'Other'] = (acc[stock.industry || 'Other'] || 0) + stock.stats.currentValue;
-                    }
+                const industryData = this.stocks.reduce((acc, stock) => {
+                    const { currentValue } = this.calculateTransactionStats(stock.transactions, stock.price);
+                    if (currentValue > 0) acc[stock.industry || 'Other'] = (acc[stock.industry || 'Other'] || 0) + currentValue;
                     return acc;
                 }, {});
                 const sortedData = Object.entries(industryData).sort(([, a], [, b]) => b - a);
@@ -2297,7 +2274,7 @@
                 const interval = parseInt(this.elements.modalRefreshInterval.value, 10);
                 
                 localStorage.setItem('finnhubApiKey', finnhubKey);
-                localStorage.setItem('alphaVantageKey', alphaVantageKey);
+                localStorage.setItem('alphaVantageApiKey', alphaVantageKey);
                 if (interval && interval >= 10) {
                     localStorage.setItem('refreshIntervalMs', interval * 1000);
                 }
@@ -2320,7 +2297,7 @@
                 this.isDarkMode = localStorage.getItem('darkMode') === 'true';
                 document.body.classList.toggle('dark-mode', this.isDarkMode);
                 if (this.currentTab === 'stocks') {
-                    this.renderDiversificationChart(this.stocks);
+                    this.renderDiversificationChart();
                     this.renderHistoryChart();
                 }
             }
