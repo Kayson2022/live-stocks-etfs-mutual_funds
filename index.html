@@ -41,8 +41,6 @@
     </div>
 
     <script type="module">
-        // FIX: Replaced inlined library code with standard module imports.
-        // This resolves the "Identifier 't' has already been declared" error by preventing variable name collisions.
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, query, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
@@ -69,7 +67,18 @@
 
         // --- Firebase Config ---
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        
+        // [FIX] Added a placeholder for local development.
+        // The app expects __firebase_config to be injected by the environment.
+        // To run this locally, replace the placeholder values with your own Firebase project config.
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
         
         let db;
         
@@ -228,8 +237,13 @@
          * Main function to initialize the app.
          */
         async function main() {
-            if (!firebaseConfig.apiKey) {
-                document.body.innerHTML = "<h1>Firebase configuration is missing. Cannot start the app.</h1>";
+             // Check if running locally and placeholders haven't been replaced
+            if (firebaseConfig.apiKey === "YOUR_API_KEY") {
+                document.body.innerHTML = `
+                    <div class="p-8 text-center bg-white rounded-lg shadow-md">
+                        <h1 class="text-2xl font-bold mb-2 text-red-600">Configuration Needed</h1>
+                        <p class="text-gray-700">To run this app, you need to replace the placeholder values in the <code>firebaseConfig</code> object in the script with your own Firebase project's configuration.</p>
+                    </div>`;
                 return;
             }
 
