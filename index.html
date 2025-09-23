@@ -1664,6 +1664,9 @@
             }
 
             renderContent() {
+                console.time('renderContent'); // DEBUG
+                console.log(`Starting renderContent for tab: ${this.currentTab}`); // DEBUG
+
                 if (!this.userId && db) return;
                 const grid = this.elements.stocksGrid;
                 if (!grid) return;
@@ -1680,6 +1683,7 @@
                     this.elements.watchlistCount.textContent = this.watchlist.length;
                 } else if (this.currentTab === 'news') {
                     this.fetchAndRenderNews();
+                    console.timeEnd('renderContent'); // DEBUG
                     return;
                 }
 
@@ -1695,7 +1699,6 @@
 
                 if (type === 'stock') {
                     this.renderPortfolioSummary();
-                    // MODIFIED: Check for platform sort and render grouped view
                     if (sortBy === 'platform') {
                         this.renderGroupedByPlatform(sortedItems, grid, type);
                     } else if (sortBy === 'performance') {
@@ -1716,6 +1719,7 @@
                 if (sortedItems.length === 0 && type !== 'stock') { 
                     grid.innerHTML = `<div class="loading">Your ${type} list is empty.</div>`; 
                 }
+                console.timeEnd('renderContent'); // DEBUG
             }
             
             async saveData() {
@@ -1944,16 +1948,26 @@
 
             // MODIFIED: Optimized this function to prevent freezing.
             calculateTransactionStats(transactions = [], currentPrice = 0) {
-                const buys = (transactions || [])
-                    .filter(t => t.type === 'buy')
-                    .map(t => ({ ...t })) 
-                    .sort((a,b) => new Date(a.date) - new Date(b.date));
+                console.time(`calculateTransactionStats for ${transactions.length} txns`); // DEBUG
+                
+                let totalSharesOwned = 0;
+                let totalCostOfBuys = 0;
 
-                const sells = (transactions || [])
-                    .filter(t => t.type === 'sell')
-                    .map(t => ({ ...t }));
+                const buys = [];
+                const sells = [];
 
-                let totalSharesOwned = buys.reduce((s, t) => s + t.shares, 0) - sells.reduce((s, t) => s + t.shares, 0);
+                for (const t of (transactions || [])) {
+                    if (t.type === 'buy') {
+                        buys.push({ ...t });
+                        totalSharesOwned += t.shares;
+                        totalCostOfBuys += t.shares * t.price;
+                    } else if (t.type === 'sell') {
+                        sells.push({ ...t });
+                        totalSharesOwned -= t.shares;
+                    }
+                }
+
+                buys.sort((a,b) => new Date(a.date) - new Date(b.date));
                 
                 let realizedPL = 0;
                 for (const sell of sells) {
@@ -1964,7 +1978,7 @@
                         if (buy.shares > 0 && sharesToSell > 0) {
                             let sharesFromThisLot = Math.min(sharesToSell, buy.shares);
                             costOfSoldShares += sharesFromThisLot * buy.price;
-                            buy.shares -= sharesFromThisLot;
+                            buy.shares -= sharesFromThisLot; // Reduce shares from the original buy lot
                             sharesToSell -= sharesFromThisLot;
                         }
                     }
@@ -1975,7 +1989,8 @@
                 let averageCostBasis = totalSharesOwned > 0 ? costOfRemainingShares / totalSharesOwned : 0;
                 let currentValue = totalSharesOwned * currentPrice;
                 let unrealizedPL = totalSharesOwned > 0 ? currentValue - costOfRemainingShares : 0;
-                
+
+                console.timeEnd(`calculateTransactionStats for ${transactions.length} txns`); // DEBUG
                 return { totalSharesOwned, averageCostBasis, realizedPL, unrealizedPL, currentValue, costOfRemainingShares };
             }
 
@@ -2017,6 +2032,7 @@
             closeTransactionModal() { this.elements.transactionModal.style.display = 'none'; }
             
             async saveTransaction() {
+                console.log('Attempting to save transaction...'); // DEBUG
                 const { symbol, type, transactionType, transactionIndex: indexStr } = this.elements.modalSaveBtn.dataset;
                 const index = parseInt(indexStr);
                 const list = (type === 'stock') ? this.stocks : this.mutualFunds;
@@ -2037,6 +2053,7 @@
                 }
                 
                 await this.saveData();
+                console.log('Transaction saved, preparing to re-render...'); // DEBUG
                 this.renderContent();
                 this.closeTransactionModal();
             }
@@ -2064,7 +2081,6 @@
                 this.createGroup('📉 Losses Today', losses, 'losses-header', container, type);
             }
 
-            // NEW: Function to render stocks grouped by platform
             renderGroupedByPlatform(items, container, type) {
                 if (items.length === 0) { container.innerHTML = `<div class="loading">Your portfolio is empty.</div>`; return; }
                 
@@ -2077,7 +2093,6 @@
                     return acc;
                 }, {});
 
-                // Render each platform group
                 for (const platformName in platformGroups) {
                     this.createGroup(platformName, platformGroups[platformName], 'platform-header', container, type);
                 }
@@ -2103,6 +2118,7 @@
             }
             
             renderCards(itemList, container, type) {
+                console.time(`renderCards for ${itemList.length} items`); // DEBUG
                 if (!container.classList.contains('group-content')) {
                     container.innerHTML = ''; 
                 }
@@ -2121,7 +2137,6 @@
                          stockInfoHTML = `<div class="info-row"><span class="info-label">Open:</span><span class="info-value">${this.formatCurrency(item.open || 0)}</span></div><div class="info-row"><span class="info-label">Total Shares:</span><span class="info-value">${this.formatNumber(stats.totalSharesOwned, 3)}</span></div><div class="info-row"><span class="info-label">Total Value:</span><span class="info-value ${stats.unrealizedPL >= 0 ? 'positive' : 'negative'}">${this.formatCurrency(stats.currentValue)}</span></div><div class="info-row"><span class="info-label">Avg. Cost:</span><span class="info-value">${this.formatCurrency(stats.averageCostBasis)}</span></div>${platformHTML}`;
                      }
                     
-                    // NEW: Add Edit button to transaction details
                     let transactionDetailsHTML = '';
                     if (type === 'stock' || type === 'fund') {
                         transactionDetailsHTML = `
@@ -2153,6 +2168,7 @@
                     }
                     container.appendChild(card);
                 });
+                console.timeEnd(`renderCards for ${itemList.length} items`); // DEBUG
             }
 
             async moveToPortfolio(symbol) {
@@ -2424,3 +2440,4 @@
     </script>
 </body>
 </html>
+
