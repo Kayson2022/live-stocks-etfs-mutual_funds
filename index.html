@@ -339,6 +339,14 @@
             text-overflow: ellipsis;
             white-space: nowrap;
         }
+        /* Fix for color specificity */
+        .info-value.positive {
+            color: #2ed573;
+        }
+
+        .info-value.negative {
+            color: #ff4757;
+        }
         
         .loading, .error, .success {
             position: fixed;
@@ -920,13 +928,6 @@
             height: 100px;
             object-fit: cover;
             border-radius: 10px;
-        }
-
-        .news-article-content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
         }
 
         .news-article-content h4 {
