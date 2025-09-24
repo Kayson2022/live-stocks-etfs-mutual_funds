@@ -2147,24 +2147,46 @@
                     
                     const platformHTML = item.platform ? `<div class="info-row"><span class="info-label">Platform:</span><span class="info-value">${item.platform}</span></div>` : '';
 
-                    // New HTML for Total P/L and Total Cost Basis
-                    const totalPLClass = stats.unrealizedPL >= 0 ? 'positive' : 'negative';
-                    const totalPLHtml = stats.totalSharesOwned > 0 ? `<div class="info-row"><span class="info-label">Total P/L:</span><span class="info-value ${totalPLClass}">${this.formatCurrency(stats.unrealizedPL)}</span></div>` : '';
-                    
-                    const totalPLPercent = stats.costOfRemainingShares > 0 ? (stats.unrealizedPL / stats.costOfRemainingShares) * 100 : 0;
-                    const totalPLPercentClass = totalPLPercent >= 0 ? 'positive' : 'negative';
-                    const totalPLPercentHtml = stats.totalSharesOwned > 0 ? `<div class="info-row"><span class="info-label">Total P/L %:</span><span class="info-value ${totalPLPercentClass}">${this.formatNumber(totalPLPercent, 2)}%</span></div>` : '';
-                    
-                    const totalCostBasisHtml = stats.totalSharesOwned > 0 ? `<div class="info-row"><span class="info-label">Total Cost Basis:</span><span class="info-value">${this.formatCurrency(stats.costOfRemainingShares)}</span></div>` : '';
+                    const positiveClass = value => value >= 0 ? 'positive' : 'negative';
+                    const totalPL = stats.unrealizedPL;
+                    const totalPLPercent = stats.costOfRemainingShares > 0 ? (totalPL / stats.costOfRemainingShares) * 100 : 0;
                     
                     let stockInfoHTML = '';
                      if (type === 'watchlist' || type === 'fund') {
                          stockInfoHTML = `<div class="info-row"><span class="info-label">Open:</span><span class="info-value">${this.formatCurrency(item.open || 0)}</span></div><div class="info-row"><span class="info-label">High:</span><span class="info-value">${this.formatCurrency(item.high || 0)}</span></div><div class="info-row"><span class="info-label">Low:</span><span class="info-value">${this.formatCurrency(item.low || 0)}</span></div><div class="info-row"><span class="info-label">Prev. Close:</span><span class="info-value">${this.formatCurrency(item.previousClose || 0)}</span></div>`;
                      } else { 
-                         stockInfoHTML = `<div class="info-row"><span class="info-label">Open:</span><span class="info-value">${this.formatCurrency(item.open || 0)}</span></div><div class="info-row"><span class="info-label">Total Shares:</span><span class="info-value">${this.formatNumber(stats.totalSharesOwned, 3)}</span></div><div class="info-row"><span class="info-label">Total Value:</span><span class="info-value ${stats.unrealizedPL >= 0 ? 'positive' : 'negative'}">${this.formatCurrency(stats.currentValue)}</span></div><div class="info-row"><span class="info-label">Avg. Cost:</span><span class="info-value">${this.formatCurrency(stats.averageCostBasis)}</span></div>${totalPLHtml}${totalPLPercentHtml}${totalCostBasisHtml}${platformHTML}`;
+                         stockInfoHTML = `
+                         <div class="info-row">
+                             <span class="info-label">Open:</span>
+                             <span class="info-value">${this.formatCurrency(item.open || 0)}</span>
+                         </div>
+                         <div class="info-row">
+                             <span class="info-label">Total Shares:</span>
+                             <span class="info-value">${this.formatNumber(stats.totalSharesOwned, 3)}</span>
+                         </div>
+                         <div class="info-row">
+                             <span class="info-label">Total Value:</span>
+                             <span class="info-value ${positiveClass(stats.currentValue)}">${this.formatCurrency(stats.currentValue)}</span>
+                         </div>
+                         <div class="info-row">
+                             <span class="info-label">Avg. Cost:</span>
+                             <span class="info-value">${this.formatCurrency(stats.averageCostBasis)}</span>
+                         </div>
+                         <div class="info-row">
+                             <span class="info-label">Total P/L:</span>
+                             <span class="info-value ${positiveClass(totalPL)}">${this.formatCurrency(totalPL)}</span>
+                         </div>
+                         <div class="info-row">
+                             <span class="info-label">Total P/L %:</span>
+                             <span class="info-value ${positiveClass(totalPLPercent)}">${this.formatNumber(totalPLPercent, 2)}%</span>
+                         </div>
+                         <div class="info-row">
+                             <span class="info-label">Total Cost Basis:</span>
+                             <span class="info-value">${this.formatCurrency(stats.costOfRemainingShares)}</span>
+                         </div>
+                         ${platformHTML}`;
                      }
                     
-                    // NEW: Add Edit button to transaction details
                     let transactionDetailsHTML = '';
                     if (type === 'stock' || type === 'fund') {
                         transactionDetailsHTML = `
@@ -2345,7 +2367,7 @@
                 const interval = parseInt(this.elements.modalRefreshInterval.value, 10);
                 
                 localStorage.setItem('finnhubApiKey', finnhubKey);
-                localStorage.setItem('alphaVantageKey', alphaVantageKey);
+                localStorage.setItem('alphaVantageApiKey', alphaVantageKey);
                 if (interval && interval >= 10) {
                     localStorage.setItem('refreshIntervalMs', interval * 1000);
                 }
