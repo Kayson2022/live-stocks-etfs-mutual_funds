@@ -745,13 +745,7 @@
             grid-column: 1 / -1;
         }
         .summary-content.collapsed {
-            display: none; /* Only hide the summary when collapsed */
-            max-height: 0;
-            opacity: 0;
-            margin-top: 0;
-            padding: 0;
-            border: none;
-            pointer-events: none;
+            display: none;
         }
         .summary-card {
             background: #f9fafb;
@@ -772,6 +766,7 @@
             font-size: 1.1rem;
             line-height: 1.6;
             color: #555;
+            white-space: pre-line;
         }
         
         .transaction-header {
@@ -2087,13 +2082,16 @@
                     if (items.length > 0) {
                         const item = items[0];
                         summaryTitle = `Biggest Gain: ${item.symbol}`;
-                        summaryText = `Gained ${this.formatCurrency(item.change)} today, a change of ${(item.changePercent || 0).toFixed(2)}%.`;
+                        const changeClass = (item.change || 0) >= 0 ? 'positive' : 'negative';
+                        const changePercentClass = (item.changePercent || 0) >= 0 ? 'positive' : 'negative';
+                        summaryText = `Gained <span class="${changeClass}">${this.formatCurrency(item.change)}</span> today, a change of <span class="${changePercentClass}">${(item.changePercent || 0).toFixed(2)}%</span>.`;
                     }
                 } else {
                     const totalChange = items.reduce((sum, item) => sum + (item.change || 0) * this.calculateTransactionStats(item.transactions, item.price).totalSharesOwned, 0);
                     const totalValue = items.reduce((sum, item) => sum + this.calculateTransactionStats(item.transactions, item.price).currentValue, 0);
                     summaryTitle = `Summary of ${items.length} item(s)`;
-                    summaryText = `Total Value: ${this.formatCurrency(totalValue)}\nTotal Change Today: ${this.formatCurrency(totalChange)}`;
+                    const totalChangeClass = totalChange >= 0 ? 'positive' : 'negative';
+                    summaryText = `Total Value: ${this.formatCurrency(totalValue)}\nTotal Change Today: <span class="${totalChangeClass}">${this.formatCurrency(totalChange)}</span>`;
                 }
 
                 return { title: summaryTitle, text: summaryText };
