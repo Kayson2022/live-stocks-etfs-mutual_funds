@@ -2040,17 +2040,20 @@
             }
 
             renderGroupedStocks(items, container, type) {
-                const gains = items.filter(s => s.changePercent >= 0).sort((a, b) => b.changePercent - a.changePercent);
-                const losses = items.filter(s => s.changePercent < 0).sort((a, b) => a.changePercent - b.changePercent);
+                const gains = items.filter(s => (s.changePercent || 0) >= 0).sort((a, b) => b.changePercent - a.changePercent);
+                const losses = items.filter(s => (s.changePercent || 0) < 0).sort((a, b) => a.changePercent - b.changePercent);
+                
                 if (items.length === 0) { container.innerHTML = `<div class="loading">Your portfolio is empty.</div>`; return; }
+                
                 const biggestGain = gains.length > 0 ? [gains[0]] : [];
-                if (biggestGain.length > 0) this.createGroup('🚀 Biggest Gain Today', biggestGain, 'biggest-gain-header', container, type);
+                if (biggestGain.length > 0) this.createGroup('🚀 Biggest Gain Today', biggestGain, 'biggest-gain-header', container, type, this.getGroupSummary(biggestGain, 'biggest-gain'));
+                
                 const otherGains = gains.filter(s => biggestGain.length === 0 || s.symbol !== biggestGain[0].symbol);
-                this.createGroup('📈 Gains Today', otherGains, 'gains-header', container, type);
-                this.createGroup('📉 Losses Today', losses, 'losses-header', container, type);
+                this.createGroup('📈 Gains Today', otherGains, 'gains-header', container, type, this.getGroupSummary(otherGains, 'gains'));
+                
+                this.createGroup('📉 Losses Today', losses, 'losses-header', container, type, this.getGroupSummary(losses, 'losses'));
             }
 
-            // NEW: Function to render stocks grouped by platform
             renderGroupedByPlatform(items, container, type) {
                 if (items.length === 0) { container.innerHTML = `<div class="loading">Your portfolio is empty.</div>`; return; }
                 
@@ -2063,14 +2066,32 @@
                     return acc;
                 }, {});
 
-                // Render each platform group
                 for (const platformName in platformGroups) {
-                    this.createGroup(platformName, platformGroups[platformName], 'platform-header', container, type);
+                    this.createGroup(platformName, platformGroups[platformName], 'platform-header', container, type, this.getGroupSummary(platformGroups[platformName], 'platform'));
                 }
             }
 
+            getGroupSummary(items, type) {
+                let summaryTitle = '';
+                let summaryText = '';
+                
+                if (type === 'biggest-gain') {
+                    if (items.length > 0) {
+                        const item = items[0];
+                        summaryTitle = `Biggest Gain: ${item.symbol}`;
+                        summaryText = `Gained ${this.formatCurrency(item.change)} today, a change of ${(item.changePercent || 0).toFixed(2)}%.`;
+                    }
+                } else {
+                    const totalChange = items.reduce((sum, item) => sum + (item.change || 0) * this.calculateTransactionStats(item.transactions, item.price).totalSharesOwned, 0);
+                    const totalValue = items.reduce((sum, item) => sum + this.calculateTransactionStats(item.transactions, item.price).currentValue, 0);
+                    summaryTitle = `Summary of ${items.length} item(s)`;
+                    summaryText = `Total Value: ${this.formatCurrency(totalValue)}\nTotal Change Today: ${this.formatCurrency(totalChange)}`;
+                }
 
-            createGroup(title, list, headerClass, parent, type) {
+                return { title: summaryTitle, text: summaryText };
+            }
+
+            createGroup(title, list, headerClass, parent, type, summary = { title: '', text: '' }) {
                 if(list.length === 0) return;
                 const groupWrapper = document.createElement('div');
                 groupWrapper.className = 'group-wrapper';
@@ -2079,21 +2100,25 @@
                 header.innerHTML = `<span>${title} (${list.length})</span><div class="header-controls"><button class="add-btn header-collapse-btn">Collapse</button><span class="toggle-icon">▼</span></div>`;
                 const content = document.createElement('div');
                 content.className = 'group-content';
+                const summaryContainer = document.createElement('div');
+                summaryContainer.className = 'summary-content collapsed';
+                summaryContainer.innerHTML = `<div class="summary-card"><h4>${summary.title}</h4><p>${summary.text}</p></div>`;
                 
                 const toggleGroup = () => {
                     header.classList.toggle('collapsed');
                     content.classList.toggle('collapsed');
+                    summaryContainer.classList.toggle('collapsed');
                     const button = header.querySelector('.header-collapse-btn');
                     button.textContent = header.classList.contains('collapsed') ? 'Expand' : 'Collapse';
                 };
 
                 header.addEventListener('click', toggleGroup);
                 header.querySelector('.header-collapse-btn').addEventListener('click', (e) => {
-                    e.stopPropagation(); // Prevents the main header click from also firing
+                    e.stopPropagation();
                     toggleGroup();
                 });
 
-                groupWrapper.append(header, content);
+                groupWrapper.append(header, content, summaryContainer);
                 parent.appendChild(groupWrapper);
                 this.renderCards(list, content, type);
             }
