@@ -2076,13 +2076,23 @@
                 groupWrapper.className = 'group-wrapper';
                 const header = document.createElement('div');
                 header.className = `group-header ${headerClass}`;
-                header.innerHTML = `<span>${title} (${list.length})</span><div class="header-controls"><span class="toggle-icon">▼</span></div>`;
+                header.innerHTML = `<span>${title} (${list.length})</span><div class="header-controls"><button class="add-btn header-collapse-btn">Collapse</button><span class="toggle-icon">▼</span></div>`;
                 const content = document.createElement('div');
                 content.className = 'group-content';
-                header.addEventListener('click', () => {
+                
+                const toggleGroup = () => {
                     header.classList.toggle('collapsed');
                     content.classList.toggle('collapsed');
+                    const button = header.querySelector('.header-collapse-btn');
+                    button.textContent = header.classList.contains('collapsed') ? 'Expand' : 'Collapse';
+                };
+
+                header.addEventListener('click', toggleGroup);
+                header.querySelector('.header-collapse-btn').addEventListener('click', (e) => {
+                    e.stopPropagation(); // Prevents the main header click from also firing
+                    toggleGroup();
                 });
+
                 groupWrapper.append(header, content);
                 parent.appendChild(groupWrapper);
                 this.renderCards(list, content, type);
@@ -2112,7 +2122,13 @@
                     if (type === 'stock' || type === 'fund') {
                         transactionDetailsHTML = `
                         <div class="transaction-details">
-                            <div class="transaction-header"><h4>Transactions:</h4><span class="toggle-icon">▼</span></div>
+                            <div class="transaction-header">
+                                <h4>Transactions:</h4>
+                                <div class="header-controls">
+                                    <button class="add-btn header-collapse-btn">Collapse</button>
+                                    <span class="toggle-icon">▼</span>
+                                </div>
+                            </div>
                             <div class="transactions-container">${ (item.transactions || []).map((t, index) => `<div class="transaction-entry"><span><strong class="${t.type}">${t.type.toUpperCase()}</strong>: ${this.formatNumber(t.shares, 3)} @ ${this.formatCurrency(t.price)}</span>${t.note ? `<span>Note: ${t.note}</span>` : ''}</div>`).join('')}</div>
                         </div>
                         <div class="card-actions">
@@ -2132,9 +2148,19 @@
                     
                     const transactionHeader = card.querySelector('.transaction-header');
                     if (transactionHeader) {
-                        transactionHeader.addEventListener('click', () => {
+                        const toggleTransactions = () => {
                             transactionHeader.classList.toggle('collapsed');
-                            transactionHeader.nextElementSibling.classList.toggle('collapsed');
+                            const transactionsContainer = transactionHeader.nextElementSibling;
+                            if (transactionsContainer) {
+                                transactionsContainer.classList.toggle('collapsed');
+                                const button = transactionHeader.querySelector('.header-collapse-btn');
+                                button.textContent = transactionHeader.classList.contains('collapsed') ? 'Expand' : 'Collapse';
+                            }
+                        };
+                        transactionHeader.addEventListener('click', toggleTransactions);
+                        transactionHeader.querySelector('.header-collapse-btn').addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            toggleTransactions();
                         });
                     }
                     container.appendChild(card);
@@ -2272,7 +2298,7 @@
                 const interval = parseInt(this.elements.modalRefreshInterval.value, 10);
                 
                 localStorage.setItem('finnhubApiKey', finnhubKey);
-                localStorage.setItem('alphaVantageApiKey', alphaVantageKey);
+                localStorage.setItem('alphaVantageKey', alphaVantageKey);
                 if (interval && interval >= 10) {
                     localStorage.setItem('refreshIntervalMs', interval * 1000);
                 }
