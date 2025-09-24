@@ -1520,7 +1520,7 @@
                 this.config = {
                     refreshIntervalMs: parseInt(localStorage.getItem('refreshIntervalMs')) || 90000,
                     finnhubApiKey: userFinnhubKey || "d316lc1r01qnu2r0opjgd316lc1r01qnu2r0opk0",
-                    alphaVantageKey: userAlphaVantageKey || "0ZPH51BZ2N5O9G8Q",
+                    alphaVantageApiKey: userAlphaVantageKey || "0ZPH51BZ2N5O9G8Q",
                 };
             }
 
@@ -2103,28 +2103,34 @@
                 groupWrapper.className = 'group-wrapper';
                 const header = document.createElement('div');
                 header.className = `group-header ${headerClass}`;
-                header.innerHTML = `<span>${title} (${list.length})</span><div class="header-controls"><button class="add-btn header-collapse-btn">Collapse</button><span class="toggle-icon">▼</span></div>`;
+                header.innerHTML = `<span>${title} (${list.length})</span><span class="toggle-icon">▼</span>`;
                 const content = document.createElement('div');
                 content.className = 'group-content';
                 const summaryContainer = document.createElement('div');
                 summaryContainer.className = 'summary-content collapsed';
                 summaryContainer.innerHTML = `<div class="summary-card"><h4>${summary.title}</h4><p>${summary.text}</p></div>`;
+                const footer = document.createElement('div');
+                footer.className = 'group-footer';
+                footer.innerHTML = `<button class="add-btn collapse-group-btn">Collapse</button>`;
                 
                 const toggleGroup = () => {
-                    header.classList.toggle('collapsed');
+                    const isCollapsed = header.classList.toggle('collapsed');
                     content.classList.toggle('collapsed');
                     summaryContainer.classList.toggle('collapsed');
-                    const button = header.querySelector('.header-collapse-btn');
-                    button.textContent = header.classList.contains('collapsed') ? 'Expand' : 'Collapse';
+                    const toggleIcon = header.querySelector('.toggle-icon');
+                    toggleIcon.style.transform = isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
+                    footer.querySelector('.collapse-group-btn').textContent = isCollapsed ? 'Expand' : 'Collapse';
                 };
 
                 header.addEventListener('click', toggleGroup);
-                header.querySelector('.header-collapse-btn').addEventListener('click', (e) => {
+                footer.querySelector('.collapse-group-btn').addEventListener('click', (e) => {
+                    e.preventDefault();
                     e.stopPropagation();
                     toggleGroup();
+                    header.scrollIntoView({ behavior: 'smooth' });
                 });
 
-                groupWrapper.append(header, content, summaryContainer);
+                groupWrapper.append(header, content, summaryContainer, footer);
                 parent.appendChild(groupWrapper);
                 this.renderCards(list, content, type);
             }
