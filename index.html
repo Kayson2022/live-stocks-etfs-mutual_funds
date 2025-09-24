@@ -184,9 +184,9 @@
             border-radius: 15px;
         }
 
-        .search-input, #portfolioFilter, #portfolioSort, #platformInput {
+        .search-input, #portfolioFilter, #portfolioSort {
             flex: 1;
-            min-width: 200px;
+            min-width: 250px;
             padding: 15px 20px;
             border: 2px solid #e0e0e0;
             border-radius: 50px;
@@ -199,7 +199,7 @@
             cursor: pointer;
         }
 
-        .search-input:focus, #portfolioFilter:focus, #portfolioSort:focus, #platformInput:focus {
+        .search-input:focus, #portfolioFilter:focus, #portfolioSort:focus {
             border-color: #667eea;
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
@@ -656,7 +656,7 @@
              color: white;
         }
         
-        .dark-mode .search-input, .dark-mode #portfolioFilter, .dark-mode #portfolioSort {
+        .dark-mode .search-input, .dark-mode #portfolioFilter, .dark-mode #portfolioSort, .dark-mode #platformInput {
             background-color: #333;
             border-color: #555;
             color: #f1f1f1;
@@ -683,15 +683,26 @@
              background: #333;
         }
         
-        .dark-mode .gains-header {
+        .dark-mode .gains-header, .dark-mode .biggest-gain-header {
             background: linear-gradient(90deg, transparent, rgba(46, 213, 115, 0.05), transparent);
         }
         
         .dark-mode .losses-header {
             background: linear-gradient(90deg, transparent, rgba(255, 71, 87, 0.05), transparent);
         }
-        /* -- END OF STYLES -- */
+        
+        .dark-mode .news-article-card {
+            background: #2a2a2e;
+        }
 
+        .dark-mode .news-article-content h4 {
+             color: #f1f1f1;
+        }
+        .dark-mode .news-article-content p {
+             color: #aaa;
+        }
+        
+        /* --- MOBILE STYLES --- */
         @media (max-width: 768px) {
             .container { padding: 15px; }
             h1 { font-size: 1.8rem; }
@@ -736,6 +747,7 @@
     <div id="error" class="error" style="display: none;"></div>
     <div id="success" class="success" style="display: none;"></div>
     <div id="refresh-status-popup" class="refresh-status-popup"></div>
+    <div id="alert-notification" class="alert-notification" style="display: none;"></div>
 
     <div id="login-container" class="container">
         <h1>💰 Live Portfolio Tracker</h1>
@@ -759,6 +771,7 @@
             <button class="tab active" onclick="window.stockTracker.switchTab('stocks')">📊 Stocks & Portfolio</button>
             <button class="tab" onclick="window.stockTracker.switchTab('funds')">🏛️ Mutual Funds</button>
             <button class="tab" onclick="window.stockTracker.switchTab('watchlist')">👀 Watchlist</button>
+            <button class="tab" onclick="window.stockTracker.switchTab('news')">📰 News</button>
         </div>
 
         <div id="stocks-tab" class="tab-content active">
@@ -768,6 +781,14 @@
                     <div class="summary-item">
                         <span class="summary-label">Total Value</span>
                         <span id="total-value" class="summary-value">$0.00</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Total Contributions</span>
+                        <span id="total-contributions" class="summary-value total-contributions">$0.00</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Total Dividends</span>
+                        <span id="total-dividends" class="summary-value positive">$0.00</span>
                     </div>
                     <div class="summary-item">
                         <span class="summary-label">Total P/L Today</span>
@@ -789,7 +810,8 @@
             </div>
             
             <div class="search-section">
-                <input type="text" class="search-input" id="stockInput" placeholder="Enter stock symbol (e.g., AAPL, GOOGL, TSLA)">
+                <input type="text" class="search-input" id="stockInput" placeholder="Enter stock symbol (e.g., AAPL)">
+                <input type="text" class="search-input" id="platformInput" placeholder="Platform (e.g., Fidelity)">
                 <button class="add-btn" id="addBtn">Add Stock</button>
             </div>
             
@@ -800,6 +822,7 @@
                     <option value="alphabetical">Sort Alphabetical (A-Z)</option>
                     <option value="value">Sort by Total Value</option>
                     <option value="pl_overall">Sort by Overall P/L ($)</option>
+                    <option value="platform">Sort by Platform</option>
                 </select>
             </div>
 
@@ -849,7 +872,7 @@
                 <button class="add-btn" id="quickLookupBtn" style="background: linear-gradient(45deg, #f7b731, #ff9f43);">Quick Lookup</button>
             </div>
              <div class="funds-controls">
-                <button class="add-btn" id="updateAllFundsBtn">🔄 Update Funds</button>
+                <button class="add-btn" id="updateAllFundsBtn" style="background: linear-gradient(45deg, #2ed573, #17c0eb);">🔄 Update Funds</button>
                 <button class="add-btn" id="clearAllFundsBtn" style="background: #ff4757;">🗑️ Clear All Funds</button>
             </div>
         </div>
@@ -860,15 +883,19 @@
                 <button class="add-btn" id="addWatchlistBtn" style="background: linear-gradient(45deg, #f7b731, #ff5e3a);">Add to Watchlist</button>
             </div>
              <div class="watchlist-controls">
-                <button class="add-btn" id="updateWatchlistBtn">🔄 Update Watchlist</button>
+                <button class="add-btn" id="updateWatchlistBtn" style="background: linear-gradient(45deg, #2ed573, #17c0eb);">🔄 Update Watchlist</button>
                 <button class="add-btn" id="clearWatchlistBtn" style="background: #ff4757;">🗑️️ Clear Watchlist</button>
             </div>
             <h3 class="watchlist-title">Your Watchlist (<span id="watchlist-count">0</span>)</h3>
         </div>
 
+        <div id="news-tab" class="tab-content">
+            <h3 class="watchlist-title">📰 Top News for Your Stocks</h3>
+            <div id="news-articles-container"></div>
+        </div>
+
         <div class="stocks-grid" id="stocksGrid"></div>
 
-        <!-- Charts moved to the bottom of the app container -->
         <div id="diversification-chart-container" class="chart-container" style="display: none;">
             <canvas id="diversificationChart"></canvas>
         </div>
@@ -880,6 +907,19 @@
 
     <div class="small-countdown" id="small-countdown-container">Next update: <span id="smallCountdown">90s</span></div>
     
+    <!-- NEW: Edit Stock Modal -->
+    <div id="editStockModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <button class="close-modal-btn" id="closeEditStockBtn">&times;</button>
+            <h3 class="modal-title">Edit Stock: <span id="edit-stock-symbol"></span></h3>
+            <div class="transaction-input-group">
+                <label for="edit-stock-platform">Platform:</label>
+                <input type="text" class="search-input" id="edit-stock-platform" placeholder="e.g., Fidelity, Robinhood">
+            </div>
+            <button class="add-btn" id="save-stock-edit-btn">Save Changes</button>
+        </div>
+    </div>
+
     <div id="transactionModal" class="modal" style="display: none;">
         <div class="modal-content">
             <button class="close-modal-btn" onclick="window.stockTracker.closeTransactionModal()">&times;</button>
@@ -964,16 +1004,22 @@
         class ApiService {
             constructor(config) { this.config = config; }
 
-            // Finnhub for Stocks/ETFs
             async fetchStockEtfData(symbol) {
+                if (!this.config.finnhubApiKey || this.config.finnhubApiKey === "YOUR_API_KEY") {
+                    return { success: false, symbol, reason: "Finnhub API key not configured." };
+                }
                 const quoteUrl = `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${this.config.finnhubApiKey}`;
                 const profileUrl = `https://finnhub.io/api/v1/stock/profile2?symbol=${symbol}&token=${this.config.finnhubApiKey}`;
                 try {
                     const [quoteResponse, profileResponse] = await Promise.all([fetch(quoteUrl), fetch(profileUrl)]);
-                    if (!quoteResponse.ok || !profileResponse.ok) return { success: false, symbol, reason: `HTTP Error: ${quoteResponse.status}` };
+                    if (!quoteResponse.ok || !profileResponse.ok) {
+                         return { success: false, symbol, reason: `HTTP Error: ${quoteResponse.status}` };
+                    }
                     
                     const [quoteData, profileData] = await Promise.all([quoteResponse.json(), profileResponse.json()]);
-                    if ((quoteData.c === 0 && quoteData.pc === 0) || !profileData.name) return { success: false, symbol, reason: 'Invalid or empty API payload' };
+                    if ((!quoteData || quoteData.c === 0 && quoteData.pc === 0) || !profileData.name) {
+                         return { success: false, symbol, reason: 'Invalid or empty API payload for Finnhub. Ticker may not exist.' };
+                    }
 
                     const data = {
                         symbol: symbol, name: profileData.name ?? symbol, price: quoteData.c ?? 0,
@@ -983,20 +1029,26 @@
                     };
                     return { success: true, data };
                 } catch (error) { 
-                    console.error("Error fetching stock/ETF data for " + symbol, error); 
+                    console.error(`Error fetching stock/ETF data for ${symbol}:`, error); 
                     return { success: false, symbol, reason: error.message };
                 }
             }
 
-            // Finnhub for Stock/ETF price-only refresh
             async fetchStockEtfQuote(symbol) {
+                if (!this.config.finnhubApiKey || this.config.finnhubApiKey === "YOUR_API_KEY") {
+                    return { success: false, symbol, reason: "Finnhub API key not configured." };
+                }
                 const quoteUrl = `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${this.config.finnhubApiKey}`;
                 try {
                     const response = await fetch(quoteUrl);
-                    if (!response.ok) return { success: false, symbol, reason: `HTTP Error: ${response.status}` };
+                    if (!response.ok) {
+                         return { success: false, symbol, reason: `HTTP Error: ${response.status}` };
+                    }
                     
                     const quoteData = await response.json();
-                     if (quoteData.c === 0 && quoteData.pc === 0) return { success: false, symbol, reason: 'Invalid or empty API payload' };
+                     if (!quoteData || quoteData.c === 0 && quoteData.pc === 0) {
+                         return { success: false, symbol, reason: 'Invalid or empty API payload for Finnhub. Ticker may not exist.' };
+                     }
 
                     const data = {
                         price: quoteData.c ?? 0, change: quoteData.d ?? 0, changePercent: quoteData.dp ?? 0,
@@ -1005,13 +1057,15 @@
                     };
                     return { success: true, data };
                 } catch (error) {
-                    console.error("Error fetching stock/ETF quote for " + symbol, error);
+                    console.error(`Error fetching stock/ETF quote for ${symbol}:`, error);
                     return { success: false, symbol, reason: error.message };
                 }
             }
 
-            // Alpha Vantage for Mutual Funds
             async fetchFundData(symbol) {
+                if (!this.config.alphaVantageApiKey || this.config.alphaVantageApiKey === "YOUR_API_KEY") {
+                    return { success: false, symbol, reason: "Alpha Vantage API key not configured." };
+                }
                 const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${this.config.alphaVantageApiKey}`;
                 try {
                     const response = await fetch(url);
@@ -1021,7 +1075,7 @@
                     const quote = json['Global Quote'];
 
                     if (!quote || Object.keys(quote).length === 0) {
-                         return { success: false, symbol, reason: 'Invalid or empty API payload from Alpha Vantage. This could also be a rate limit.' };
+                         return { success: false, symbol, reason: 'Invalid or empty API payload from Alpha Vantage.' };
                     }
 
                     const data = {
@@ -1039,7 +1093,7 @@
                     return { success: true, data };
 
                 } catch (error) {
-                    console.error("Error fetching fund data for " + symbol, error);
+                    console.error(`Error fetching fund data for ${symbol}:`, error);
                     return { success: false, symbol, reason: error.message };
                 }
             }
@@ -1047,7 +1101,8 @@
 
         class StockTracker {
             constructor() {
-                this.userId = null; this.stocks = []; this.mutualFunds = []; this.watchlist = []; this.portfolioHistory = [];
+                this.userId = null; this.stocks = []; this.mutualFunds = []; this.watchlist = [];
+                this.priceAlerts = []; this.newsFeed = []; this.newsFetchTime = 0;
                 this.currentTab = 'stocks'; this.onConfirm = null;
                 this.isLiveUpdatePaused = false;
                 this.isDarkMode = false;
@@ -1118,16 +1173,16 @@
             }
 
             signOut() {
-                signOut(auth).catch(error => {
-                    console.error("Sign out error", error);
-                });
+                signOut(auth).catch(error => console.error("Sign out error", error));
             }
             
             loadConfig() {
+                const userFinnhubKey = localStorage.getItem('finnhubApiKey');
+                const userAlphaVantageKey = localStorage.getItem('alphaVantageApiKey');
                 this.config = {
-                    refreshIntervalMs: 90000, // Changed from 60000 to 90000 (90 seconds)
-                    finnhubApiKey: "d316lc1r01qnu2r0opjgd316lc1r01qnu2r0opk0",
-                    alphaVantageApiKey: "0ZPH51BZ2N5O9G8Q",
+                    refreshIntervalMs: parseInt(localStorage.getItem('refreshIntervalMs')) || 90000,
+                    finnhubApiKey: userFinnhubKey || "d316lc1r01qnu2r0opjgd316lc1r01qnu2r0opk0",
+                    alphaVantageApiKey: userAlphaVantageKey || "0ZPH51BZ2N5O9G8Q",
                 };
             }
 
@@ -1141,6 +1196,7 @@
                     signOutBtn: document.getElementById('sign-out-btn'),
                     stocksGrid: document.getElementById('stocksGrid'), loadingDiv: document.getElementById('loading'), errorDiv: document.getElementById('error'), successDiv: document.getElementById('success'),
                     stockInput: document.getElementById('stockInput'), addBtn: document.getElementById('addBtn'),
+                    platformInput: document.getElementById('platformInput'), 
                     liveUpdateBtn: document.getElementById('liveUpdateBtn'), toggleLiveUpdateBtn: document.getElementById('toggleLiveUpdateBtn'), clearAllBtn: document.getElementById('clearAllBtn'),
                     portfolioFilter: document.getElementById('portfolioFilter'), portfolioSort: document.getElementById('portfolioSort'), settingsBtn: document.getElementById('settingsBtn'),
                     mutualFundInput: document.getElementById('mutualFundInput'), addFundBtn: document.getElementById('addFundBtn'),
@@ -1167,7 +1223,6 @@
                     smallCountdown: document.getElementById('smallCountdown'),
                     smallCountdownContainer: document.getElementById('small-countdown-container'),
                     toggleDarkModeBtn: document.getElementById('toggleDarkModeBtn'),
-                    // New Elements
                     quickLookupBtn: document.getElementById('quickLookupBtn'),
                     updateAllFundsBtn: document.getElementById('updateAllFundsBtn'),
                     clearAllFundsBtn: document.getElementById('clearAllFundsBtn'),
@@ -1179,6 +1234,21 @@
                     listAllModal: document.getElementById('listAllModal'),
                     listAllContent: document.getElementById('list-all-content'),
                     closeListAllBtn: document.getElementById('closeListAllBtn'),
+                    priceAlertModal: document.getElementById('priceAlertModal'),
+                    alertSymbol: document.getElementById('alert-symbol'),
+                    alertCondition: document.getElementById('alert-condition'),
+                    alertPrice: document.getElementById('alert-price'),
+                    saveAlertBtn: document.getElementById('save-alert-btn'),
+                    alertNotification: document.getElementById('alert-notification'),
+                    newsTab: document.getElementById('news-tab'),
+                    newsArticlesContainer: document.getElementById('news-articles-container'),
+                    modalDividendFields: document.getElementById('modal-dividend-fields'),
+                    modalDividendAmount: document.getElementById('modal-dividend-amount'),
+                    editStockModal: document.getElementById('editStockModal'),
+                    closeEditStockBtn: document.getElementById('closeEditStockBtn'),
+                    editStockSymbol: document.getElementById('edit-stock-symbol'),
+                    editStockPlatform: document.getElementById('edit-stock-platform'),
+                    saveStockEditBtn: document.getElementById('save-stock-edit-btn'),
                 };
             }
 
@@ -1187,7 +1257,8 @@
                 this.elements.signOutBtn.addEventListener('click', () => this.signOut());
                 this.elements.addBtn.addEventListener('click', () => this.addItemFromInput('stock'));
                 this.elements.stockInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') this.addItemFromInput('stock'); });
-                this.elements.liveUpdateBtn.addEventListener('click', () => this.refreshAllData()); // FIX: No longer forces refreshAll=true
+                if (this.elements.platformInput) this.elements.platformInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') this.addItemFromInput('stock'); });
+                this.elements.liveUpdateBtn.addEventListener('click', () => this.refreshCurrentTab());
                 this.elements.clearAllBtn.addEventListener('click', () => this.clearAllItems('stock'));
                 this.elements.toggleLiveUpdateBtn.addEventListener('click', () => this.toggleLiveUpdate());
                 this.elements.exportBtn.addEventListener('click', () => this.exportData());
@@ -1201,28 +1272,55 @@
                 document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', (e) => { const tabId = e.target.getAttribute('onclick').split("'")[1].replace('window.stockTracker.',''); this.switchTab(tabId); }));
                 this.elements.modalSaveBtn.addEventListener('click', () => this.saveTransaction());
                 this.elements.settingsBtn.addEventListener('click', () => this.openSettingsModal());
-                this.elements.closeSettingsBtn.addEventListener('click', () => this.closeSettingsModal());
-                this.elements.modalSaveSettingsBtn.addEventListener('click', () => this.saveSettings());
-                this.elements.confirmModalCancelBtn.addEventListener('click', () => this.closeConfirmModal());
-                this.elements.confirmModalConfirmBtn.addEventListener('click', () => this.handleConfirmAction());
-                this.elements.listAllBtn.addEventListener('click', () => this.openListAllModal());
-                this.elements.closeListAllBtn.addEventListener('click', () => this.closeListAllModal());
-                this.elements.toggleDarkModeBtn.addEventListener('click', () => this.toggleDarkMode());
-
-
-                // New Event Listeners for specific tabs
-                this.elements.updateAllFundsBtn.addEventListener('click', () => this.refreshAllData());
-                this.elements.clearAllFundsBtn.addEventListener('click', () => this.clearAllItems('fund'));
-                this.elements.updateWatchlistBtn.addEventListener('click', () => this.refreshAllData());
-                this.elements.clearWatchlistBtn.addEventListener('click', () => this.clearAllItems('watchlist'));
+                if (this.elements.closeSettingsBtn) this.elements.closeSettingsBtn.addEventListener('click', () => this.closeSettingsModal());
+                if (this.elements.modalSaveSettingsBtn) this.elements.modalSaveSettingsBtn.addEventListener('click', () => this.saveSettings());
+                if (this.elements.confirmModalCancelBtn) this.elements.confirmModalCancelBtn.addEventListener('click', () => this.closeConfirmModal());
+                if (this.elements.confirmModalConfirmBtn) this.elements.confirmModalConfirmBtn.addEventListener('click', () => this.handleConfirmAction());
+                if (this.elements.listAllBtn) this.elements.listAllBtn.addEventListener('click', () => this.openListAllModal());
+                if (this.elements.closeListAllBtn) this.elements.closeListAllBtn.addEventListener('click', () => this.closeListAllModal());
+                if (this.elements.toggleDarkModeBtn) this.elements.toggleDarkModeBtn.addEventListener('click', () => this.toggleDarkMode());
+                if (this.elements.saveAlertBtn) this.elements.saveAlertBtn.addEventListener('click', () => this.savePriceAlert());
+                if (this.elements.updateAllFundsBtn) this.elements.updateAllFundsBtn.addEventListener('click', () => this.refreshFunds());
+                if (this.elements.clearAllFundsBtn) this.elements.clearAllFundsBtn.addEventListener('click', () => this.clearAllItems('fund'));
+                if (this.elements.updateWatchlistBtn) this.elements.updateWatchlistBtn.addEventListener('click', () => this.refreshWatchlist());
+                if (this.elements.clearWatchlistBtn) this.elements.clearWatchlistBtn.addEventListener('click', () => this.clearAllItems('watchlist'));
+                if (this.elements.closeEditStockBtn) this.elements.closeEditStockBtn.addEventListener('click', () => this.closeEditStockModal());
+                if (this.elements.saveStockEditBtn) this.elements.saveStockEditBtn.addEventListener('click', () => this.saveStockPlatform());
             }
             
-            // --- UI & RENDER ---
             switchTab(tab) {
                 this.currentTab = tab;
                 document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                document.querySelector(`[onclick="window.stockTracker.switchTab('${tab}')"]`).classList.add('active');
-                this.renderContent();
+                document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
+                document.querySelector(`.tab[onclick*="'${tab}'"]`).classList.add('active');
+                document.getElementById(`${tab}-tab`).style.display = 'block';
+                if (tab === 'news') this.fetchAndRenderNews();
+                else this.renderContent();
+            }
+
+            sortItems(items, sortBy) {
+                switch (sortBy) {
+                    case 'performance':
+                        return items.sort((a, b) => (b.changePercent || 0) - (a.changePercent || 0));
+                    case 'alphabetical':
+                        return items.sort((a, b) => a.symbol.localeCompare(b.symbol));
+                    case 'value':
+                        return items.sort((a, b) => {
+                            const valueA = this.calculateTransactionStats(a.transactions, a.price).currentValue;
+                            const valueB = this.calculateTransactionStats(b.transactions, b.price).currentValue;
+                            return valueB - valueA;
+                        });
+                    case 'pl_overall':
+                         return items.sort((a, b) => {
+                            const plA = this.calculateTransactionStats(a.transactions, a.price).unrealizedPL;
+                            const plB = this.calculateTransactionStats(b.transactions, b.price).unrealizedPL;
+                            return plB - plA;
+                        });
+                    case 'platform':
+                        return items.sort((a, b) => (a.platform || 'Uncategorized').localeCompare(b.platform || 'Uncategorized'));
+                    default:
+                        return items;
+                }
             }
 
             renderContent() {
@@ -1230,10 +1328,8 @@
                 const grid = this.elements.stocksGrid;
                 if (!grid) return;
                 grid.innerHTML = ''; 
-
                 this.elements.portfolioSummary.style.display = 'none';
                 this.elements.fundsPortfolioSummary.style.display = 'none';
-                
                 let items, type;
                 if (this.currentTab === 'stocks') { [items, type] = [this.stocks, 'stock']; this.elements.portfolioSummary.style.display = 'block';} 
                 else if (this.currentTab === 'funds') { [items, type] = [this.mutualFunds, 'fund']; this.elements.fundsPortfolioSummary.style.display = 'block';}
@@ -1241,36 +1337,44 @@
                     [items, type] = [this.watchlist, 'watchlist']; 
                     this.elements.watchlistCount.textContent = this.watchlist.length;
                 }
-
                 const filterTerm = (this.currentTab === 'stocks' ? this.elements.portfolioFilter.value : '').toLowerCase();
-                const filteredItems = items.filter(item => item.symbol.toLowerCase().includes(filterTerm) || (item.name && item.name.toLowerCase().includes(filterTerm)));
-
+                let filteredItems = items.filter(item => 
+                    item.symbol.toLowerCase().includes(filterTerm) || 
+                    (item.name && item.name.toLowerCase().includes(filterTerm)) ||
+                    (item.platform && item.platform.toLowerCase().includes(filterTerm))
+                );
+                const sortBy = this.elements.portfolioSort.value;
+                const sortedItems = this.sortItems([...filteredItems], sortBy); 
                 if (type === 'stock') {
                     this.renderPortfolioSummary();
-                    this.renderGroupedStocks(filteredItems, grid, type);
+                    if (sortBy === 'platform') {
+                        this.renderGroupedByPlatform(sortedItems, grid, type);
+                    } else {
+                        this.renderGroupedStocks(sortedItems, grid, type);
+                    }
                 } else if (type ==='fund') {
                     this.renderFundsPortfolioSummary();
-                    this.renderCards(filteredItems, grid, type);
+                    this.renderCards(sortedItems, grid, type);
                 } else if (type === 'watchlist') {
-                    this.renderCards(filteredItems, grid, type);
+                    this.renderCards(sortedItems, grid, type);
                 }
-
-                // Always render charts after main content
                 this.renderDiversificationChart();
                 this.renderHistoryChart();
-
-                if (filteredItems.length === 0 && type !== 'stock') { 
+                if (sortedItems.length === 0 && type !== 'stock') { 
                     grid.innerHTML = `<div class="loading">Your ${type} list is empty.</div>`; 
                 }
             }
             
-            // --- DATA SAVING/LOADING ---
             async saveData() {
                 if (!this.userId) return;
                 const userDocRef = doc(db, "users", this.userId);
-                const data = { stocks: this.stocks, mutualFunds: this.mutualFunds, watchlist: this.watchlist, portfolioHistory: this.portfolioHistory };
+                const data = { 
+                    stocks: this.stocks, mutualFunds: this.mutualFunds, watchlist: this.watchlist, 
+                    portfolioHistory: this.portfolioHistory, priceAlerts: this.priceAlerts,
+                };
                 await setDoc(userDocRef, data);
             }
+
             async loadData() {
                 if (!this.userId) return;
                 const userDocRef = doc(db, "users", this.userId);
@@ -1281,63 +1385,108 @@
                     this.mutualFunds = data.mutualFunds || [];
                     this.watchlist = data.watchlist || [];
                     this.portfolioHistory = data.portfolioHistory || [];
+                    this.priceAlerts = data.priceAlerts || [];
                 }
                 this.updatePortfolioHistory();
                 this.renderContent();
             }
 
-            // --- ALL OTHER METHODS ---
             startLiveUpdate() {
                 this.stopLiveUpdate();
                 this.refreshIntervalId = setInterval(() => {
                     if (this.isLiveUpdatePaused) return;
-                    this.refreshAllData();
+                    this.refreshCurrentTab();
+                    this.checkPriceAlerts();
                 }, this.config.refreshIntervalMs);
                 this.isLiveUpdatePaused = false;
                 this.elements.toggleLiveUpdateBtn.textContent = '⏸️ Pause Live Update';
                 this.startCountdown();
             }
-            startCountdown() {
-                // Restore original HTML if it was changed by stopLiveUpdate
-                this.elements.smallCountdownContainer.innerHTML = `Next update: <span id="smallCountdown">${this.config.refreshIntervalMs / 1000}s</span>`;
-                // Re-cache the span since we just overwrote it
-                this.elements.smallCountdown = document.getElementById('smallCountdown');
 
+            startCountdown() {
+                this.elements.smallCountdownContainer.innerHTML = `Next update: <span id="smallCountdown">${this.config.refreshIntervalMs / 1000}s</span>`;
+                this.elements.smallCountdown = document.getElementById('smallCountdown');
                 let timeLeft = this.config.refreshIntervalMs / 1000;
                 if(this.countdownIntervalId) clearInterval(this.countdownIntervalId);
-                
                 const updateTimers = () => {
                     if (timeLeft >= 0) {
                         this.elements.countdown.textContent = timeLeft;
-                        // Only update the span's text content, not the whole thing
                         if(this.elements.smallCountdown) this.elements.smallCountdown.textContent = `${timeLeft}s`;
                         timeLeft--;
                     } else {
                         timeLeft = this.config.refreshIntervalMs / 1000;
                     }
                 };
-                
-                updateTimers(); // Initial call to set timers immediately
+                updateTimers();
                 this.countdownIntervalId = setInterval(updateTimers, 1000);
             }
+
             stopLiveUpdate() {
                  clearInterval(this.refreshIntervalId);
                 clearInterval(this.countdownIntervalId);
                 this.isLiveUpdatePaused = true;
                 this.elements.toggleLiveUpdateBtn.textContent = '▶️ Resume Live Update';
-                 // Update the whole container div
                  if(this.elements.smallCountdownContainer) this.elements.smallCountdownContainer.textContent = 'Updates Paused';
             }
+
             toggleLiveUpdate() { this.isLiveUpdatePaused ? this.startLiveUpdate() : this.stopLiveUpdate(); }
+            
+            async refreshCurrentTab() {
+                const tabActions = {
+                    stocks: () => this.refreshStocks(),
+                    funds: () => this.refreshFunds(),
+                    watchlist: () => this.refreshWatchlist()
+                };
+                if (tabActions[this.currentTab]) tabActions[this.currentTab]();
+            }
+
+            async refreshStocks() { await this.refreshItems(this.stocks, 'stock'); }
+            async refreshFunds() { await this.refreshItems(this.mutualFunds, 'fund'); }
+            async refreshWatchlist() { await this.refreshItems(this.watchlist, 'watchlist'); }
+            
+            async refreshItems(items, type) {
+                if (items.length === 0) return;
+                this.showLoading(true, `Refreshing 0/${items.length} items...`);
+                let stats = { success: 0, gains: 0, losses: 0, unchanged: 0, failed: 0 };
+                let failedSymbols = [];
+                for (const [i, item] of items.entries()) {
+                    let result;
+                    if (this.isMutualFund(item.symbol)) {
+                         result = await this.apiService.fetchFundData(item.symbol);
+                    } else {
+                         result = await this.apiService.fetchStockEtfQuote(item.symbol);
+                    }
+                    if (result.success) {
+                        Object.assign(item, result.data);
+                        stats.success++;
+                        if ((result.data.change || 0) > 0) stats.gains++;
+                        else if ((result.data.change || 0) < 0) stats.losses++;
+                        else stats.unchanged++;
+                    } else {
+                        stats.failed++;
+                        failedSymbols.push(item.symbol);
+                        console.error(`Failed to refresh ${item.symbol}:`, result.reason);
+                    }
+                    this.showLoading(true, `Refreshing ${item.symbol}... (${i + 1}/${items.length})`);
+                }
+                this.showLoading(false);
+                this.showRefreshStatus(type, stats);
+                await this.saveData();
+                this.renderContent();
+            }
+
             renderPortfolioSummary() {
-                 this.renderSummary(this.stocks, {
+                this.renderSummary(this.stocks, {
                     totalValue: document.getElementById('total-value'),
+                    totalContributions: document.getElementById('total-contributions'),
+                    totalDividends: document.getElementById('total-dividends'),
                     plToday: document.getElementById('total-pl-today'),
                     plPercentToday: document.getElementById('total-pl-percent-today'),
                     plUnrealized: document.getElementById('total-pl-unrealized'),
                     plRealized: document.getElementById('total-pl-realized'),
                 });
             }
+
             renderFundsPortfolioSummary() {
                  this.renderSummary(this.mutualFunds, {
                     totalValue: document.getElementById('funds-total-value'),
@@ -1347,6 +1496,7 @@
                     overallPLPercent: document.getElementById('funds-overall-pl-percent'),
                 });
             }
+
             renderSummary(items, elements) {
                 let totalCurrentValue = 0, totalUnrealizedPL = 0, totalRealizedPL = 0, totalPLToday = 0, totalPreviousDayValue = 0, totalCostBasis = 0;
                 items.forEach(item => {
@@ -1357,17 +1507,20 @@
                         totalRealizedPL += stats.realizedPL;
                         totalPLToday += (item.change || 0) * stats.totalSharesOwned;
                         totalPreviousDayValue += (item.previousClose || item.price - (item.change || 0)) * stats.totalSharesOwned;
-                        totalCostBasis += stats.totalSharesOwned * stats.averageCostBasis;
+                        totalCostBasis += stats.costOfRemainingShares;
                     }
                 });
-
                 const totalOverallPL = totalUnrealizedPL + totalRealizedPL;
                 const totalOverallPLPercent = totalCostBasis > 0 ? (totalOverallPL / totalCostBasis) * 100 : 0;
                 const totalPLPercentToday = totalPreviousDayValue > 0 ? (totalPLToday / totalPreviousDayValue) * 100 : 0;
-                
-                const setElement = (el, value, isPercent = false) => { if (el) { el.textContent = isPercent ? `${value.toFixed(2)}%` : `$${value.toFixed(2)}`; el.className = `summary-value ${value >= 0 ? 'positive' : 'negative'}`; } };
-                
+                const setElement = (el, value, isPercent = false) => { 
+                    if (!el) return;
+                    el.textContent = isPercent ? `${this.formatNumber(value, 2)}%` : this.formatCurrency(value);
+                    el.className = `summary-value ${value >= 0 ? 'positive' : 'negative'}`; 
+                };
                 setElement(elements.totalValue, totalCurrentValue);
+                if (elements.totalContributions) elements.totalContributions.textContent = this.formatCurrency(this.calculateTotalContributions());
+                if (elements.totalDividends) setElement(elements.totalDividends, this.calculateTotalDividends());
                 setElement(elements.plToday, totalPLToday);
                 if(elements.plPercentToday) setElement(elements.plPercentToday, totalPLPercentToday, true);
                 if(elements.plUnrealized) setElement(elements.plUnrealized, totalUnrealizedPL);
@@ -1375,66 +1528,48 @@
                 if(elements.overallPL) setElement(elements.overallPL, totalOverallPL);
                 if(elements.overallPLPercent) setElement(elements.overallPLPercent, totalOverallPLPercent, true);
             }
-            isMutualFund(symbol) {
-                return symbol.length === 5 && symbol.endsWith('X');
-            }
+
+            isMutualFund(symbol) { return symbol.length === 5 && symbol.endsWith('X'); }
+            
             async addItemFromInput(type) {
-                 const inputId = type === 'fund' ? 'mutualFundInput' : (type === 'stock' ? 'stockInput' : 'watchlistInput');
-                 const input = this.elements[inputId];
+                const isStock = type === 'stock';
+                const input = isStock ? this.elements.stockInput : (type === 'fund' ? this.elements.mutualFundInput : this.elements.watchlistInput);
                 const symbol = input.value.trim().toUpperCase();
+                const platform = isStock ? this.elements.platformInput.value.trim() : null;
                 if (!symbol) return;
                 input.value = '';
-                await this.addItem(symbol, type);
+                if(isStock) this.elements.platformInput.value = '';
+                await this.addItem(symbol, type, platform);
             }
-            async addItem(symbol, type) {
+            async addItem(symbol, type, platform = null) {
                 this.showLoading(true, `Adding ${symbol}...`);
-
                 try {
-                    // Step 1: Determine which list to add the item to, based on the tab.
-                    let targetList;
-                    let listName = '';
-                    if (type === 'stock') {
-                        targetList = this.stocks;
-                        listName = 'portfolio';
-                    } else if (type === 'fund') {
-                        targetList = this.mutualFunds;
-                        listName = 'mutual funds list';
+                    let targetList, listName;
+                    if (type === 'stock') { [targetList, listName] = [this.stocks, 'portfolio']; } 
+                    else if (type === 'fund') { [targetList, listName] = [this.mutualFunds, 'mutual funds list']; }
+                    else { [targetList, listName] = [this.watchlist, 'watchlist']; }
+                    if (targetList.some(item => item.symbol === symbol)) { throw new Error(`${symbol} is already in your ${listName}.`); }
+                    const result = this.isMutualFund(symbol) ? await this.apiService.fetchFundData(symbol) : await this.apiService.fetchStockEtfData(symbol);
+                    if (!result.success) throw new Error(result.reason);
+                    let newItem = { ...result.data };
+                    if (type === 'watchlist') {
+                        targetList.push(newItem);
                     } else {
-                        targetList = this.watchlist;
-                        listName = 'watchlist';
+                        newItem.transactions = [];
+                        newItem.dividends = [];
+                        if (platform) newItem.platform = platform;
+                        targetList.push(newItem);
                     }
-
-                    // Step 2: Check if the symbol already exists in THIS SPECIFIC list.
-                    if (targetList.some(item => item.symbol === symbol)) {
-                        this.showError(`❌ ${symbol} is already in your ${listName}.`);
-                        this.showLoading(false);
-                        return;
-                    }
-
-                    // Step 3: Fetch data using the appropriate API based on the symbol format.
-                    const result = this.isMutualFund(symbol)
-                        ? await this.apiService.fetchFundData(symbol)
-                        : await this.apiService.fetchStockEtfData(symbol);
-                    
-                    if (!result.success) {
-                        throw new Error(result.reason);
-                    }
-
-                    // Step 4: Add the new item to the selected list.
-                    const newItem = type === 'watchlist' ? result.data : { ...result.data, transactions: [] };
-                    targetList.push(newItem);
-
-                    // Step 5: Save and re-render.
                     await this.saveData();
                     this.renderContent();
                     this.showSuccess(`✅ Added ${symbol} to your ${listName}!`);
-
                 } catch (error) {
                     this.showError(`❌ Failed to add ${symbol}. Reason: ${error.message}`);
                 } finally {
                     this.showLoading(false);
                 }
             }
+
             removeItem(symbol, type) {
                 this.openConfirmModal(`Are you sure you want to remove ${symbol}?`, async () => {
                      if (type === 'stock') { this.stocks = this.stocks.filter(item => item.symbol !== symbol); }
@@ -1444,27 +1579,26 @@
                     this.renderContent();
                 });
             }
+
             clearAllItems(type) {
                 this.openConfirmModal(`Are you sure you want to clear all ${type}s?`, async () => {
-                    if (type === 'stock') { this.stocks = []; }
-                     else if (type === 'fund') { this.mutualFunds = []; }
-                     else if (type === 'watchlist') { this.watchlist = []; }
+                    if (type === 'stock') this.stocks = [];
+                    else if (type === 'fund') this.mutualFunds = [];
+                    else if (type === 'watchlist') this.watchlist = [];
                     await this.saveData();
                     this.renderContent();
                 });
             }
+
             calculateTransactionStats(transactions = [], currentPrice = 0) {
                 const buys = JSON.parse(JSON.stringify((transactions || []).filter(t => t.type === 'buy').sort((a,b) => new Date(a.date) - new Date(b.date))));
                 const sells = JSON.parse(JSON.stringify((transactions || []).filter(t => t.type === 'sell')));
                 let totalSharesOwned = buys.reduce((s, t) => s + t.shares, 0) - sells.reduce((s, t) => s + t.shares, 0);
                 let realizedPL = 0;
                 for (const sell of sells) {
-                    let sharesToSell = sell.shares; 
-                    let saleProceeds = sharesToSell * sell.price;
-                    let costOfSoldShares = 0;
-                    for (let i = 0; i < buys.length && sharesToSell > 0; i++) {
-                        let buy = buys[i];
-                        if (buy.shares > 0) {
+                    let sharesToSell = sell.shares, saleProceeds = sharesToSell * sell.price, costOfSoldShares = 0;
+                    for (let buy of buys) {
+                        if (buy.shares > 0 && sharesToSell > 0) {
                             let sharesFromThisLot = Math.min(sharesToSell, buy.shares);
                             costOfSoldShares += sharesFromThisLot * buy.price;
                             buy.shares -= sharesFromThisLot;
@@ -1477,37 +1611,68 @@
                 let averageCostBasis = totalSharesOwned > 0 ? costOfRemainingShares / totalSharesOwned : 0;
                 let currentValue = totalSharesOwned * currentPrice;
                 let unrealizedPL = totalSharesOwned > 0 ? currentValue - costOfRemainingShares : 0;
-                return { totalSharesOwned, averageCostBasis, realizedPL, unrealizedPL, currentValue };
+                return { totalSharesOwned, averageCostBasis, realizedPL, unrealizedPL, currentValue, costOfRemainingShares };
             }
+
+            calculateTotalContributions() {
+                return this.stocks.reduce((contributions, stock) => 
+                    contributions + (stock.transactions || []).reduce((sum, t) => sum + (t.type === 'buy' ? t.shares * t.price : -t.shares * t.price), 0), 0);
+            }
+            
+            calculateTotalDividends() {
+                return this.stocks.reduce((sum, stock) => sum + (stock.dividends || []).reduce((divSum, div) => divSum + div.totalAmount, 0), 0);
+            }
+
+            calculateAnnualizedDividendYield(item) {
+                 if (!item.dividends || item.dividends.length === 0 || item.price === 0) return 0;
+                 const now = new Date(), lastYear = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+                 const totalDividendsLastYear = item.dividends.filter(d => new Date(d.date) > lastYear).reduce((sum, d) => sum + d.totalAmount, 0);
+                 return totalDividendsLastYear > 0 ? (totalDividendsLastYear / item.price) * 100 : 0;
+            }
+
             openTransactionModal(symbol, type, transactionType, transactionIndex = -1) {
                 this.elements.transactionModal.style.display = 'flex';
                 this.elements.modalSymbol.textContent = symbol;
-                this.elements.modalTitleAction.textContent = transactionIndex > -1 ? 'Edit' : (transactionType === 'buy' ? 'Buy' : 'Sell');
-                this.elements.modalShares.value = ''; this.elements.modalPrice.value = ''; this.elements.modalNote.value = '';
-                this.elements.modalSaveBtn.dataset.symbol = symbol;
-                this.elements.modalSaveBtn.dataset.type = type;
-                this.elements.modalSaveBtn.dataset.transactionType = transactionType;
-                this.elements.modalSaveBtn.dataset.transactionIndex = transactionIndex;
+                this.elements.modalTitleAction.textContent = transactionIndex > -1 ? 'Edit' : transactionType.charAt(0).toUpperCase() + transactionType.slice(1);
+                ['modalShares', 'modalPrice', 'modalNote', 'modalDividendAmount'].forEach(id => { if(this.elements[id]) this.elements[id].value = ''; });
+                const show = (el, d) => el.parentNode.style.display = d;
+                show(this.elements.modalDividendFields, 'none');
+                if (transactionType === 'buy' || transactionType === 'sell') {
+                    show(this.elements.modalShares, 'block');
+                    show(this.elements.modalPrice, 'block');
+                } else if (transactionType === 'dividend') {
+                    show(this.elements.modalShares, 'block');
+                    show(this.elements.modalPrice, 'none');
+                    show(this.elements.modalDividendFields, 'block');
+                }
+                Object.assign(this.elements.modalSaveBtn.dataset, { symbol, type, transactionType, transactionIndex });
             }
+            
             closeTransactionModal() { this.elements.transactionModal.style.display = 'none'; }
+            
             async saveTransaction() {
                 const { symbol, type, transactionType, transactionIndex: indexStr } = this.elements.modalSaveBtn.dataset;
                 const index = parseInt(indexStr);
-                const shares = parseFloat(this.elements.modalShares.value);
-                const price = parseFloat(this.elements.modalPrice.value);
-                if (isNaN(shares) || shares <= 0 || isNaN(price) || price < 0) { this.showError('Invalid input.'); return; }
                 const list = (type === 'stock') ? this.stocks : this.mutualFunds;
                 const item = list.find(i => i.symbol === symbol);
-                if (item) {
+                if (!item) return;
+                if (transactionType === 'buy' || transactionType === 'sell') {
+                    const shares = parseFloat(this.elements.modalShares.value), price = parseFloat(this.elements.modalPrice.value);
+                    if (isNaN(shares) || shares <= 0 || isNaN(price) || price < 0) { this.showError('Invalid input.'); return; }
                     if (!item.transactions) item.transactions = [];
                     const newTransaction = { type: transactionType, shares, price, note: this.elements.modalNote.value.trim(), date: new Date().toISOString() };
-                    if (index > -1) item.transactions[index] = newTransaction;
-                    else item.transactions.push(newTransaction);
-                    await this.saveData();
-                    this.renderContent();
-                    this.closeTransactionModal();
+                    index > -1 ? item.transactions[index] = newTransaction : item.transactions.push(newTransaction);
+                } else if (transactionType === 'dividend') {
+                    const shares = parseFloat(this.elements.modalShares.value), amountPerShare = parseFloat(this.elements.modalDividendAmount.value);
+                    if (isNaN(shares) || shares <= 0 || isNaN(amountPerShare) || amountPerShare < 0) { this.showError('Invalid input.'); return; }
+                    if (!item.dividends) item.dividends = [];
+                    item.dividends.push({ shares, amountPerShare, totalAmount: shares * amountPerShare, date: new Date().toISOString() });
                 }
+                await this.saveData();
+                this.renderContent();
+                this.closeTransactionModal();
             }
+            
             removeTransaction(symbol, index, type) {
                  this.openConfirmModal('Delete this transaction?', async () => {
                     const list = (type === 'stock') ? this.stocks : this.mutualFunds;
@@ -1519,317 +1684,102 @@
                     }
                 });
             }
-            renderGroupedStocks(items, container, type) {
-                const gains = items.filter(s => s.changePercent >= 0).sort((a, b) => b.changePercent - a.changePercent);
-                const losses = items.filter(s => s.changePercent < 0).sort((a, b) => a.changePercent - b.changePercent);
-                
-                if (gains.length === 0 && losses.length === 0 && items.length > 0) {
-                     this.createGroup('Today', items, 'gains-header', container, type);
-                     return;
-                }
-                 if (gains.length === 0 && losses.length === 0) {
-                     container.innerHTML = `<div class="loading">Your ${type} list is empty.</div>`;
-                     return;
-                }
 
-                this.createGroup('📉 Losses Today', losses, 'losses-header', container, type);
-                this.createGroup('📈 Gains Today', gains, 'gains-header', container, type);
+            renderGroupedByPlatform(items, container, type) {
+                const platformGroups = items.reduce((acc, item) => {
+                    const platformName = item.platform || 'Uncategorized';
+                    if (!acc[platformName]) acc[platformName] = [];
+                    acc[platformName].push(item);
+                    return acc;
+                }, {});
+                for (const platformName in platformGroups) {
+                    this.createGroup(platformName, platformGroups[platformName], 'platform-header', container, type);
+                }
             }
+
+            renderGroupedStocks(items, container, type) {
+                const gains = items.filter(s => (s.changePercent || 0) >= 0).sort((a, b) => b.changePercent - a.changePercent);
+                const losses = items.filter(s => (s.changePercent || 0) < 0).sort((a, b) => a.changePercent - b.changePercent);
+                const biggestGain = gains.length > 0 ? [gains[0]] : null;
+                const otherGains = gains.filter(s => !biggestGain || s.symbol !== biggestGain[0].symbol);
+                if (biggestGain) this.createGroup('🚀 Biggest Gain Today', biggestGain, 'biggest-gain-header', container, type);
+                this.createGroup('📈 Gains Today', otherGains, 'gains-header', container, type);
+                this.createGroup('📉 Losses Today', losses, 'losses-header', container, type);
+            }
+
             createGroup(title, list, headerClass, parent, type) {
                 if(list.length === 0) return;
-
                 const groupWrapper = document.createElement('div');
                 groupWrapper.className = 'group-wrapper';
-
                 const header = document.createElement('div');
                 header.className = `group-header ${headerClass}`;
-                
-                const titleSpan = document.createElement('span');
-                titleSpan.textContent = `${title} (${list.length})`;
-
-                const headerControls = document.createElement('div');
-                headerControls.className = 'header-controls';
-
-                const headerCollapseBtn = document.createElement('button');
-                headerCollapseBtn.className = 'add-btn header-collapse-btn';
-                headerCollapseBtn.textContent = 'Collapse';
-
-                const toggleIcon = document.createElement('span');
-                toggleIcon.className = 'toggle-icon';
-                toggleIcon.innerHTML = '▼';
-
-                headerControls.appendChild(headerCollapseBtn);
-                headerControls.appendChild(toggleIcon);
-                header.appendChild(titleSpan);
-                header.appendChild(headerControls);
-
+                header.innerHTML = `<span>${title} (${list.length})</span><div class="header-controls"><span class="toggle-icon">▼</span></div>`;
                 const content = document.createElement('div');
                 content.className = 'group-content';
-
-                const summaryContent = document.createElement('div');
-                summaryContent.className = 'summary-content';
-                
-                const footer = document.createElement('div');
-                footer.className = 'group-footer';
-                const footerCollapseBtn = document.createElement('button');
-                footerCollapseBtn.className = 'collapse-group-btn';
-                footerCollapseBtn.textContent = 'Collapse';
-                footer.appendChild(footerCollapseBtn);
-
-                const totalPLToday = list.reduce((sum, item) => {
-                    const stats = this.calculateTransactionStats(item.transactions, item.price);
-                    return sum + ((item.change || 0) * stats.totalSharesOwned);
-                }, 0);
-                const plClass = totalPLToday >= 0 ? 'positive' : 'negative';
-
-                summaryContent.innerHTML = `
-                    <div class="summary-card">
-                        <h4>${title} Summary</h4>
-                        <p>Total Assets: ${list.length}</p>
-                        <p>Total P/L Today: <span class="${plClass}">$${totalPLToday.toFixed(2)}</span></p>
-                    </div>
-                `;
-
-                const toggleSummaryView = (e) => {
-                    e.stopPropagation(); 
-                    const isSummarized = content.style.display === 'none';
-                    if (isSummarized) {
-                        content.style.display = 'grid';
-                        summaryContent.style.display = 'none';
-                        headerCollapseBtn.textContent = 'Collapse';
-                        footerCollapseBtn.textContent = 'Collapse';
-                        footer.style.borderTop = '1px solid #eee';
-                    } else {
-                        content.style.display = 'none';
-                        summaryContent.style.display = 'block';
-                        headerCollapseBtn.textContent = 'Expand';
-                        footerCollapseBtn.textContent = 'Expand';
-                        footer.style.borderTop = 'none';
-                    }
-                };
-                
                 header.addEventListener('click', () => {
                     header.classList.toggle('collapsed');
                     content.classList.toggle('collapsed');
-                    summaryContent.classList.toggle('collapsed'); 
-                    footer.classList.toggle('collapsed');
                 });
-
-                headerCollapseBtn.addEventListener('click', toggleSummaryView);
-                footerCollapseBtn.addEventListener('click', toggleSummaryView);
-                
-                groupWrapper.append(header, content, summaryContent, footer);
+                groupWrapper.append(header, content);
                 parent.appendChild(groupWrapper);
                 this.renderCards(list, content, type);
             }
+            
             renderCards(itemList, container, type) {
+                if (!container.classList.contains('group-content')) { container.innerHTML = ''; }
                 itemList.forEach(item => {
                     const card = document.createElement('div');
                     card.className = `${type}-card`;
-                    const removalFunction = `removeItem('${item.symbol}', '${type}')`;
-                    const changeClass = (item.changePercent || 0) >= 0 ? 'positive' : 'negative';
-                    const changeSymbol = (item.change || 0) >= 0 ? '▲' : '▼';
                     const stats = this.calculateTransactionStats(item.transactions, item.price);
-                    const totalCost = stats.totalSharesOwned * stats.averageCostBasis;
-                    const overallPLPercent = totalCost > 0 ? (stats.unrealizedPL / totalCost) * 100 : 0;
-                    const todayPL = (item.change || 0) * stats.totalSharesOwned;
-                    const unrealizedPLClass = stats.unrealizedPL >= 0 ? 'positive' : 'negative';
-
+                    const platformHTML = item.platform ? `<div class="info-row"><span class="info-label">Platform:</span><span class="info-value">${item.platform}</span></div>` : '';
+                    let stockInfoHTML = '';
+                     if (type === 'watchlist' || type === 'fund') {
+                         stockInfoHTML = `<div class="info-row"><span class="info-label">Open:</span><span class="info-value">${this.formatCurrency(item.open || 0)}</span></div><div class="info-row"><span class="info-label">High:</span><span class="info-value">${this.formatCurrency(item.high || 0)}</span></div><div class="info-row"><span class="info-label">Low:</span><span class="info-value">${this.formatCurrency(item.low || 0)}</span></div><div class="info-row"><span class="info-label">Prev. Close:</span><span class="info-value">${this.formatCurrency(item.previousClose || 0)}</span></div>`;
+                     } else { 
+                         stockInfoHTML = `<div class="info-row"><span class="info-label">Open:</span><span class="info-value">${this.formatCurrency(item.open || 0)}</span></div><div class="info-row"><span class="info-label">Total Shares:</span><span class="info-value">${this.formatNumber(stats.totalSharesOwned, 3)}</span></div><div class="info-row"><span class="info-label">Total Value:</span><span class="info-value ${stats.unrealizedPL >= 0 ? 'positive' : 'negative'}">${this.formatCurrency(stats.currentValue)}</span></div><div class="info-row"><span class="info-label">Avg. Cost:</span><span class="info-value">${this.formatCurrency(stats.averageCostBasis)}</span></div>${platformHTML}`;
+                     }
                     let transactionDetailsHTML = '';
                     if (type === 'stock' || type === 'fund') {
                         transactionDetailsHTML = `
-                         <div class="transaction-details">
-                             <div class="transaction-header">
-                                <h4>Purchases & Sales:</h4>
-                                <span class="toggle-icon">▼</span>
-                            </div>
-                            <div class="transactions-container">
-                                ${ (item.transactions || []).map((t, index) => `
-                                    <div class="transaction-entry">
-                                        <div class="transaction-info">
-                                            <span><strong class="${t.type}">${t.type.toUpperCase()}</strong>: ${t.shares} shares @ $${t.price.toFixed(2)}</span>
-                                            ${t.note ? `<span>Note: ${t.note}</span>` : ''}
-                                        </div>
-                                        <div class="transaction-entry-controls">
-                                            <button class="edit-transaction-btn" onclick="window.stockTracker.openTransactionModal('${item.symbol}', '${type}', '${t.type}', ${index})">Edit</button>
-                                            <button class="delete-transaction-btn" onclick="window.stockTracker.removeTransaction('${item.symbol}', ${index}, '${type}')">Delete</button>
-                                        </div>
-                                    </div>
-                                `).join('')}
-                            </div>
+                        <div class="transaction-details">
+                            <div class="transaction-header"><h4>Purchases & Sales:</h4><span class="toggle-icon">▼</span></div>
+                            <div class="transactions-container">${ (item.transactions || []).map((t, index) => `<div class="transaction-entry"><span><strong class="${t.type}">${t.type.toUpperCase()}</strong>: ${this.formatNumber(t.shares, 3)} @ ${this.formatCurrency(t.price)}</span>${t.note ? `<span>Note: ${t.note}</span>` : ''}<div class="transaction-entry-controls"><button class="edit-transaction-btn" onclick="window.stockTracker.openTransactionModal('${item.symbol}', '${type}', '${t.type}', ${index})">Edit</button><button class="delete-transaction-btn" onclick="window.stockTracker.removeTransaction('${item.symbol}', ${index}, '${type}')">Delete</button></div></div>`).join('')}</div>
                         </div>
-                        <div class="card-actions">
-                            <button class="transaction-btn" onclick="window.stockTracker.openTransactionModal('${item.symbol}', '${type}', 'buy')">Buy</button>
-                            <button class="transaction-btn" style="background: #ff4757;" onclick="window.stockTracker.openTransactionModal('${item.symbol}', '${type}', 'sell')">Sell</button>
-                        </div>
-                        <div class="total-pl">Overall P/L: <span class="${unrealizedPLClass}"><span class="circle ${unrealizedPLClass}"></span>$${stats.unrealizedPL.toFixed(2)} (${overallPLPercent.toFixed(2)}%)</span></div>
-                        `;
+                        <div class="card-actions"><button class="transaction-btn" onclick="window.stockTracker.openTransactionModal('${item.symbol}', '${type}', 'buy')">Buy</button><button class="transaction-btn" style="background: #ff4757;" onclick="window.stockTracker.openTransactionModal('${item.symbol}', '${type}', 'sell')">Sell</button></div>
+                        <div class="card-actions" style="grid-template-columns: 1fr;"><button class="add-btn" style="background-color: #f7b731;" onclick="window.stockTracker.openEditStockModal('${item.symbol}')">Edit Platform</button></div>
+                        <div class="total-pl">Unrealized P/L: <span class="${stats.unrealizedPL >= 0 ? 'positive' : 'negative'}"><span class="circle ${stats.unrealizedPL >= 0 ? 'positive' : 'negative'}"></span>${this.formatCurrency(stats.unrealizedPL)} (${(overallPLPercent).toFixed(2)}%)</span></div>`;
                     } else if (type === 'watchlist') {
-                         transactionDetailsHTML = `
-                            <div class="card-actions" style="grid-template-columns: 1fr;">
-                                <button class="add-btn move-to-portfolio-btn" onclick="window.stockTracker.moveToPortfolio('${item.symbol}')">Move to Portfolio</button>
-                            </div>
-                         `;
+                         transactionDetailsHTML = `<div class="card-actions" style="grid-template-columns: 1fr;"><button class="add-btn move-to-portfolio-btn" onclick="window.stockTracker.moveToPortfolio('${item.symbol}')">Move to Portfolio</button></div>`;
                     }
-
-                    let stockInfoHTML = '';
-                     if (type === 'watchlist' || type === 'fund') {
-                         stockInfoHTML = `
-                            <div class="info-row"><span class="info-label">Open:</span><span class="info-value">$${(item.open || 0).toFixed(2)}</span></div>
-                            <div class="info-row"><span class="info-label">High:</span><span class="info-value">$${(item.high || 0).toFixed(2)}</span></div>
-                            <div class="info-row"><span class="info-label">Low:</span><span class="info-value">$${(item.low || 0).toFixed(2)}</span></div>
-                            <div class="info-row"><span class="info-label">Prev. Close:</span><span class="info-value">$${(item.previousClose || 0).toFixed(2)}</span></div>
-                         `;
-                     } else { // stock
-                         stockInfoHTML = `
-                            <div class="info-row"><span class="info-label">Open:</span><span class="info-value">$${(item.open || 0).toFixed(2)}</span></div>
-                            <div class="info-row"><span class="info-label">Total Shares:</span><span class="info-value">${stats.totalSharesOwned.toFixed(3)}</span></div>
-                            <div class="info-row"><span class="info-label">Total Value:</span><span class="info-value">$${stats.currentValue.toFixed(2)}</span></div>
-                            <div class="info-row"><span class="info-label">Avg. Cost Basis:</span><span class="info-value">$${stats.averageCostBasis.toFixed(2)}</span></div>
-                         `;
-                     }
-
-                    let cardHTML = `
-                        <div class="stock-header">
-                            <span class="stock-symbol">${item.symbol}</span>
-                            <button class="remove-btn" onclick="window.stockTracker.${removalFunction}">×</button>
-                        </div>
-                        <div class="stock-price">$${(item.price || 0).toFixed(2)}</div>
-                        <div class="stock-change ${changeClass}">
-                            <span>${changeSymbol} ${(item.change || 0).toFixed(2)} (${(item.changePercent || 0).toFixed(2)}%)</span>
-                        </div>
-                        <div class="stock-info">
-                           ${stockInfoHTML}
-                        </div>
-                        ${transactionDetailsHTML}
-                        <div class="total-pl ${todayPL >= 0 ? 'positive' : 'negative'}">P/L Today: $${todayPL.toFixed(2)}</div>
-                    `;
-                    card.innerHTML = cardHTML;
-
+                    const todayPL = (item.change || 0) * stats.totalSharesOwned;
+                    card.innerHTML = `<div class="stock-header"><span class="stock-symbol">${item.symbol}</span><button class="remove-btn" onclick="window.stockTracker.removeItem('${item.symbol}', '${type}')">×</button></div><div class="stock-price">${this.formatCurrency(item.price || 0)}</div><div class="stock-change ${item.change >= 0 ? 'positive' : 'negative'}"><span>${item.change >= 0 ? '▲' : '▼'} ${this.formatCurrency(item.change || 0)} (${(item.changePercent || 0).toFixed(2)}%)</span></div><div class="stock-info">${stockInfoHTML}</div>${transactionDetailsHTML}<div class="total-pl ${todayPL >= 0 ? 'positive' : 'negative'}">P/L Today: ${this.formatCurrency(todayPL)}</div>`;
                     const transactionHeader = card.querySelector('.transaction-header');
-                    const transactionsContainer = card.querySelector('.transactions-container');
-                    if (transactionHeader && transactionsContainer) {
-                        if (item.transactions && item.transactions.length > 3) {
-                            transactionHeader.classList.add('collapsed');
-                            transactionsContainer.classList.add('collapsed');
-                        }
+                    if (transactionHeader) {
                         transactionHeader.addEventListener('click', () => {
                             transactionHeader.classList.toggle('collapsed');
-                            transactionsContainer.classList.toggle('collapsed');
+                            transactionHeader.nextElementSibling.classList.toggle('collapsed');
                         });
                     }
-
                     container.appendChild(card);
                 });
             }
+
             async moveToPortfolio(symbol) {
-                 const stockToMove = this.watchlist.find(stock => stock.symbol === symbol);
-                if (stockToMove) {
-                    if (this.stocks.some(s => s.symbol === symbol)) { this.showError(`❌ Stock "${symbol}" is already in portfolio!`); return; }
-                    this.stocks.push({...stockToMove, transactions: []});
-                    this.watchlist = this.watchlist.filter(stock => stock.symbol !== symbol);
-                    await this.saveData();
-                    this.renderContent();
-                    this.showSuccess(`✅ Moved ${symbol} to portfolio!`);
-                }
-            }
-            async refreshAllData(refreshAll = false) {
-                let listsToRefresh = [];
-                
-                if (refreshAll) {
-                    this.elements.liveUpdateBtn.textContent = '🔄 Live Update All';
-                    listsToRefresh.push({ list: this.stocks, type: 'stock' });
-                    listsToRefresh.push({ list: this.mutualFunds, type: 'fund' });
-                    listsToRefresh.push({ list: this.watchlist, type: 'watchlist' });
-                } else {
-                    this.elements.liveUpdateBtn.textContent = '🔄 Live Update';
-                    if (this.currentTab === 'stocks') { listsToRefresh.push({ list: this.stocks, type: 'stock' }); }
-                    else if (this.currentTab === 'funds') { listsToRefresh.push({ list: this.mutualFunds, type: 'fund' }); }
-                    else if (this.currentTab === 'watchlist') { listsToRefresh.push({ list: this.watchlist, type: 'watchlist' }); }
-                }
-
-                const allItems = listsToRefresh.flatMap(({ list }) => list);
-                const totalCount = allItems.length;
-
-                if (totalCount === 0) {
-                    this.showError("Nothing to refresh.");
-                    return;
-                }
-
-                this.showLoading(true, `Refreshing 0/${totalCount} items...`);
-                
-                let stats = { success: 0, gains: 0, losses: 0, unchanged: 0, failed: 0 };
-                let failedSymbols = [];
-                let processedCount = 0;
-
-                const batchSize = 10;
-                for (let i = 0; i < allItems.length; i += batchSize) {
-                    const batch = allItems.slice(i, i + batchSize);
-                    
-                    const refreshPromises = batch.map(item => {
-                        return this.isMutualFund(item.symbol)
-                            ? this.apiService.fetchFundData(item.symbol)
-                            : this.apiService.fetchStockEtfQuote(item.symbol);
-                    });
-                    
-                    const results = await Promise.allSettled(refreshPromises);
-
-                    for (const [index, result] of results.entries()) {
-                        const item = batch[index];
-
-                        if (result.status === 'fulfilled' && result.value.success) {
-                            const freshData = result.value.data;
-                            Object.assign(item, freshData);
-                            
-                            stats.success++;
-                            if ((freshData.change || 0) > 0) stats.gains++;
-                            else if ((freshData.change || 0) < 0) stats.losses++;
-                            else stats.unchanged++;
-
-                        } else {
-                            stats.failed++;
-                            failedSymbols.push(item.symbol);
-                            const reason = result.reason ? result.reason.message : (result.value ? result.value.reason : 'Unknown error');
-                            console.error(`Failed to refresh ${item.symbol}:`, reason);
-                        }
-                        
-                        processedCount++;
-                        this.showLoading(true, `Refreshing ${item.symbol}... (${processedCount}/${totalCount})`);
-                        await new Promise(resolve => setTimeout(resolve, 50));
-                    }
-                    
-                    if (i + batchSize < allItems.length) {
-                        await new Promise(resolve => setTimeout(resolve, 1000));
-                    }
-                }
-
-
-                this.showLoading(false);
-                this.showRefreshStatus(refreshAll ? 'all' : this.currentTab, stats);
-
-                if (failedSymbols.length > 0) {
-                    console.log("--- Failed to Refresh ---");
-                    failedSymbols.forEach(s => console.log(s));
-                }
-                
+                const stockToMove = this.watchlist.find(stock => stock.symbol === symbol);
+                if (!stockToMove || this.stocks.some(s => s.symbol === symbol)) return;
+                this.stocks.push({...stockToMove, transactions: [], platform: stockToMove.platform || ''});
+                this.watchlist = this.watchlist.filter(stock => stock.symbol !== symbol);
                 await this.saveData();
                 this.renderContent();
+                this.showSuccess(`✅ Moved ${symbol} to portfolio!`);
             }
-            
+
             showRefreshStatus(type, stats) {
                 const statusDiv = this.elements.refreshStatusPopup;
-                let itemType = 'item(s)';
-                if (type === 'fund' || type === 'funds') itemType = 'fund(s)';
-                if (type === 'stock' || type === 'stocks' || type === 'watchlist') itemType = 'stock(s)';
-                
-                if (statusDiv) {
-                    statusDiv.innerHTML = `Refreshed ${stats.success} ${itemType}. ✅ ${stats.gains} gained, 🔻${stats.losses} lost, ➖ ${stats.unchanged} unchanged. Failed to refresh ${stats.failed}.`;
-                    statusDiv.style.display = 'block';
-
-                    setTimeout(() => {
-                        statusDiv.style.display = 'none';
-                    }, 15000);
-                }
+                if (!statusDiv) return;
+                statusDiv.innerHTML = `Refreshed ${stats.success} ${type}(s). ✅ ${stats.gains} gained, 🔻${stats.losses} lost. Failed: ${stats.failed}.`;
+                statusDiv.style.display = 'block';
+                setTimeout(() => { statusDiv.style.display = 'none'; }, 15000);
             }
             
             showLoading(show, message = 'Loading...') { this.elements.loadingDiv.style.display = show ? 'block' : 'none'; this.elements.loadingDiv.textContent = message; }
@@ -1843,17 +1793,17 @@
                 this.elements.successDiv.innerHTML = `<h4>Success</h4><p>${message}</p>`;
                 setTimeout(() => this.elements.successDiv.style.display = 'none', 3000);
             }
+
             async exportData() {
-                const dataStr = JSON.stringify({ stocks: this.stocks, mutualFunds: this.mutualFunds, watchlist: this.watchlist, portfolioHistory: this.portfolioHistory }, null, 2);
+                const dataStr = JSON.stringify({ stocks: this.stocks, mutualFunds: this.mutualFunds, watchlist: this.watchlist }, null, 2);
                 const blob = new Blob([dataStr], {type: 'application/json'});
-                const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
-                a.href = url;
+                a.href = URL.createObjectURL(blob);
                 a.download = 'portfolio-data.json';
                 a.click();
-                URL.revokeObjectURL(url);
-                this.showSuccess('Data exported!');
+                URL.revokeObjectURL(a.href);
             }
+
             async importData(e) {
                 const file = e.target.files[0];
                 if (!file) return;
@@ -1861,158 +1811,95 @@
                 reader.onload = async (event) => {
                     try {
                         const data = JSON.parse(event.target.result);
-                        let imported = false;
-                        if (data.stocks) { 
-                            this.stocks = data.stocks;
-                            this.stocks.forEach(s => this.migratePurchasesToTransactions(s));
-                            imported = true;
-                        }
-                        if (data.mutualFunds) { 
-                            this.mutualFunds = data.mutualFunds; 
-                            this.mutualFunds.forEach(f => this.migratePurchasesToTransactions(f));
-                            imported = true;
-                        }
-                        if (data.watchlist) { this.watchlist = data.watchlist; imported = true; }
-                        if (data.portfolioHistory) { this.portfolioHistory = data.portfolioHistory; imported = true; }
-
-                        if(imported) {
-                            await this.saveData();
-                            this.renderContent();
-                            this.showSuccess(`✅ Data successfully imported!`);
-                        } else {
-                            this.showError('❌ File did not contain valid data.');
-                        }
-                    } catch (err) { this.showError('❌ Error parsing JSON file.'); console.error("Import error:", err); }
+                        this.stocks = data.stocks || this.stocks;
+                        this.mutualFunds = data.mutualFunds || this.mutualFunds;
+                        this.watchlist = data.watchlist || this.watchlist;
+                        await this.saveData();
+                        this.renderContent();
+                        this.showSuccess(`✅ Data successfully imported!`);
+                    } catch (err) { this.showError('❌ Error parsing JSON file.'); }
                 };
                 reader.readAsText(file);
             }
-            migratePurchasesToTransactions(item) {
-                if (item.purchases && (!item.transactions || item.transactions.length === 0)) {
-                    item.transactions = item.purchases.map(p => ({
-                        type: 'buy',
-                        shares: p.shares,
-                        price: p.costBasis,
-                        note: p.platform || '',
-                        date: new Date().toISOString()
-                    }));
-                    delete item.purchases;
-                }
-            }
+            
             renderDiversificationChart() {
-                const hasTransactions = this.stocks.some(s => s.transactions && s.transactions.length > 0 && this.calculateTransactionStats(s.transactions).totalSharesOwned > 0);
-                if (!hasTransactions) { if (this.diversificationChartInstance) { this.diversificationChartInstance.destroy(); this.diversificationChartInstance = null; } this.elements.diversificationChartContainer.style.display = 'none'; return; }
-                
-                this.elements.diversificationChartContainer.style.display = this.currentTab === 'stocks' ? 'block' : 'none';
-                
+                const container = this.elements.diversificationChartContainer;
+                const hasTransactions = this.stocks && this.stocks.some(s => s.transactions && s.transactions.length > 0 && this.calculateTransactionStats(s.transactions).currentValue > 0);
+                container.style.display = this.currentTab === 'stocks' && hasTransactions ? 'block' : 'none';
+                if (!container.style.display || container.style.display === 'none') return;
                 const industryData = this.stocks.reduce((acc, stock) => {
-                    const { currentValue, totalSharesOwned } = this.calculateTransactionStats(stock.transactions, stock.price);
-                    if (totalSharesOwned > 0) { acc[stock.industry || 'Other'] = (acc[stock.industry || 'Other'] || 0) + currentValue; }
+                    const { currentValue } = this.calculateTransactionStats(stock.transactions, stock.price);
+                    if (currentValue > 0) acc[stock.industry || 'Other'] = (acc[stock.industry || 'Other'] || 0) + currentValue;
                     return acc;
                 }, {});
                 const sortedData = Object.entries(industryData).sort(([, a], [, b]) => b - a);
                 const labels = sortedData.map(([label]) => label);
                 const data = sortedData.map(([, value]) => value);
-                
-                if (this.diversificationChartInstance) { this.diversificationChartInstance.destroy(); }
-
-                const chartColors = [
-                    '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40',
-                    '#2ecc71', '#e74c3c', '#8e44ad', '#f1c40f', '#1abc9c', '#d35400'
-                ];
-
+                if (this.diversificationChartInstance) this.diversificationChartInstance.destroy();
+                const colors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'];
                 const gridColor = this.isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
                 const labelColor = this.isDarkMode ? '#f1f1f1' : '#666';
-
-                const ctx = this.elements.diversificationChart.getContext('2d');
-                this.diversificationChartInstance = new Chart(ctx, {
+                this.diversificationChartInstance = new Chart(this.elements.diversificationChart, {
                     type: 'bar', 
-                    data: { 
-                        labels: labels, 
-                        datasets: [{ 
-                            label: 'Portfolio Value', 
-                            data: data, 
-                            backgroundColor: data.map((_, index) => chartColors[index % chartColors.length]), 
-                            borderWidth: 1 
-                        }] 
-                    },
-                    options: { 
-                        responsive: true, 
-                        maintainAspectRatio: false, 
-                        plugins: { 
-                            title: { display: true, text: 'Portfolio Breakdown by Industry', color: labelColor }, 
-                            legend: { display: false } 
-                        }, 
-                        scales: { 
-                            y: { beginAtZero: true, ticks: { color: labelColor }, grid: { color: gridColor } }, 
-                            x: { ticks: { color: labelColor }, grid: { color: gridColor } }
-                        } 
-                    }
+                    data: { labels, datasets: [{ label: 'Value', data, backgroundColor: colors }] },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Portfolio by Industry', color: labelColor }, legend: { display: false } }, scales: { y: { ticks: { color: labelColor }, grid: { color: gridColor } }, x: { ticks: { color: labelColor }, grid: { color: gridColor } } } }
                 });
             }
+
             async updatePortfolioHistory() {
                  const today = new Date().toISOString().slice(0, 10);
-                const lastEntry = this.portfolioHistory.length > 0 ? this.portfolioHistory[this.portfolioHistory.length - 1] : null;
+                const lastEntry = this.portfolioHistory.at(-1);
                 let totalValue = this.stocks.reduce((sum, stock) => sum + this.calculateTransactionStats(stock.transactions, stock.price).currentValue, 0);
                 if (totalValue <= 0) return;
-                if (!lastEntry || lastEntry.date !== today) { this.portfolioHistory.push({ date: today, value: totalValue }); } else { lastEntry.value = totalValue; }
+                if (!lastEntry || lastEntry.date !== today) this.portfolioHistory.push({ date: today, value: totalValue });
+                else lastEntry.value = totalValue;
                 await this.saveData();
             }
+
             renderHistoryChart() {
-                if (this.portfolioHistory.length < 2) { this.elements.historyChartContainer.style.display = 'none'; return; }
-                
-                this.elements.historyChartContainer.style.display = this.currentTab === 'stocks' ? 'block' : 'none';
-
-                const labels = this.portfolioHistory.map(entry => entry.date);
-                const data = this.portfolioHistory.map(entry => entry.value);
-                if (this.historyChartInstance) { this.historyChartInstance.destroy(); }
-
+                const container = this.elements.historyChartContainer;
+                container.style.display = this.currentTab === 'stocks' && this.portfolioHistory && this.portfolioHistory.length > 1 ? 'block' : 'none';
+                if (!container.style.display || container.style.display === 'none') return;
+                const labels = this.portfolioHistory.map(e => e.date);
+                const data = this.portfolioHistory.map(e => e.value);
+                if (this.historyChartInstance) this.historyChartInstance.destroy();
                 const gridColor = this.isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
                 const labelColor = this.isDarkMode ? '#f1f1f1' : '#666';
-
-                const ctx = this.elements.historyChart.getContext('2d');
-                this.historyChartInstance = new Chart(ctx, {
-                    type: 'line', data: { labels: labels, datasets: [{ label: 'Portfolio Value', data: data, fill: true, borderColor: 'rgb(75, 192, 192)', tension: 0.1 }] },
-                    options: { 
-                        responsive: true, 
-                        maintainAspectRatio: false, 
-                        plugins: { 
-                            title: { display: true, text: 'Portfolio Value History', color: labelColor },
-                            legend: { labels: { color: labelColor }}
-                        }, 
-                        scales: { 
-                             y: { beginAtZero: true, ticks: { color: labelColor }, grid: { color: gridColor } }, 
-                             x: { ticks: { color: labelColor }, grid: { color: gridColor } }
-                        } 
-                    }
+                this.historyChartInstance = new Chart(this.elements.historyChart, {
+                    type: 'line', data: { labels, datasets: [{ label: 'Portfolio Value', data, borderColor: '#667eea', tension: 0.1 }] },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Portfolio History', color: labelColor }, legend: { labels: { color: labelColor }} }, scales: { y: { ticks: { color: labelColor }, grid: { color: gridColor } }, x: { ticks: { color: labelColor }, grid: { color: gridColor } } } }
                 });
             }
+
             openConfirmModal(text, onConfirmAction) { this.elements.confirmModal.style.display = 'flex'; this.elements.confirmModalText.textContent = text; this.onConfirm = onConfirmAction; }
             closeConfirmModal() { this.elements.confirmModal.style.display = 'none'; this.onConfirm = null; }
-            handleConfirmAction() {
-                if (this.onConfirm) {
-                    this.onConfirm();
-                }
-                this.closeConfirmModal();
-            }
+            handleConfirmAction() { if (this.onConfirm) this.onConfirm(); this.closeConfirmModal(); }
+            
             openSettingsModal(){
-                this.elements.modalFinnhubKey.value = this.config.finnhubApiKey;
-                this.elements.modalAlphaVantageKey.value = this.config.alphaVantageApiKey;
+                this.elements.modalFinnhubKey.value = localStorage.getItem('finnhubApiKey') || '';
+                this.elements.modalAlphaVantageKey.value = localStorage.getItem('alphaVantageApiKey') || '';
                 this.elements.modalRefreshInterval.value = this.config.refreshIntervalMs / 1000;
                 this.elements.settingsModal.style.display = 'flex';
             }
-            closeSettingsModal(){
-                this.elements.settingsModal.style.display = 'none';
-            }
-            saveSettings(){
-                this.config.finnhubApiKey = this.elements.modalFinnhubKey.value.trim();
-                this.config.alphaVantageKey = this.elements.modalAlphaVantageKey.value.trim();
-                const interval = parseInt(this.elements.modalRefreshInterval.value, 10);
-                this.config.refreshIntervalMs = (interval && interval >= 10) ? interval * 1000 : 60000;
-                
-                this.apiService = new ApiService(this.config);
 
+            closeSettingsModal(){ this.elements.settingsModal.style.display = 'none'; }
+
+            saveSettings(){
+                const finnhubKey = this.elements.modalFinnhubKey.value.trim();
+                const alphaVantageKey = this.elements.modalAlphaVantageKey.value.trim();
+                const interval = parseInt(this.elements.modalRefreshInterval.value, 10);
+                
+                localStorage.setItem('finnhubApiKey', finnhubKey);
+                localStorage.setItem('alphaVantageApiKey', alphaVantageKey);
+                if (interval && interval >= 10) {
+                    localStorage.setItem('refreshIntervalMs', interval * 1000);
+                }
+
+                this.loadConfig(); 
+                this.apiService = new ApiService(this.config);
+                
                 this.closeSettingsModal();
-                this.showSuccess('✅ Settings updated for this session!');
+                this.showSuccess('✅ Settings saved!');
                 this.startLiveUpdate();
             }
             
@@ -2023,58 +1910,116 @@
             }
 
             applyTheme() {
-                const theme = localStorage.getItem('darkMode') === 'true';
-                this.isDarkMode = theme;
-                
-                document.body.classList.toggle('dark-mode', theme);
-                this.elements.appContainer.classList.toggle('dark-mode', theme);
-                
+                this.isDarkMode = localStorage.getItem('darkMode') === 'true';
+                document.body.classList.toggle('dark-mode', this.isDarkMode);
                 if (this.currentTab === 'stocks') {
                     this.renderDiversificationChart();
                     this.renderHistoryChart();
                 }
             }
 
-            openListAllModal() {
-                this.elements.listAllModal.style.display = 'flex';
-                this.listAllSymbols();
-            }
-
-            closeListAllModal() {
-                 this.elements.listAllModal.style.display = 'none';
-            }
-
+            openListAllModal() { this.elements.listAllModal.style.display = 'flex'; this.listAllSymbols(); }
+            closeListAllModal() { this.elements.listAllModal.style.display = 'none'; }
             listAllSymbols() {
                 const contentDiv = this.elements.listAllContent;
-                contentDiv.innerHTML = ''; // Clear previous list
+                contentDiv.innerHTML = '';
+                const createList = (title, items) => {
+                    if (items.length > 0) {
+                        contentDiv.innerHTML += `<h4>${title} (${items.length})</h4>`;
+                        items.forEach(item => contentDiv.innerHTML += `<p>${item.symbol}</p>`);
+                    }
+                };
+                createList('Stocks', this.stocks);
+                createList('Mutual Funds', this.mutualFunds);
+                createList('Watchlist', this.watchlist);
+                if (contentDiv.innerHTML === '') contentDiv.innerHTML = '<p>No saved symbols.</p>';
+            }
+            
+            openPriceAlertModal(symbol) {
+                this.elements.priceAlertModal.style.display = 'flex';
+                this.elements.alertSymbol.textContent = symbol;
+                this.elements.saveAlertBtn.dataset.symbol = symbol;
+            }
+            closePriceAlertModal() { this.elements.priceAlertModal.style.display = 'none'; }
+            async savePriceAlert() {
+                const { symbol } = this.elements.saveAlertBtn.dataset;
+                const price = parseFloat(this.elements.alertPrice.value);
+                if (!symbol || isNaN(price) || price <= 0) { this.showError("Invalid alert data."); return; }
+                this.priceAlerts.push({ symbol, condition: this.elements.alertCondition.value, price, triggered: false });
+                await this.saveData();
+                this.closePriceAlertModal();
+                this.showSuccess(`Alert set for ${symbol}.`);
+            }
 
-                if(this.stocks.length > 0) {
-                    contentDiv.innerHTML += `<h4>Stocks (${this.stocks.length})</h4>`;
-                    this.stocks.forEach(s => {
-                        contentDiv.innerHTML += `<p>${s.symbol}</p>`;
-                    });
+            checkPriceAlerts() {
+                if(this.priceAlerts.length === 0) return;
+                const allItems = [...this.stocks, ...this.mutualFunds, ...this.watchlist];
+                this.priceAlerts.forEach(alert => {
+                    if (alert.triggered) return;
+                    const item = allItems.find(i => i.symbol === alert.symbol);
+                    if (!item) return;
+                    const trigger = (alert.condition === 'above' && item.price > alert.price) || (alert.condition === 'below' && item.price < alert.price);
+                    if (trigger) {
+                        alert.triggered = true;
+                        this.showPriceAlert(item, alert);
+                        this.saveData();
+                    }
+                });
+            }
+            
+            async fetchAndRenderNews() {
+                const symbols = [...new Set([...this.stocks.map(s => s.symbol), ...this.watchlist.map(s => s.symbol)])];
+                if (symbols.length === 0) { this.elements.newsArticlesContainer.innerHTML = `<div class="loading">No symbols to fetch news for.</div>`; return; }
+                const now = Date.now();
+                if (this.newsFeed.length > 0 && now - this.newsFetchTime < 15 * 60 * 1000) { this.renderNews(); return; }
+                this.elements.newsArticlesContainer.innerHTML = '<div class="loading">Fetching news...</div>';
+                const result = await this.apiService.fetchNews(symbols);
+                if (result.success) {
+                    this.newsFeed = result.data;
+                    this.newsFetchTime = now;
+                    this.renderNews();
+                } else {
+                    this.elements.newsArticlesContainer.innerHTML = `<div class="error"><p>Failed to fetch news. ${result.reason}</p></div>`;
                 }
-                
-                if(this.mutualFunds.length > 0) {
-                     contentDiv.innerHTML += `<h4>Mutual Funds (${this.mutualFunds.length})</h4>`;
-                     this.mutualFunds.forEach(f => {
-                         contentDiv.innerHTML += `<p>${f.symbol}</p>`;
-                     });
-                }
+            }
 
-                if(this.watchlist.length > 0) {
-                     contentDiv.innerHTML += `<h4>Watchlist (${this.watchlist.length})</h4>`;
-                     this.watchlist.forEach(w => {
-                        contentDiv.innerHTML += `<p>${w.symbol}</p>`;
-                     });
-                }
-                
-                if(this.stocks.length === 0 && this.mutualFunds.length === 0 && this.watchlist.length === 0) {
-                    contentDiv.innerHTML = '<p>You have no saved symbols in any list.</p>';
+            renderNews() {
+                const container = this.elements.newsArticlesContainer;
+                container.innerHTML = '';
+                if (this.newsFeed.length === 0) { container.innerHTML = `<div class="loading">No recent news found.</div>`; return; }
+                this.newsFeed.slice(0, 20).forEach(article => { // Limit to 20 articles
+                    const card = document.createElement('a');
+                    card.href = article.url;
+                    card.target = "_blank";
+                    card.className = "news-article-card";
+                    card.innerHTML = `<img src="${article.banner_image || 'https://placehold.co/100x100/eee/ccc?text=News'}" onerror="this.src='https://placehold.co/100x100/eee/ccc?text=Error'"><div class="news-article-content"><h4>${article.title}</h4><p>${article.summary}</p></div>`;
+                    container.appendChild(card);
+                });
+            }
+
+            openEditStockModal(symbol) {
+                const stock = this.stocks.find(s => s.symbol === symbol);
+                if (!stock) return;
+                this.elements.editStockModal.style.display = 'flex';
+                this.elements.editStockSymbol.textContent = symbol;
+                this.elements.editStockPlatform.value = stock.platform || '';
+                this.elements.saveStockEditBtn.dataset.symbol = symbol;
+            }
+
+            closeEditStockModal() { this.elements.editStockModal.style.display = 'none'; }
+
+            async saveStockPlatform() {
+                const symbol = this.elements.saveStockEditBtn.dataset.symbol;
+                const stock = this.stocks.find(s => s.symbol === symbol);
+                if (stock) {
+                    stock.platform = this.elements.editStockPlatform.value.trim();
+                    await this.saveData();
+                    this.renderContent();
+                    this.closeEditStockModal();
+                    this.showSuccess(`✅ Updated platform for ${symbol}.`);
                 }
             }
         }
-        
         window.stockTracker = new StockTracker();
     </script>
 </body>
