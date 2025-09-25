@@ -1393,12 +1393,12 @@
             
             async fetchNews(symbols) {
                  if (symbols.length === 0) return { success: true, data: [] };
-                const newsUrl = `https://www.alphavantage.co/query?function=NEWS_SENTIMENT&topics=economy_global&tickers=${symbols.join(',')}&apikey=${this.config.alphaVantageApiKey}`;
+                const newsUrl = `https://www.alphavantage.co/query?function=NEWS_SENTIMENT&topics=all_topics&tickers=${symbols.join(',')}&apikey=${this.config.alphaVantageApiKey}`;
                 try {
                     const response = await fetch(newsUrl);
                     if (!response.ok) return { success: false, reason: `HTTP Error: ${response.status}` };
                     const data = await response.json();
-                    if (data['Error Message'] || data.Note) return { success: false, reason: data['Error Message'] || data.Note };
+                    if (data['Error Message'] || data.Note) return { success: false, reason: data['Error Message'] || data.Note || 'API returned an error.' };
                     return { success: true, data: data.feed || [] };
                 } catch (error) {
                     console.error("Error fetching news:", error);
@@ -1586,7 +1586,7 @@
                     closeEditStockBtn: document.getElementById('closeEditStockBtn'),
                     editStockSymbol: document.getElementById('edit-stock-symbol'),
                     editStockPlatform: document.getElementById('edit-stock-platform'),
-                    saveStockEditBtn: document.getElementById('save-stock-edit-btn'),
+                    saveStockEditBtn: document.getElementById('save-stock-edit-btn')
                 };
 
                 this.elements.resizeObserver.observe(this.elements.diversificationChartContainer);
@@ -2017,28 +2017,33 @@
             closeTransactionModal() { this.elements.transactionModal.style.display = 'none'; }
             
             async saveTransaction() {
-                const { symbol, type, transactionType, transactionIndex: indexStr } = this.elements.modalSaveBtn.dataset;
-                const index = parseInt(indexStr);
-                const list = (type === 'stock') ? this.stocks : this.mutualFunds;
-                const item = list.find(i => i.symbol === symbol);
-                if (!item) return;
+                try {
+                    const { symbol, type, transactionType, transactionIndex: indexStr } = this.elements.modalSaveBtn.dataset;
+                    const index = parseInt(indexStr);
+                    const list = (type === 'stock') ? this.stocks : this.mutualFunds;
+                    const item = list.find(i => i.symbol === symbol);
+                    if (!item) return;
 
-                if (transactionType === 'buy' || transactionType === 'sell') {
-                    const shares = parseFloat(this.elements.modalShares.value), price = parseFloat(this.elements.modalPrice.value);
-                    if (isNaN(shares) || shares <= 0 || isNaN(price) || price < 0) { this.showError('Invalid input.'); return; }
-                    if (!item.transactions) item.transactions = [];
-                    const newTransaction = { type: transactionType, shares, price, note: this.elements.modalNote.value.trim(), date: new Date().toISOString() };
-                    index > -1 ? item.transactions[index] = newTransaction : item.transactions.push(newTransaction);
-                } else if (transactionType === 'dividend') {
-                    const shares = parseFloat(this.elements.modalShares.value), amountPerShare = parseFloat(this.elements.modalDividendAmount.value);
-                    if (isNaN(shares) || shares <= 0 || isNaN(amountPerShare) || amountPerShare < 0) { this.showError('Invalid input.'); return; }
-                    if (!item.dividends) item.dividends = [];
-                    item.dividends.push({ shares, amountPerShare, totalAmount: shares * amountPerShare, date: new Date().toISOString() });
+                    if (transactionType === 'buy' || transactionType === 'sell') {
+                        const shares = parseFloat(this.elements.modalShares.value), price = parseFloat(this.elements.modalPrice.value);
+                        if (isNaN(shares) || shares <= 0 || isNaN(price) || price < 0) { this.showError('Invalid input.'); return; }
+                        if (!item.transactions) item.transactions = [];
+                        const newTransaction = { type: transactionType, shares, price, note: this.elements.modalNote.value.trim(), date: new Date().toISOString() };
+                        index > -1 ? item.transactions[index] = newTransaction : item.transactions.push(newTransaction);
+                    } else if (transactionType === 'dividend') {
+                        const shares = parseFloat(this.elements.modalShares.value), amountPerShare = parseFloat(this.elements.modalDividendAmount.value);
+                        if (isNaN(shares) || shares <= 0 || isNaN(amountPerShare) || amountPerShare < 0) { this.showError('Invalid input.'); return; }
+                        if (!item.dividends) item.dividends = [];
+                        item.dividends.push({ shares, amountPerShare, totalAmount: shares * amountPerShare, date: new Date().toISOString() });
+                    }
+                    
+                    await this.saveData();
+                    this.renderContent();
+                    this.closeTransactionModal();
+                } catch (error) {
+                    this.showError(`Error saving transaction: ${error.message}`);
+                    console.error(error);
                 }
-                
-                await this.saveData();
-                this.renderContent();
-                this.closeTransactionModal();
             }
             
             removeTransaction(symbol, index, type) {
@@ -2157,105 +2162,110 @@
             }
             
             renderCards(itemList, container, type) {
-                if (!container.classList.contains('group-content')) {
-                    container.innerHTML = ''; 
-                }
+                try {
+                    if (!container.classList.contains('group-content')) {
+                        container.innerHTML = ''; 
+                    }
 
-                itemList.forEach(item => {
-                    const card = document.createElement('div');
-                    card.className = `${type}-card`;
-                    const stats = this.calculateTransactionStats(item.transactions, item.price);
-                    
-                    const platformHTML = item.platform ? `<div class="info-row"><span class="info-label">Platform:</span><span class="info-value">${item.platform}</span></div>` : '';
+                    itemList.forEach(item => {
+                        const card = document.createElement('div');
+                        card.className = `${type}-card`;
+                        const stats = this.calculateTransactionStats(item.transactions, item.price);
+                        
+                        const platformHTML = item.platform ? `<div class="info-row"><span class="info-label">Platform:</span><span class="info-value">${item.platform}</span></div>` : '';
 
-                    const totalPL = stats.unrealizedPL;
-                    const totalPLPercent = stats.costOfRemainingShares > 0 ? (totalPL / stats.costOfRemainingShares) * 100 : 0;
-                    
-                    const positiveClass = value => value >= 0 ? 'positive' : 'negative';
+                        const totalPL = stats.unrealizedPL;
+                        const totalPLPercent = stats.costOfRemainingShares > 0 ? (totalPL / stats.costOfRemainingShares) * 100 : 0;
+                        
+                        const positiveClass = value => value >= 0 ? 'positive' : 'negative';
 
-                    let stockInfoHTML = '';
-                     if (type === 'watchlist' || type === 'fund') {
-                         stockInfoHTML = `<div class="info-row"><span class="info-label">Open:</span><span class="info-value">${this.formatCurrency(item.open || 0)}</span></div><div class="info-row"><span class="info-label">High:</span><span class="info-value">${this.formatCurrency(item.high || 0)}</span></div><div class="info-row"><span class="info-label">Low:</span><span class="info-value">${this.formatCurrency(item.low || 0)}</span></div><div class="info-row"><span class="info-label">Prev. Close:</span><span class="info-value">${this.formatCurrency(item.previousClose || 0)}</span></div>`;
-                     } else { 
-                         stockInfoHTML = `
-                         <div class="info-row">
-                             <span class="info-label">Open:</span>
-                             <span class="info-value">${this.formatCurrency(item.open || 0)}</span>
-                         </div>
-                         <div class="info-row">
-                             <span class="info-label">Total Shares:</span>
-                             <span class="info-value">${this.formatNumber(stats.totalSharesOwned, 3)}</span>
-                         </div>
-                         <div class="info-row">
-                             <span class="info-label">Total Value:</span>
-                             <span class="info-value ${positiveClass(totalPL)}">${this.formatCurrency(stats.currentValue)}</span>
-                         </div>
-                         <div class="info-row">
-                             <span class="info-label">Avg. Cost:</span>
-                             <span class="info-value">${this.formatCurrency(stats.averageCostBasis)}</span>
-                         </div>
-                         <div class="info-row">
-                             <span class="info-label">Total P/L:</span>
-                             <span class="info-value ${positiveClass(totalPL)}">${this.formatCurrency(totalPL)}</span>
-                         </div>
-                         <div class="info-row">
-                             <span class="info-label">Total P/L %:</span>
-                             <span class="info-value ${positiveClass(totalPLPercent)}">${this.formatNumber(totalPLPercent, 2)}%</span>
-                         </div>
-                         <div class="info-row">
-                             <span class="info-label">Total Cost Basis:</span>
-                             <span class="info-value">${this.formatCurrency(stats.costOfRemainingShares)}</span>
-                         </div>
-                         ${platformHTML}`;
-                     }
-                    
-                    let transactionDetailsHTML = '';
-                    if (type === 'stock' || type === 'fund') {
-                        transactionDetailsHTML = `
-                        <div class="transaction-details">
-                            <div class="transaction-header">
-                                <h4>Transactions:</h4>
-                                <div class="header-controls">
-                                    <button class="add-btn header-collapse-btn">Collapse</button>
-                                    <span class="toggle-icon">▼</span>
-                                </div>
+                        let stockInfoHTML = '';
+                        if (type === 'watchlist' || type === 'fund') {
+                            stockInfoHTML = `<div class="info-row"><span class="info-label">Open:</span><span class="info-value">${this.formatCurrency(item.open || 0)}</span></div><div class="info-row"><span class="info-label">High:</span><span class="info-value">${this.formatCurrency(item.high || 0)}</span></div><div class="info-row"><span class="info-label">Low:</span><span class="info-value">${this.formatCurrency(item.low || 0)}</span></div><div class="info-row"><span class="info-label">Prev. Close:</span><span class="info-value">${this.formatCurrency(item.previousClose || 0)}</span></div>`;
+                        } else { 
+                            stockInfoHTML = `
+                            <div class="info-row">
+                                <span class="info-label">Open:</span>
+                                <span class="info-value">${this.formatCurrency(item.open || 0)}</span>
                             </div>
-                            <div class="transactions-container">${ (item.transactions || []).map((t, index) => `<div class="transaction-entry"><span><strong class="${t.type}">${t.type.toUpperCase()}</strong>: ${this.formatNumber(t.shares, 3)} @ ${this.formatCurrency(t.price)}</span>${t.note ? `<span>Note: ${t.note}</span>` : ''}</div>`).join('')}</div>
-                        </div>
-                        <div class="card-actions">
-                            <button class="transaction-btn" onclick="window.stockTracker.openTransactionModal('${item.symbol}', '${type}', 'buy')">Buy</button>
-                            <button class="transaction-btn" style="background: #ff4757;" onclick="window.stockTracker.openTransactionModal('${item.symbol}', '${type}', 'sell')">Sell</button>
-                        </div>
-                        <div class="card-actions" style="grid-template-columns: 1fr;">
-                            <button class="add-btn" style="background-color: #f7b731;" onclick="window.stockTracker.openEditStockModal('${item.symbol}')">Edit</button>
-                        </div>
-                        `;
-                    } else if (type === 'watchlist') {
-                         transactionDetailsHTML = `<div class="card-actions" style="grid-template-columns: 1fr;"><button class="add-btn move-to-portfolio-btn" onclick="window.stockTracker.moveToPortfolio('${item.symbol}')">Move to Portfolio</button></div>`;
-                    }
+                            <div class="info-row">
+                                <span class="info-label">Total Shares:</span>
+                                <span class="info-value">${this.formatNumber(stats.totalSharesOwned, 3)}</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Total Value:</span>
+                                <span class="info-value ${positiveClass(totalPL)}">${this.formatCurrency(stats.currentValue)}</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Avg. Cost:</span>
+                                <span class="info-value">${this.formatCurrency(stats.averageCostBasis)}</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Total P/L:</span>
+                                <span class="info-value ${positiveClass(totalPL)}">${this.formatCurrency(totalPL)}</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Total P/L %:</span>
+                                <span class="info-value ${positiveClass(totalPLPercent)}">${this.formatNumber(totalPLPercent, 2)}%</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Total Cost Basis:</span>
+                                <span class="info-value">${this.formatCurrency(stats.costOfRemainingShares)}</span>
+                            </div>
+                            ${platformHTML}`;
+                        }
+                        
+                        let transactionDetailsHTML = '';
+                        if (type === 'stock' || type === 'fund') {
+                            transactionDetailsHTML = `
+                            <div class="transaction-details">
+                                <div class="transaction-header">
+                                    <h4>Transactions:</h4>
+                                    <div class="header-controls">
+                                        <button class="add-btn header-collapse-btn">Collapse</button>
+                                        <span class="toggle-icon">▼</span>
+                                    </div>
+                                </div>
+                                <div class="transactions-container">${ (item.transactions || []).map((t, index) => `<div class="transaction-entry"><span><strong class="${t.type}">${t.type.toUpperCase()}</strong>: ${this.formatNumber(t.shares, 3)} @ ${this.formatCurrency(t.price)}</span>${t.note ? `<span>Note: ${t.note}</span>` : ''}</div>`).join('')}</div>
+                            </div>
+                            <div class="card-actions">
+                                <button class="transaction-btn" onclick="window.stockTracker.openTransactionModal('${item.symbol}', '${type}', 'buy')">Buy</button>
+                                <button class="transaction-btn" style="background: #ff4757;" onclick="window.stockTracker.openTransactionModal('${item.symbol}', '${type}', 'sell')">Sell</button>
+                            </div>
+                            <div class="card-actions" style="grid-template-columns: 1fr;">
+                                <button class="add-btn" style="background-color: #f7b731;" onclick="window.stockTracker.openEditStockModal('${item.symbol}')">Edit</button>
+                            </div>
+                            `;
+                        } else if (type === 'watchlist') {
+                            transactionDetailsHTML = `<div class="card-actions" style="grid-template-columns: 1fr;"><button class="add-btn move-to-portfolio-btn" onclick="window.stockTracker.moveToPortfolio('${item.symbol}')">Move to Portfolio</button></div>`;
+                        }
 
-                    const todayPL = (item.change || 0) * stats.totalSharesOwned;
-                    card.innerHTML = `<div class="stock-header"><span class="stock-symbol">${item.symbol}</span><button class="remove-btn" onclick="window.stockTracker.removeItem('${item.symbol}', '${type}')">×</button></div><div class="stock-price">${this.formatCurrency(item.price || 0)}</div><div class="stock-change ${item.change >= 0 ? 'positive' : 'negative'}"><span>${item.change >= 0 ? '▲' : '▼'} ${this.formatCurrency(item.change || 0)} (${(item.changePercent || 0).toFixed(2)}%)</span></div><div class="stock-info">${stockInfoHTML}</div>${transactionDetailsHTML}<div class="total-pl ${todayPL >= 0 ? 'positive' : 'negative'}">P/L Today: ${this.formatCurrency(todayPL)}</div>`;
-                    
-                    const transactionHeader = card.querySelector('.transaction-header');
-                    if (transactionHeader) {
-                        const toggleTransactions = () => {
-                            transactionHeader.classList.toggle('collapsed');
-                            const transactionsContainer = transactionHeader.nextElementSibling;
-                            if (transactionsContainer) {
-                                transactionsContainer.classList.toggle('collapsed');
-                                const button = transactionHeader.querySelector('.header-collapse-btn');
-                                button.textContent = transactionHeader.classList.contains('collapsed') ? 'Expand' : 'Collapse';
-                            }
-                        };
-                        transactionHeader.addEventListener('click', toggleTransactions);
-                        transactionHeader.querySelector('.header-collapse-btn').addEventListener('click', (e) => {
-                            e.stopPropagation();
-                            toggleTransactions();
-                        });
-                    }
-                    container.appendChild(card);
-                });
+                        const todayPL = (item.change || 0) * stats.totalSharesOwned;
+                        card.innerHTML = `<div class="stock-header"><span class="stock-symbol">${item.symbol}</span><button class="remove-btn" onclick="window.stockTracker.removeItem('${item.symbol}', '${type}')">×</button></div><div class="stock-price">${this.formatCurrency(item.price || 0)}</div><div class="stock-change ${item.change >= 0 ? 'positive' : 'negative'}"><span>${item.change >= 0 ? '▲' : '▼'} ${this.formatCurrency(item.change || 0)} (${(item.changePercent || 0).toFixed(2)}%)</span></div><div class="stock-info">${stockInfoHTML}</div>${transactionDetailsHTML}<div class="total-pl ${todayPL >= 0 ? 'positive' : 'negative'}">P/L Today: ${this.formatCurrency(todayPL)}</div>`;
+                        
+                        const transactionHeader = card.querySelector('.transaction-header');
+                        if (transactionHeader) {
+                            const toggleTransactions = () => {
+                                transactionHeader.classList.toggle('collapsed');
+                                const transactionsContainer = transactionHeader.nextElementSibling;
+                                if (transactionsContainer) {
+                                    transactionsContainer.classList.toggle('collapsed');
+                                    const button = transactionHeader.querySelector('.header-collapse-btn');
+                                    button.textContent = transactionHeader.classList.contains('collapsed') ? 'Expand' : 'Collapse';
+                                }
+                            };
+                            transactionHeader.addEventListener('click', toggleTransactions);
+                            transactionHeader.querySelector('.header-collapse-btn').addEventListener('click', (e) => {
+                                e.stopPropagation();
+                                toggleTransactions();
+                            });
+                        }
+                        container.appendChild(card);
+                    });
+                } catch (error) {
+                    this.showError(`Error rendering content: ${error.message}`);
+                    console.error("Error in renderCards:", error);
+                }
             }
 
             async moveToPortfolio(symbol) {
@@ -2389,7 +2399,7 @@
                 const interval = parseInt(this.elements.modalRefreshInterval.value, 10);
                 
                 localStorage.setItem('finnhubApiKey', finnhubKey);
-                localStorage.setItem('alphaVantageKey', alphaVantageKey);
+                localStorage.setItem('alphaVantageApiKey', alphaVantageKey);
                 if (interval && interval >= 10) {
                     localStorage.setItem('refreshIntervalMs', interval * 1000);
                 }
