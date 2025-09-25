@@ -1548,6 +1548,10 @@
                     diversificationChart: document.getElementById('diversificationChart'),
                     historyChartContainer: document.getElementById('history-chart-container'),
                     historyChart: document.getElementById('historyChart'),
+                    resizeObserver: new ResizeObserver(() => {
+                        this.renderDiversificationChart();
+                        this.renderHistoryChart();
+                    }),
                     confirmModal: document.getElementById('confirmModal'),
                     confirmModalText: document.getElementById('confirm-modal-text'),
                     confirmModalCancelBtn: document.getElementById('confirm-modal-cancel-btn'),
@@ -1584,6 +1588,9 @@
                     editStockPlatform: document.getElementById('edit-stock-platform'),
                     saveStockEditBtn: document.getElementById('save-stock-edit-btn'),
                 };
+
+                this.elements.resizeObserver.observe(this.elements.diversificationChartContainer);
+                this.elements.resizeObserver.observe(this.elements.historyChartContainer);
             }
 
             setupEventListeners() {
@@ -1706,7 +1713,7 @@
                 } else if (type === 'watchlist') {
                     this.renderCards(sortedItems, grid, type);
                 }
-
+                
                 this.renderDiversificationChart();
                 this.renderHistoryChart();
 
@@ -2349,7 +2356,7 @@
 
                 this.historyChartInstance = new Chart(this.elements.historyChart, {
                     type: 'line', data: { labels, datasets: [{ label: 'Portfolio Value', data, borderColor: '#667eea', tension: 0.1 }] },
-                    options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Portfolio History', color: labelColor }, legend: { labels: { color: labelColor }} }, scales: { y: { ticks: { color: labelColor }, grid: { color: gridColor } }, x: { ticks: { color: labelColor }, grid: { color: color } } } }
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Portfolio History', color: labelColor }, legend: { labels: { color: labelColor }} }, scales: { y: { ticks: { color: labelColor }, grid: { color: gridColor } }, x: { ticks: { color: labelColor }, grid: { color: gridColor } } } }
                 });
             }
 
@@ -2372,7 +2379,7 @@
                 const interval = parseInt(this.elements.modalRefreshInterval.value, 10);
                 
                 localStorage.setItem('finnhubApiKey', finnhubKey);
-                localStorage.setItem('alphaVantageKey', alphaVantageKey);
+                localStorage.setItem('alphaVantageApiKey', alphaVantageKey);
                 if (interval && interval >= 10) {
                     localStorage.setItem('refreshIntervalMs', interval * 1000);
                 }
