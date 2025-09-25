@@ -1253,7 +1253,7 @@
 
     <div id="transactionModal" class="modal" style="display: none;">
         <div class="modal-content">
-            <button class="close-modal-btn" onclick="window.stockTracker.closeTransactionModal()">&times;</button>
+            <button class="close-modal-btn" id="closeTransactionModalBtn">&times;</button>
             <h3 class="modal-title"><span id="modal-title-action">Add</span> Transaction for <span id="modal-symbol"></span></h3>
             <div class="transaction-input-group">
                 <label for="modal-shares">Shares:</label>
@@ -1301,6 +1301,7 @@
 
     <div id="confirmModal" class="modal" style="display: none;">
         <div class="modal-content">
+            <button class="close-modal-btn" id="closeConfirmModalBtn">&times;</button>
             <h3 class="modal-title">Are you sure?</h3>
             <p id="confirm-modal-text" style="text-align: center; margin-bottom: 20px;"></p>
             <div class="modal-actions">
@@ -1312,7 +1313,7 @@
     
     <div id="priceAlertModal" class="modal" style="display: none;">
         <div class="modal-content">
-            <button class="close-modal-btn" onclick="window.stockTracker.closePriceAlertModal()">&times;</button>
+            <button class="close-modal-btn" id="closePriceAlertModalBtn">&times;</button>
             <h3 class="modal-title">Set Price Alert for <span id="alert-symbol"></span></h3>
             <div class="transaction-input-group">
                 <label for="alert-condition">Condition:</label>
@@ -1586,7 +1587,10 @@
                     closeEditStockBtn: document.getElementById('closeEditStockBtn'),
                     editStockSymbol: document.getElementById('edit-stock-symbol'),
                     editStockPlatform: document.getElementById('edit-stock-platform'),
-                    saveStockEditBtn: document.getElementById('save-stock-edit-btn')
+                    saveStockEditBtn: document.getElementById('save-stock-edit-btn'),
+                    closeTransactionModalBtn: document.getElementById('closeTransactionModalBtn'),
+                    closeConfirmModalBtn: document.getElementById('closeConfirmModalBtn'),
+                    closePriceAlertModalBtn: document.getElementById('closePriceAlertModalBtn'),
                 };
 
                 this.elements.resizeObserver.observe(this.elements.diversificationChartContainer);
@@ -1611,25 +1615,30 @@
                 this.elements.addWatchlistBtn.addEventListener('click', () => this.addItemFromInput('watchlist'));
                 this.elements.watchlistInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') this.addItemFromInput('watchlist'); });
                 document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', (e) => { const tabId = e.target.getAttribute('onclick').split("'")[1].replace('window.stockTracker.',''); this.switchTab(tabId); }));
-                this.elements.modalSaveBtn.addEventListener('click', () => this.saveTransaction());
-                this.elements.settingsBtn.addEventListener('click', () => this.openSettingsModal());
-                this.elements.closeSettingsBtn.addEventListener('click', () => this.closeSettingsModal());
-                this.elements.modalSaveSettingsBtn.addEventListener('click', () => this.saveSettings());
-                this.elements.confirmModalCancelBtn.addEventListener('click', () => this.closeConfirmModal());
-                this.elements.confirmModalConfirmBtn.addEventListener('click', () => this.handleConfirmAction());
-                this.elements.listAllBtn.addEventListener('click', () => this.openListAllModal());
-                this.elements.closeListAllBtn.addEventListener('click', () => this.closeListAllModal());
-                this.elements.toggleDarkModeBtn.addEventListener('click', () => this.toggleDarkMode());
-                this.elements.saveAlertBtn.addEventListener('click', () => this.savePriceAlert());
-                this.elements.updateAllFundsBtn.addEventListener('click', () => this.refreshFunds());
-                this.elements.clearAllFundsBtn.addEventListener('click', () => this.clearAllItems('fund'));
-                this.elements.updateWatchlistBtn.addEventListener('click', () => this.refreshWatchlist());
-                this.elements.clearWatchlistBtn.addEventListener('click', () => this.clearAllItems('watchlist'));
+                
+                if (this.elements.modalSaveBtn) this.elements.modalSaveBtn.addEventListener('click', () => this.saveTransaction());
+                if (this.elements.settingsBtn) this.elements.settingsBtn.addEventListener('click', () => this.openSettingsModal());
+                if (this.elements.closeSettingsBtn) this.elements.closeSettingsBtn.addEventListener('click', () => this.closeSettingsModal());
+                if (this.elements.modalSaveSettingsBtn) this.elements.modalSaveSettingsBtn.addEventListener('click', () => this.saveSettings());
+                if (this.elements.confirmModalCancelBtn) this.elements.confirmModalCancelBtn.addEventListener('click', () => this.closeConfirmModal());
+                if (this.elements.confirmModalConfirmBtn) this.elements.confirmModalConfirmBtn.addEventListener('click', () => this.handleConfirmAction());
+                if (this.elements.listAllBtn) this.elements.listAllBtn.addEventListener('click', () => this.openListAllModal());
+                if (this.elements.closeListAllBtn) this.elements.closeListAllBtn.addEventListener('click', () => this.closeListAllModal());
+                if (this.elements.toggleDarkModeBtn) this.elements.toggleDarkModeBtn.addEventListener('click', () => this.toggleDarkMode());
+                if (this.elements.saveAlertBtn) this.elements.saveAlertBtn.addEventListener('click', () => this.savePriceAlert());
+                if (this.elements.updateAllFundsBtn) this.elements.updateAllFundsBtn.addEventListener('click', () => this.refreshFunds());
+                if (this.elements.clearAllFundsBtn) this.elements.clearAllFundsBtn.addEventListener('click', () => this.clearAllItems('fund'));
+                if (this.elements.updateWatchlistBtn) this.elements.updateWatchlistBtn.addEventListener('click', () => this.refreshWatchlist());
+                if (this.elements.clearWatchlistBtn) this.elements.clearWatchlistBtn.addEventListener('click', () => this.clearAllItems('watchlist'));
 
                 // NEW: Event Listeners for Edit Stock Modal
-                this.elements.closeEditStockBtn.addEventListener('click', () => this.closeEditStockModal());
-                this.elements.saveStockEditBtn.addEventListener('click', () => this.saveStockPlatform());
+                if (this.elements.closeEditStockBtn) this.elements.closeEditStockBtn.addEventListener('click', () => this.closeEditStockModal());
+                if (this.elements.saveStockEditBtn) this.elements.saveStockEditBtn.addEventListener('click', () => this.saveStockPlatform());
 
+                if (this.elements.closeTransactionModalBtn) this.elements.closeTransactionModalBtn.addEventListener('click', () => this.closeTransactionModal());
+                if (this.elements.closeConfirmModalBtn) this.elements.closeConfirmModalBtn.addEventListener('click', () => this.closeConfirmModal());
+                if (this.elements.closePriceAlertModalBtn) this.elements.closePriceAlertModalBtn.addEventListener('click', () => this.closePriceAlertModal());
+                
                 window.addEventListener('beforeunload', () => {
                     sessionStorage.setItem('scrollPosition', window.scrollY);
                 });
@@ -2018,8 +2027,15 @@
             
             async saveTransaction() {
                 try {
-                    const { symbol, type, transactionType, transactionIndex: indexStr } = this.elements.modalSaveBtn.dataset;
-                    const index = parseInt(indexStr);
+                    const symbol = this.elements.modalSaveBtn.dataset.symbol;
+                    const type = this.elements.modalSaveBtn.dataset.type;
+                    const transactionType = this.elements.modalSaveBtn.dataset.transactionType;
+                    
+                    if (!symbol || !type || !transactionType) {
+                        this.showError('Missing transaction data');
+                        return;
+                    }
+                    
                     const list = (type === 'stock') ? this.stocks : this.mutualFunds;
                     const item = list.find(i => i.symbol === symbol);
                     if (!item) return;
@@ -2029,7 +2045,7 @@
                         if (isNaN(shares) || shares <= 0 || isNaN(price) || price < 0) { this.showError('Invalid input.'); return; }
                         if (!item.transactions) item.transactions = [];
                         const newTransaction = { type: transactionType, shares, price, note: this.elements.modalNote.value.trim(), date: new Date().toISOString() };
-                        index > -1 ? item.transactions[index] = newTransaction : item.transactions.push(newTransaction);
+                        item.transactions.push(newTransaction);
                     } else if (transactionType === 'dividend') {
                         const shares = parseFloat(this.elements.modalShares.value), amountPerShare = parseFloat(this.elements.modalDividendAmount.value);
                         if (isNaN(shares) || shares <= 0 || isNaN(amountPerShare) || amountPerShare < 0) { this.showError('Invalid input.'); return; }
@@ -2229,8 +2245,8 @@
                                 <div class="transactions-container">${ (item.transactions || []).map((t, index) => `<div class="transaction-entry"><span><strong class="${t.type}">${t.type.toUpperCase()}</strong>: ${this.formatNumber(t.shares, 3)} @ ${this.formatCurrency(t.price)}</span>${t.note ? `<span>Note: ${t.note}</span>` : ''}</div>`).join('')}</div>
                             </div>
                             <div class="card-actions">
-                                <button class="transaction-btn" onclick="window.stockTracker.openTransactionModal('${item.symbol}', '${type}', 'buy')">Buy</button>
-                                <button class="transaction-btn" style="background: #ff4757;" onclick="window.stockTracker.openTransactionModal('${item.symbol}', '${type}', 'sell')">Sell</button>
+                                <button class="transaction-btn" data-symbol="${item.symbol}" data-type="${type}" data-transaction-type="buy">Buy</button>
+                                <button class="transaction-btn" style="background: #ff4757;" data-symbol="${item.symbol}" data-type="${type}" data-transaction-type="sell">Sell</button>
                             </div>
                             <div class="card-actions" style="grid-template-columns: 1fr;">
                                 <button class="add-btn" style="background-color: #f7b731;" onclick="window.stockTracker.openEditStockModal('${item.symbol}')">Edit</button>
@@ -2260,6 +2276,24 @@
                                 toggleTransactions();
                             });
                         }
+                        
+                        const buyBtn = card.querySelector('.card-actions .transaction-btn:first-child');
+                        const sellBtn = card.querySelector('.card-actions .transaction-btn:last-child');
+                        if (buyBtn) {
+                            buyBtn.addEventListener('click', (e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                this.openTransactionModal(item.symbol, type, 'buy');
+                            });
+                        }
+                        if (sellBtn) {
+                            sellBtn.addEventListener('click', (e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                this.openTransactionModal(item.symbol, type, 'sell');
+                            });
+                        }
+
                         container.appendChild(card);
                     });
                 } catch (error) {
