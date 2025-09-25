@@ -1629,6 +1629,16 @@
                 // NEW: Event Listeners for Edit Stock Modal
                 this.elements.closeEditStockBtn.addEventListener('click', () => this.closeEditStockModal());
                 this.elements.saveStockEditBtn.addEventListener('click', () => this.saveStockPlatform());
+
+                window.addEventListener('beforeunload', () => {
+                    sessionStorage.setItem('scrollPosition', window.scrollY);
+                });
+                window.addEventListener('load', () => {
+                    const scrollPosition = sessionStorage.getItem('scrollPosition');
+                    if (scrollPosition) {
+                        window.scrollTo(0, parseInt(scrollPosition));
+                    }
+                });
             }
             
             switchTab(tab) {
@@ -2085,17 +2095,17 @@
                         summaryTitle = `Biggest Gain: ${item.symbol}`;
                         const changeClass = (item.change || 0) >= 0 ? 'positive' : 'negative';
                         const changePercentClass = (item.changePercent || 0) >= 0 ? 'positive' : 'negative';
-                        summaryText = `Gained <span class="${changeClass}">${this.formatCurrency(item.change)}</span> today, a change of <span class="${changePercentClass}">${(item.changePercent || 0).toFixed(2)}%</span>.`;
                         
-                        const stats = this.calculateTransactionStats(items[0].transactions, items[0].price);
+                        const stats = this.calculateTransactionStats(item.transactions, item.price);
                         const totalPL = stats.unrealizedPL + stats.realizedPL;
                         const totalPLClass = totalPL >= 0 ? 'positive' : 'negative';
-                        
                         const totalValue = stats.currentValue;
-                        const totalValueClass = totalPL >= 0 ? 'positive' : 'negative';
-                        
-                        summaryText += `\nTotal Value: <span class="${totalValueClass}">${this.formatCurrency(totalValue)}</span>`;
-                        summaryText += `\nTotal P/L: <span class="${totalPLClass}">${this.formatCurrency(totalPL)}</span>`;
+                        const totalChangeToday = (item.change || 0) * stats.totalSharesOwned;
+                        const totalChangeTodayClass = totalChangeToday >= 0 ? 'positive' : 'negative';
+
+                        summaryText = `Gained <span class="${changeClass}">${this.formatCurrency(item.change)}</span> today, a change of <span class="${changePercentClass}">${(item.changePercent || 0).toFixed(2)}%</span>.`;
+                        summaryText += `\nTotal Value: <span class="${totalPL >= 0 ? 'positive' : 'negative'}">${this.formatCurrency(totalValue)}</span>`;
+                        summaryText += `\nTotal Change Today: <span class="${totalChangeTodayClass}">${this.formatCurrency(totalChangeToday)}</span>`;
                     }
                 } else {
                     const totalChange = items.reduce((sum, item) => sum + (item.change || 0) * this.calculateTransactionStats(item.transactions, item.price).totalSharesOwned, 0);
@@ -2379,7 +2389,7 @@
                 const interval = parseInt(this.elements.modalRefreshInterval.value, 10);
                 
                 localStorage.setItem('finnhubApiKey', finnhubKey);
-                localStorage.setItem('alphaVantageApiKey', alphaVantageKey);
+                localStorage.setItem('alphaVantageKey', alphaVantageKey);
                 if (interval && interval >= 10) {
                     localStorage.setItem('refreshIntervalMs', interval * 1000);
                 }
