@@ -1693,7 +1693,6 @@
 
                 if (type === 'stock') {
                     this.renderPortfolioSummary();
-                    // MODIFIED: Check for platform sort and render grouped view
                     if (sortBy === 'platform') {
                         this.renderGroupedByPlatform(sortedItems, grid, type);
                     } else if (sortBy === 'performance') {
@@ -2080,6 +2079,16 @@
                         const changeClass = (item.change || 0) >= 0 ? 'positive' : 'negative';
                         const changePercentClass = (item.changePercent || 0) >= 0 ? 'positive' : 'negative';
                         summaryText = `Gained <span class="${changeClass}">${this.formatCurrency(item.change)}</span> today, a change of <span class="${changePercentClass}">${(item.changePercent || 0).toFixed(2)}%</span>.`;
+                        
+                        const stats = this.calculateTransactionStats(items[0].transactions, items[0].price);
+                        const totalPL = stats.unrealizedPL + stats.realizedPL;
+                        const totalPLClass = totalPL >= 0 ? 'positive' : 'negative';
+                        
+                        const totalValue = stats.currentValue;
+                        const totalValueClass = totalPL >= 0 ? 'positive' : 'negative';
+                        
+                        summaryText += `\nTotal Value: <span class="${totalValueClass}">${this.formatCurrency(totalValue)}</span>`;
+                        summaryText += `\nTotal P/L: <span class="${totalPLClass}">${this.formatCurrency(totalPL)}</span>`;
                     }
                 } else {
                     const totalChange = items.reduce((sum, item) => sum + (item.change || 0) * this.calculateTransactionStats(item.transactions, item.price).totalSharesOwned, 0);
@@ -2142,10 +2151,11 @@
                     
                     const platformHTML = item.platform ? `<div class="info-row"><span class="info-label">Platform:</span><span class="info-value">${item.platform}</span></div>` : '';
 
-                    const positiveClass = value => value >= 0 ? 'positive' : 'negative';
                     const totalPL = stats.unrealizedPL;
                     const totalPLPercent = stats.costOfRemainingShares > 0 ? (totalPL / stats.costOfRemainingShares) * 100 : 0;
                     
+                    const positiveClass = value => value >= 0 ? 'positive' : 'negative';
+
                     let stockInfoHTML = '';
                      if (type === 'watchlist' || type === 'fund') {
                          stockInfoHTML = `<div class="info-row"><span class="info-label">Open:</span><span class="info-value">${this.formatCurrency(item.open || 0)}</span></div><div class="info-row"><span class="info-label">High:</span><span class="info-value">${this.formatCurrency(item.high || 0)}</span></div><div class="info-row"><span class="info-label">Low:</span><span class="info-value">${this.formatCurrency(item.low || 0)}</span></div><div class="info-row"><span class="info-label">Prev. Close:</span><span class="info-value">${this.formatCurrency(item.previousClose || 0)}</span></div>`;
