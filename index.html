@@ -1167,6 +1167,7 @@
                 <button class="add-btn" id="settingsBtn" style="background: linear-gradient(45deg, #6c757d, #343a40);">⚙️ Settings</button>
                 <button class="add-btn" id="listAllBtn" style="background: #9b59b6;">📋 List All Stocks</button>
                 <button class="add-btn" id="toggleDarkModeBtn" style="background: #333;">🌙 Toggle Theme</button>
+                <button class="add-btn" id="totalPnlSummaryBtn" style="background: linear-gradient(45deg, #9b59b6, #8e44ad);">💰 Total P/L Summary</button>
             </div>
         </div>
 
@@ -1335,6 +1336,15 @@
             <button class="close-modal-btn" id="closeListAllBtn">&times;</button>
             <h3 class="modal-title">All Saved Symbols</h3>
             <div id="list-all-content"></div>
+        </div>
+    </div>
+
+    <div id="totalPnlSummaryModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <button class="close-modal-btn" id="closeTotalPnlSummaryBtn">&times;</button>
+            <h3 class="modal-title">Total Portfolio Performance</h3>
+            <div class="summary-stats" id="totalPnlSummaryStats">
+            </div>
         </div>
     </div>
 
@@ -1591,6 +1601,10 @@
                     closeTransactionModalBtn: document.getElementById('closeTransactionModalBtn'),
                     closeConfirmModalBtn: document.getElementById('closeConfirmModalBtn'),
                     closePriceAlertModalBtn: document.getElementById('closePriceAlertModalBtn'),
+                    totalPnlSummaryBtn: document.getElementById('totalPnlSummaryBtn'),
+                    totalPnlSummaryModal: document.getElementById('totalPnlSummaryModal'),
+                    totalPnlSummaryStats: document.getElementById('totalPnlSummaryStats'),
+                    closeTotalPnlSummaryBtn: document.getElementById('closeTotalPnlSummaryBtn'),
                 };
 
                 this.elements.resizeObserver.observe(this.elements.diversificationChartContainer);
@@ -1638,6 +1652,8 @@
                 if (this.elements.closeTransactionModalBtn) this.elements.closeTransactionModalBtn.addEventListener('click', () => this.closeTransactionModal());
                 if (this.elements.closeConfirmModalBtn) this.elements.closeConfirmModalBtn.addEventListener('click', () => this.closeConfirmModal());
                 if (this.elements.closePriceAlertModalBtn) this.elements.closePriceAlertModalBtn.addEventListener('click', () => this.closePriceAlertModal());
+                if (this.elements.totalPnlSummaryBtn) this.elements.totalPnlSummaryBtn.addEventListener('click', () => this.showTotalPnlSummary());
+                if (this.elements.closeTotalPnlSummaryBtn) this.elements.closeTotalPnlSummaryBtn.addEventListener('click', () => this.elements.totalPnlSummaryModal.style.display = 'none');
                 
                 window.addEventListener('beforeunload', () => {
                     sessionStorage.setItem('scrollPosition', window.scrollY);
@@ -2565,6 +2581,31 @@
                     this.showSuccess(`✅ Updated platform for ${symbol}.`);
                 }
             }
+            
+            showTotalPnlSummary() {
+                const totalGains = this.stocks.reduce((sum, stock) => {
+                    const stats = this.calculateTransactionStats(stock.transactions, stock.price);
+                    return sum + Math.max(0, stats.unrealizedPL + stats.realizedPL);
+                }, 0);
+                const totalLosses = this.stocks.reduce((sum, stock) => {
+                    const stats = this.calculateTransactionStats(stock.transactions, stock.price);
+                    return sum + Math.min(0, stats.unrealizedPL + stats.realizedPL);
+                }, 0);
+
+                this.elements.totalPnlSummaryStats.innerHTML = `
+                    <div class="summary-item">
+                        <span class="summary-label">Total Gains</span>
+                        <span class="summary-value positive">${this.formatCurrency(totalGains)}</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Total Losses</span>
+                        <span class="summary-value negative">${this.formatCurrency(totalLosses)}</span>
+                    </div>
+                `;
+
+                this.elements.totalPnlSummaryModal.style.display = 'flex';
+            }
+
         }
         
         window.stockTracker = new StockTracker();
