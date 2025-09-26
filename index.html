@@ -1494,7 +1494,7 @@
 
             signIn() {
                 const provider = new GoogleAuthProvider();
-                signInWithRedirect(auth, provider).catch(error => { // Changed to signInWithRedirect
+                signInWithPopup(auth, provider).catch(error => { // Reverted to signInWithPopup
                     console.error("Google sign-in error", error);
                     if (error.code === 'auth/unauthorized-domain') {
                         const errorDiv = document.getElementById('firebase-auth-error');
