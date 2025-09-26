@@ -2021,6 +2021,7 @@
             }
 
             openTransactionModal(symbol, type, transactionType, transactionIndex = -1) {
+                console.log(`[OPEN MODAL] Attempting to open modal for ${symbol}, type: ${transactionType}`);
                 this.elements.transactionModal.style.display = 'flex';
                 this.elements.modalSymbol.textContent = symbol;
                 this.elements.modalTitleAction.textContent = transactionIndex > -1 ? 'Edit' : transactionType.charAt(0).toUpperCase() + transactionType.slice(1);
@@ -2039,9 +2040,13 @@
                 Object.assign(this.elements.modalSaveBtn.dataset, { symbol, type, transactionType, transactionIndex });
             }
             
-            closeTransactionModal() { this.elements.transactionModal.style.display = 'none'; }
+            closeTransactionModal() { 
+                console.log('[MODAL CLOSE] Closing transaction modal.');
+                this.elements.transactionModal.style.display = 'none'; 
+            }
             
             async saveTransaction() {
+                console.log('[SAVE START] Transaction save initiated.');
                 try {
                     const symbol = this.elements.modalSaveBtn.dataset.symbol;
                     const type = this.elements.modalSaveBtn.dataset.type;
@@ -2052,6 +2057,7 @@
                     if (!symbol || !type || !transactionType) {
                         this.showError('Missing transaction data');
                         this.closeTransactionModal();
+                        console.error('[SAVE FAIL] Missing data in dataset.');
                         return;
                     }
                     
@@ -2060,6 +2066,7 @@
                     if (!item) {
                         this.showError(`Stock ${symbol} not found in portfolio.`);
                         this.closeTransactionModal(); 
+                        console.error('[SAVE FAIL] Stock item not found.');
                         return;
                     }
 
@@ -2067,10 +2074,13 @@
                         const shares = parseFloat(this.elements.modalShares.value);
                         const price = parseFloat(this.elements.modalPrice.value);
                         
+                        console.log(`[SAVE STEP] Validating shares (${shares}) and price (${price}).`);
+
                         // Rigorous input validation as requested
                         if (isNaN(shares) || shares <= 0 || isNaN(price) || price <= 0) {
                             this.showError('Invalid input: Shares and Price must be positive numbers.');
                             this.closeTransactionModal(); 
+                            console.error('[SAVE FAIL] Validation failed for shares/price.');
                             return;
                         }
 
@@ -2088,8 +2098,10 @@
                         // Add or edit transaction
                         if (index === -1 || isNaN(index)) {
                             item.transactions.push(newTransaction);
+                            console.log('[SAVE STEP] Added new transaction.');
                         } else {
                             item.transactions[index] = newTransaction;
+                            console.log(`[SAVE STEP] Edited transaction at index ${index}.`);
                         }
 
                     } else if (transactionType === 'dividend') {
@@ -2099,21 +2111,28 @@
                         if (isNaN(shares) || shares <= 0 || isNaN(amountPerShare) || amountPerShare < 0) { 
                             this.showError('Invalid input: Shares must be positive, Dividend amount non-negative.');
                             this.closeTransactionModal(); 
+                            console.error('[SAVE FAIL] Validation failed for dividend inputs.');
                             return;
                         }
                         
                         if (!item.dividends) item.dividends = [];
                         item.dividends.push({ shares, amountPerShare, totalAmount: shares * amountPerShare, date: new Date().toISOString() });
+                        console.log('[SAVE STEP] Added new dividend transaction.');
                     }
                     
+                    console.log('[SAVE STEP] Starting asynchronous data save (Firebase).');
                     await this.saveData();
+                    console.log('[SAVE STEP] Data saved successfully. Rendering content.');
+
                     this.renderContent();
                     this.closeTransactionModal(); 
+                    console.log('[SAVE SUCCESS] Content rendered, modal closed.');
 
                 } catch (error) {
-                    this.showError(`Error saving transaction: ${error.message}`);
-                    console.error(error);
+                    this.showError(`Critical Error saving transaction: ${error.message}`);
+                    console.error('[CRITICAL ERROR]', error);
                     this.closeTransactionModal(); 
+                    console.log('[SAVE FAIL] Forced modal close due to exception.');
                 }
             }
             
