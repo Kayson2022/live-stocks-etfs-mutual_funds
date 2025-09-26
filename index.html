@@ -2021,7 +2021,7 @@
             }
 
             openTransactionModal(symbol, type, transactionType, transactionIndex = -1) {
-                console.log(`[OPEN MODAL] Attempting to open modal for ${symbol}, type: ${transactionType}`);
+                console.log(`[OPEN MODAL - START] Attempting to open modal for ${symbol}, type: ${transactionType}`);
                 this.elements.transactionModal.style.display = 'flex';
                 this.elements.modalSymbol.textContent = symbol;
                 this.elements.modalTitleAction.textContent = transactionIndex > -1 ? 'Edit' : transactionType.charAt(0).toUpperCase() + transactionType.slice(1);
@@ -2038,6 +2038,7 @@
                     show(this.elements.modalDividendFields, 'block');
                 }
                 Object.assign(this.elements.modalSaveBtn.dataset, { symbol, type, transactionType, transactionIndex });
+                console.log('[OPEN MODAL - END] Modal display call complete.');
             }
             
             closeTransactionModal() { 
