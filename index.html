@@ -2022,11 +2022,24 @@
 
             openTransactionModal(symbol, type, transactionType, transactionIndex = -1) {
                 console.log(`[OPEN MODAL - START] Attempting to open modal for ${symbol}, type: ${transactionType}`);
+                
+                // --- NEW: Item Lookup to Pre-fill Data ---
+                const list = (type === 'stock') ? this.stocks : this.mutualFunds;
+                const item = list.find(i => i.symbol === symbol);
+                // --- END: Item Lookup ---
+                
                 this.elements.transactionModal.style.display = 'flex';
                 this.elements.modalSymbol.textContent = symbol;
                 this.elements.modalTitleAction.textContent = transactionIndex > -1 ? 'Edit' : transactionType.charAt(0).toUpperCase() + transactionType.slice(1);
-                ['modalShares', 'modalPrice', 'modalNote', 'modalDividendAmount'].forEach(id => { if(this.elements[id]) this.elements[id].value = ''; });
                 
+                // --- MODIFIED: Explicit Input Setting ---
+                this.elements.modalShares.value = '';
+                // Pre-fill price with current price if stock is found
+                this.elements.modalPrice.value = (item && item.price) ? item.price : ''; 
+                this.elements.modalNote.value = '';
+                this.elements.modalDividendAmount.value = '';
+                // --- END: Explicit Input Setting ---
+
                 const show = (el, d) => el.parentNode.style.display = d;
                 show(this.elements.modalDividendFields, 'none');
                 if (transactionType === 'buy' || transactionType === 'sell') {
