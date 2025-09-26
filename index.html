@@ -2046,6 +2046,7 @@
                     const symbol = this.elements.modalSaveBtn.dataset.symbol;
                     const type = this.elements.modalSaveBtn.dataset.type;
                     const transactionType = this.elements.modalSaveBtn.dataset.transactionType;
+                    const index = parseInt(this.elements.modalSaveBtn.dataset.transactionIndex);
                     
                     if (!symbol || !type || !transactionType) {
                         this.showError('Missing transaction data');
@@ -2054,27 +2055,63 @@
                     
                     const list = (type === 'stock') ? this.stocks : this.mutualFunds;
                     const item = list.find(i => i.symbol === symbol);
-                    if (!item) return;
+                    if (!item) {
+                        this.showError(`Stock ${symbol} not found in portfolio.`);
+                        this.closeTransactionModal();
+                        return;
+                    }
 
                     if (transactionType === 'buy' || transactionType === 'sell') {
-                        const shares = parseFloat(this.elements.modalShares.value), price = parseFloat(this.elements.modalPrice.value);
-                        if (isNaN(shares) || shares <= 0 || isNaN(price) || price < 0) { this.showError('Invalid input.'); return; }
+                        const shares = parseFloat(this.elements.modalShares.value);
+                        const price = parseFloat(this.elements.modalPrice.value);
+                        
+                        // Rigorous input validation as requested
+                        if (isNaN(shares) || shares <= 0 || isNaN(price) || price <= 0) {
+                            this.showError('Invalid input: Shares and Price must be positive numbers.');
+                            this.closeTransactionModal(); // Failsafe UI close
+                            return;
+                        }
+
+                        // Ensure transactions array is initialized
                         if (!item.transactions) item.transactions = [];
-                        const newTransaction = { type: transactionType, shares, price, note: this.elements.modalNote.value.trim(), date: new Date().toISOString() };
-                        item.transactions.push(newTransaction);
+                        
+                        const newTransaction = { 
+                            type: transactionType, 
+                            shares, 
+                            price, 
+                            note: this.elements.modalNote.value.trim(), 
+                            date: new Date().toISOString() 
+                        };
+                        
+                        // Add or edit transaction
+                        if (index === -1 || isNaN(index)) {
+                            item.transactions.push(newTransaction);
+                        } else {
+                            item.transactions[index] = newTransaction;
+                        }
+
                     } else if (transactionType === 'dividend') {
-                        const shares = parseFloat(this.elements.modalShares.value), amountPerShare = parseFloat(this.elements.modalDividendAmount.value);
-                        if (isNaN(shares) || shares <= 0 || isNaN(amountPerShare) || amountPerShare < 0) { this.showError('Invalid input.'); return; }
+                        const shares = parseFloat(this.elements.modalShares.value);
+                        const amountPerShare = parseFloat(this.elements.modalDividendAmount.value);
+
+                        if (isNaN(shares) || shares <= 0 || isNaN(amountPerShare) || amountPerShare < 0) { 
+                            this.showError('Invalid input: Shares must be positive, Dividend amount non-negative.');
+                            this.closeTransactionModal(); // Failsafe UI close
+                            return;
+                        }
+                        
                         if (!item.dividends) item.dividends = [];
                         item.dividends.push({ shares, amountPerShare, totalAmount: shares * amountPerShare, date: new Date().toISOString() });
                     }
                     
                     await this.saveData();
                     this.renderContent();
-                    this.closeTransactionModal();
+                    this.closeTransactionModal(); // Failsafe UI close
+
                 } catch (error) {
                     this.showError(`Error saving transaction: ${error.message}`);
                     console.error(error);
+                    this.closeTransactionModal(); // Failsafe UI close
                 }
             }
             
