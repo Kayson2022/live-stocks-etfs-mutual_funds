@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Khanh Live Stocks/ETFs & Mutual Funds Tracker</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
     <style>
         * {
             margin: 0;
@@ -1494,26 +1495,29 @@
 
             signIn() {
                 const provider = new GoogleAuthProvider();
-                signInWithPopup(auth, provider).catch(error => { // Reverted to signInWithPopup
-                    console.error("Google sign-in error", error);
+                signInWithPopup(auth, provider)
+                  .catch(error => {
+                    console.warn("Popup sign-in failed, falling back to redirect:", error);
+
                     if (error.code === 'auth/unauthorized-domain') {
-                        const errorDiv = document.getElementById('firebase-auth-error');
-                        errorDiv.style.display = 'block';
-                        errorDiv.innerHTML = `
-                            <h4>Authentication Error: Unauthorized Domain</h4>
-                            <p>This application's domain is not authorized for sign-in with your Firebase project.</p>
-                            <p><b>To fix this, you must add the domain to the authorized list in your Firebase console:</b></p>
-                            <ol>
-                                <li>Go to the <a href="https://console.firebase.google.com/" target="_blank">Firebase Console</a> and select your project.</li>
-                                <li>Navigate to <b>Authentication</b> > <b>Settings</b> tab.</li>
-                                <li>Under the <b>Authorized domains</b> section, click <b>Add domain</b>.</li>
-                                <li>Enter the domain where this app is hosted and click Add.</li>
-                            </ol>
-                        `;
+                      const errorDiv = document.getElementById('firebase-auth-error');
+                      errorDiv.style.display = 'block';
+                      errorDiv.innerHTML = `
+                          <h4>Authentication Error: Unauthorized Domain</h4>
+                          <p>This application's domain is not authorized for sign-in with your Firebase project.</p>
+                          <p><b>To fix this, you must add your GitHub Pages domain in Firebase:</b></p>
+                          <ol>
+                              <li>Go to the <a href="https://console.firebase.google.com/" target="_blank">Firebase Console</a>.</li>
+                              <li>Navigate to <b>Authentication &rarr; Settings</b>.</li>
+                              <li>Under <b>Authorized domains</b>, click <b>Add domain</b>.</li>
+                              <li>Enter <code>kayson2022.github.io</code> and click Add.</li>
+                          </ol>
+                      `;
                     } else {
-                        this.showError("Could not sign in with Google. Please try again.");
+                      // Fallback to redirect if popup blocked by COOP/COEP
+                      signInWithRedirect(auth, provider);
                     }
-                });
+                  });
             }
 
             signOut() {
@@ -2023,22 +2027,22 @@
             openTransactionModal(symbol, type, transactionType, transactionIndex = -1) {
                 console.log(`[OPEN MODAL - START] Attempting to open modal for ${symbol}, type: ${transactionType}`);
                 
-                // --- NEW: Item Lookup to Pre-fill Data ---
+                // --- Item Lookup to Pre-fill Data ---
                 const list = (type === 'stock') ? this.stocks : this.mutualFunds;
                 const item = list.find(i => i.symbol === symbol);
-                // --- END: Item Lookup ---
+                // --- End Item Lookup ---
                 
                 this.elements.transactionModal.style.display = 'flex';
                 this.elements.modalSymbol.textContent = symbol;
                 this.elements.modalTitleAction.textContent = transactionIndex > -1 ? 'Edit' : transactionType.charAt(0).toUpperCase() + transactionType.slice(1);
                 
-                // --- MODIFIED: Explicit Input Setting ---
+                // --- Explicit Input Setting ---
                 this.elements.modalShares.value = '';
                 // Pre-fill price with current price if stock is found
                 this.elements.modalPrice.value = (item && item.price) ? item.price : ''; 
                 this.elements.modalNote.value = '';
                 this.elements.modalDividendAmount.value = '';
-                // --- END: Explicit Input Setting ---
+                // --- End Explicit Input Setting ---
 
                 const show = (el, d) => el.parentNode.style.display = d;
                 show(this.elements.modalDividendFields, 'none');
