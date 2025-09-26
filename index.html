@@ -1717,8 +1717,14 @@
                 this.elements.fundsPortfolioSummary.style.display = 'none';
                 
                 let items, type;
-                if (this.currentTab === 'stocks') { [items, type] = [this.stocks, 'stock']; this.elements.portfolioSummary.style.display = 'block';} 
-                else if (this.currentTab === 'funds') { [items, type] = [this.mutualFunds, 'fund']; this.elements.fundsPortfolioSummary.style.display = 'block';}
+                if (this.currentTab === 'stocks') { 
+                    [items, type] = [this.stocks, 'stock']; 
+                    this.elements.portfolioSummary.style.display = 'block';
+                } 
+                else if (this.currentTab === 'funds') { 
+                    [items, type] = [this.mutualFunds, 'fund']; 
+                    this.elements.fundsPortfolioSummary.style.display = 'block';
+                }
                 else if (this.currentTab === 'watchlist') { 
                     [items, type] = [this.watchlist, 'watchlist']; 
                     this.elements.watchlistCount.textContent = this.watchlist.length;
@@ -2029,30 +2035,38 @@
                     this.showError("Please sign in with Google before recording a transaction.");
                     return;
                 }
+
+                const isEdit = transactionIndex > -1;
                 const list = (type === 'stock') ? this.stocks : this.mutualFunds;
                 const item = list.find(i => i.symbol === symbol);
+                const transaction = isEdit ? item.transactions[transactionIndex] : null;
+
+                const modalTransactionType = transaction ? transaction.type : transactionType;
                 
                 this.elements.transactionModal.style.display = 'flex';
                 this.elements.modalSymbol.textContent = symbol;
-                this.elements.modalTitleAction.textContent = transactionIndex > -1 ? 'Edit' : transactionType.charAt(0).toUpperCase() + transactionType.slice(1);
-                
-                this.elements.modalShares.value = '';
-                this.elements.modalPrice.value = (item && item.price) ? item.price : ''; 
-                this.elements.modalNote.value = '';
+                this.elements.modalTitleAction.textContent = isEdit ? 'Edit' : (transactionType.charAt(0).toUpperCase() + transactionType.slice(1));
+
+                this.elements.modalShares.value = isEdit ? transaction.shares : '';
+                this.elements.modalPrice.value = isEdit ? transaction.price : (item?.price || '');
+                this.elements.modalNote.value = isEdit ? transaction.note : '';
                 this.elements.modalDividendAmount.value = '';
 
-                const show = (el, d) => el.parentNode.style.display = d;
+                const show = (el, d) => el.parentElement.style.display = d;
+                
                 show(this.elements.modalDividendFields, 'none');
-                if (transactionType === 'buy' || transactionType === 'sell') {
+                if (modalTransactionType === 'buy' || modalTransactionType === 'sell') {
                     show(this.elements.modalShares, 'block');
                     show(this.elements.modalPrice, 'block');
-                } else if (transactionType === 'dividend') {
+                } else if (modalTransactionType === 'dividend') {
                     show(this.elements.modalShares, 'block');
                     show(this.elements.modalPrice, 'none');
                     show(this.elements.modalDividendFields, 'block');
                 }
-                Object.assign(this.elements.modalSaveBtn.dataset, { symbol, type, transactionType, transactionIndex });
+
+                Object.assign(this.elements.modalSaveBtn.dataset, { symbol, type, transactionType: modalTransactionType, transactionIndex });
             }
+
             
             closeTransactionModal() { 
                 this.elements.transactionModal.style.display = 'none'; 
@@ -2070,7 +2084,7 @@
                     const list = (type === 'stock') ? this.stocks : this.mutualFunds;
                     const item = list.find(i => i.symbol === symbol);
                     if (!item) {
-                        throw new Error(`Stock ${symbol} not found in portfolio.`);
+                        throw new Error(`Item ${symbol} not found in portfolio.`);
                     }
 
                     if (transactionType === 'buy' || transactionType === 'sell') {
@@ -2099,27 +2113,22 @@
                     await this.saveData();
                     this.showSuccess(`✅ Transaction saved for ${symbol}!`);
 
-                    // --- PERFORMANCE FIX ---
-                    if (item) {
-                        if (type === 'stock') {
-                            this.updateStockCard(item); // Update just the specific card
-                            this.renderPortfolioSummary(); // Update the main summary
-                        } else {
-                            // For funds, a full re-render is okay as they are fewer
-                            this.renderContent(); 
-                        }
+                    this.updateStockCard(item, type);
+                    if (type === 'stock') {
+                        this.renderPortfolioSummary();
+                        this.renderDiversificationChart();
+                        this.renderHistoryChart();
+                    } else if (type === 'fund') {
+                        this.renderFundsPortfolioSummary();
                     }
-                    // --- END FIX ---
                     
                     this.closeTransactionModal();
 
                 } catch (error) {
                     this.showError(`Error saving transaction: ${error.message}`);
                     console.error('Error saving transaction:', error);
-                    this.closeTransactionModal(); 
                 }
             }
-
             
             removeTransaction(symbol, index, type) {
                  this.openConfirmModal('Delete this transaction?', async () => {
@@ -2128,7 +2137,8 @@
                     if (item) {
                         item.transactions.splice(index, 1);
                         await this.saveData();
-                        this.renderContent();
+                        this.updateStockCard(item, type);
+                        this.renderPortfolioSummary();
                     }
                 });
             }
@@ -2235,7 +2245,6 @@
                 this.renderCards(list, content, type);
             }
             
-            // --- MODIFIED FUNCTION ---
             renderCards(itemList, container, type) {
                 try {
                     if (!container.classList.contains('group-content')) {
@@ -2245,7 +2254,7 @@
                     itemList.forEach(item => {
                         const card = document.createElement('div');
                         card.className = `${type}-card`;
-                        card.dataset.symbol = item.symbol; // <-- ADDED FOR TARGETING
+                        card.dataset.symbol = item.symbol;
                         
                         const stats = this.calculateTransactionStats(item.transactions, item.price);
                         
@@ -2303,7 +2312,19 @@
                                         <span class="toggle-icon">▼</span>
                                     </div>
                                 </div>
-                                <div class="transactions-container">${ (item.transactions || []).map((t, index) => `<div class="transaction-entry"><span><strong class="${t.type}">${t.type.toUpperCase()}</strong>: ${this.formatNumber(t.shares, 3)} @ ${this.formatCurrency(t.price)}</span>${t.note ? `<span>Note: ${t.note}</span>` : ''}</div>`).join('')}</div>
+                                <div class="transactions-container">${ (item.transactions || []).map((t, index) => 
+                                    `<div class="transaction-entry">
+                                        <span>
+                                            <strong class="${t.type}">${t.type.toUpperCase()}</strong>: 
+                                            ${this.formatNumber(t.shares, 3)} @ ${this.formatCurrency(t.price)}
+                                        </span>
+                                        ${t.note ? `<span>Note: ${t.note}</span>` : ''}
+                                        <div class="transaction-entry-controls">
+                                            <button class="edit-transaction-btn" onclick="window.stockTracker.openTransactionModal('${item.symbol}', '${type}', '${t.type}', ${index})">Edit</button>
+                                            <button class="delete-transaction-btn" onclick="window.stockTracker.removeTransaction('${item.symbol}', ${index}, '${type}')">Delete</button>
+                                        </div>
+                                    </div>`).join('')}
+                                </div>
                             </div>
                             <div class="card-actions">
                                 <button class="transaction-btn" data-symbol="${item.symbol}" data-type="${type}" data-transaction-type="buy">Buy</button>
@@ -2363,19 +2384,18 @@
                 }
             }
 
-            // --- NEW OPTIMIZED FUNCTION ---
-            updateStockCard(item) {
-                const cardElement = document.querySelector(`.stock-card[data-symbol="${item.symbol}"]`);
-                if (!cardElement) return;
+            updateStockCard(item, type) {
+                const cardContainer = document.querySelector(`.${type}-card[data-symbol="${item.symbol}"]`);
+                if (!cardContainer) return;
 
                 const stats = this.calculateTransactionStats(item.transactions, item.price);
-                const positiveClass = value => value >= 0 ? 'positive' : 'negative';
+                const todayPL = (item.change || 0) * stats.totalSharesOwned;
                 const totalPL = stats.unrealizedPL;
                 const totalPLPercent = stats.costOfRemainingShares > 0 ? (totalPL / stats.costOfRemainingShares) * 100 : 0;
-                const todayPL = (item.change || 0) * stats.totalSharesOwned;
+                const positiveClass = value => value >= 0 ? 'positive' : 'negative';
 
                 const updateElement = (selector, text, valueForClass) => {
-                    const el = cardElement.querySelector(selector);
+                    const el = cardContainer.querySelector(selector);
                     if (el) {
                         el.textContent = text;
                         if (valueForClass !== undefined) {
@@ -2387,32 +2407,49 @@
 
                 updateElement('.stock-price', this.formatCurrency(item.price || 0));
                 
-                const changeEl = cardElement.querySelector('.stock-change');
+                const changeEl = cardContainer.querySelector('.stock-change');
                 if(changeEl){
                     changeEl.innerHTML = `<span>${item.change >= 0 ? '▲' : '▼'} ${this.formatCurrency(item.change || 0)} (${(item.changePercent || 0).toFixed(2)}%)</span>`;
                     changeEl.className = `stock-change ${positiveClass(item.change)}`;
                 }
 
-                const stockInfo = cardElement.querySelector('.stock-info');
-                if(stockInfo) {
-                    updateElement('.info-row:nth-of-type(2) .info-value', this.formatNumber(stats.totalSharesOwned, 3));
-                    updateElement('.info-row:nth-of-type(3) .info-value', this.formatCurrency(stats.currentValue), totalPL);
-                    updateElement('.info-row:nth-of-type(4) .info-value', this.formatCurrency(stats.averageCostBasis));
-                    updateElement('.info-row:nth-of-type(5) .info-value', this.formatCurrency(totalPL), totalPL);
-                    updateElement('.info-row:nth-of-type(6) .info-value', `${this.formatNumber(totalPLPercent, 2)}%`, totalPLPercent);
-                    updateElement('.info-row:nth-of-type(7) .info-value', this.formatCurrency(stats.costOfRemainingShares));
+                if (type === 'stock') {
+                    const infoValues = cardContainer.querySelectorAll('.stock-info .info-value');
+                     if (infoValues.length >= 7) {
+                        infoValues[1].textContent = this.formatNumber(stats.totalSharesOwned, 3);
+                        infoValues[2].textContent = this.formatCurrency(stats.currentValue);
+                        infoValues[2].className = `info-value ${positiveClass(totalPL)}`;
+                        infoValues[3].textContent = this.formatCurrency(stats.averageCostBasis);
+                        infoValues[4].textContent = this.formatCurrency(totalPL);
+                        infoValues[4].className = `info-value ${positiveClass(totalPL)}`;
+                        infoValues[5].textContent = `${this.formatNumber(totalPLPercent, 2)}%`;
+                        infoValues[5].className = `info-value ${positiveClass(totalPLPercent)}`;
+                        infoValues[6].textContent = this.formatCurrency(stats.costOfRemainingShares);
+                    }
                 }
                 
-                updateElement('.total-pl', `P/L Today: ${this.formatCurrency(todayPL)}`, todayPL);
+                const totalPlEl = cardContainer.querySelector('.total-pl');
+                if (totalPlEl) {
+                    totalPlEl.textContent = `P/L Today: ${this.formatCurrency(todayPL)}`;
+                    totalPlEl.className = `total-pl ${positiveClass(todayPL)}`;
+                }
 
-                const transactionContainer = cardElement.querySelector('.transactions-container');
-                if (transactionContainer) {
-                    transactionContainer.innerHTML = (item.transactions || []).map((t) => 
-                        `<div class="transaction-entry"><span><strong class="${t.type}">${t.type.toUpperCase()}</strong>: ${this.formatNumber(t.shares, 3)} @ ${this.formatCurrency(t.price)}</span>${t.note ? `<span>Note: ${t.note}</span>` : ''}</div>`
-                    ).join('');
+                const transactionsContainer = cardContainer.querySelector('.transactions-container');
+                if (transactionsContainer) {
+                    transactionsContainer.innerHTML = (item.transactions || []).map((t, index) => 
+                        `<div class="transaction-entry">
+                            <span>
+                                <strong class="${t.type}">${t.type.toUpperCase()}</strong>: 
+                                ${this.formatNumber(t.shares, 3)} @ ${this.formatCurrency(t.price)}
+                            </span>
+                            ${t.note ? `<span>Note: ${t.note}</span>` : ''}
+                            <div class="transaction-entry-controls">
+                                <button class="edit-transaction-btn" onclick="window.stockTracker.openTransactionModal('${item.symbol}', '${type}', '${t.type}', ${index})">Edit</button>
+                                <button class="delete-transaction-btn" onclick="window.stockTracker.removeTransaction('${item.symbol}', ${index}, '${type}')">Delete</button>
+                            </div>
+                        </div>`).join('');
                 }
             }
-
 
             async moveToPortfolio(symbol) {
                 const stockToMove = this.watchlist.find(stock => stock.symbol === symbol);
@@ -2708,3 +2745,4 @@
     </script>
 </body>
 </html>
+
