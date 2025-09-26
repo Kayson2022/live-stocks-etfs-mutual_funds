@@ -2046,10 +2046,12 @@
                     const symbol = this.elements.modalSaveBtn.dataset.symbol;
                     const type = this.elements.modalSaveBtn.dataset.type;
                     const transactionType = this.elements.modalSaveBtn.dataset.transactionType;
-                    const index = parseInt(this.elements.modalSaveBtn.dataset.transactionIndex);
+                    const indexStr = this.elements.modalSaveBtn.dataset.transactionIndex;
+                    const index = parseInt(indexStr);
                     
                     if (!symbol || !type || !transactionType) {
                         this.showError('Missing transaction data');
+                        this.closeTransactionModal();
                         return;
                     }
                     
@@ -2057,7 +2059,7 @@
                     const item = list.find(i => i.symbol === symbol);
                     if (!item) {
                         this.showError(`Stock ${symbol} not found in portfolio.`);
-                        this.closeTransactionModal();
+                        this.closeTransactionModal(); 
                         return;
                     }
 
@@ -2068,7 +2070,7 @@
                         // Rigorous input validation as requested
                         if (isNaN(shares) || shares <= 0 || isNaN(price) || price <= 0) {
                             this.showError('Invalid input: Shares and Price must be positive numbers.');
-                            this.closeTransactionModal(); // Failsafe UI close
+                            this.closeTransactionModal(); 
                             return;
                         }
 
@@ -2096,7 +2098,7 @@
 
                         if (isNaN(shares) || shares <= 0 || isNaN(amountPerShare) || amountPerShare < 0) { 
                             this.showError('Invalid input: Shares must be positive, Dividend amount non-negative.');
-                            this.closeTransactionModal(); // Failsafe UI close
+                            this.closeTransactionModal(); 
                             return;
                         }
                         
@@ -2106,12 +2108,12 @@
                     
                     await this.saveData();
                     this.renderContent();
-                    this.closeTransactionModal(); // Failsafe UI close
+                    this.closeTransactionModal(); 
 
                 } catch (error) {
                     this.showError(`Error saving transaction: ${error.message}`);
                     console.error(error);
-                    this.closeTransactionModal(); // Failsafe UI close
+                    this.closeTransactionModal(); 
                 }
             }
             
