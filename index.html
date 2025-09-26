@@ -2025,6 +2025,12 @@
             }
 
             openTransactionModal(symbol, type, transactionType, transactionIndex = -1) {
+                // Check 1: Prevent interaction if user is not logged in.
+                if (!this.userId) {
+                    this.showError("Please sign in with Google before recording a transaction.");
+                    return;
+                }
+                
                 console.log(`[OPEN MODAL - START] Attempting to open modal for ${symbol}, type: ${transactionType}`);
                 
                 // --- Item Lookup to Pre-fill Data ---
