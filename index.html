@@ -245,6 +245,12 @@
             position: relative;
         }
         
+        /* FIX 1: Add blue border to stock cards */
+        .stock-card {
+            border-top: 5px solid #667eea; 
+            padding-top: 20px; /* Adjust padding due to border-top */
+        }
+        
         .watchlist-card {
             border-left: 5px solid #f7b731;
         }
@@ -1300,6 +1306,7 @@
 
     <div id="confirmModal" class="modal" style="display: none;">
         <div class="modal-content">
+            <button class="close-modal-btn" id="closeConfirmModalBtn" onclick="window.stockTracker.closeConfirmModal()">&times;</button>
             <h3 class="modal-title">Are you sure?</h3>
             <p id="confirm-modal-text" style="text-align: center; margin-bottom: 20px;"></p>
             <div class="modal-actions">
@@ -2171,6 +2178,8 @@
                         
                         const stats = this.calculateTransactionStats(item.transactions, item.price);
                         const totalPL = stats.unrealizedPL + stats.realizedPL;
+                        // FIX 2: Calculate and format Total P/L % for the item
+                        const totalPLPercent = stats.costOfRemainingShares > 0 ? (totalPL / stats.costOfRemainingShares) * 100 : 0;
                         const totalPLClass = totalPL >= 0 ? 'positive' : 'negative';
                         const totalValue = stats.currentValue;
                         const totalChangeToday = (item.change || 0) * stats.totalSharesOwned;
@@ -2178,14 +2187,25 @@
 
                         summaryText = `Gained <span class="${changeClass}">${this.formatCurrency(item.change)}</span> today, a change of <span class="${changePercentClass}">${(item.changePercent || 0).toFixed(2)}%</span>.`;
                         summaryText += `\nTotal Value: <span class="${totalPL >= 0 ? 'positive' : 'negative'}">${this.formatCurrency(totalValue)}</span>`;
+                        summaryText += `\nTotal P/L: <span class="${totalPLClass}">${this.formatCurrency(totalPL)}</span> (<span class="${totalPLClass}">${this.formatNumber(totalPLPercent, 2)}%</span>)`;
                         summaryText += `\nTotal Change Today: <span class="${totalChangeTodayClass}">${this.formatCurrency(totalChangeToday)}</span>`;
                     }
                 } else {
-                    const totalChange = items.reduce((sum, item) => sum + (item.change || 0) * this.calculateTransactionStats(item.transactions, item.price).totalSharesOwned, 0);
+                    const totalChangeToday = items.reduce((sum, item) => sum + (item.change || 0) * this.calculateTransactionStats(item.transactions, item.price).totalSharesOwned, 0);
                     const totalValue = items.reduce((sum, item) => sum + this.calculateTransactionStats(item.transactions, item.price).currentValue, 0);
+                    
+                    // FIX 2: Calculate Total P/L % for the group
+                    const totalCostBasis = items.reduce((sum, item) => sum + this.calculateTransactionStats(item.transactions, item.price).costOfRemainingShares, 0);
+                    const totalPLUnrealized = items.reduce((sum, item) => sum + this.calculateTransactionStats(item.transactions, item.price).unrealizedPL, 0);
+                    const totalPLPercent = totalCostBasis > 0 ? (totalPLUnrealized / totalCostBasis) * 100 : 0;
+
                     summaryTitle = `Summary of ${items.length} item(s)`;
-                    const totalChangeClass = totalChange >= 0 ? 'positive' : 'negative';
-                    summaryText = `Total Value: ${this.formatCurrency(totalValue)}\nTotal Change Today: <span class="${totalChangeClass}">${this.formatCurrency(totalChange)}</span>`;
+                    const totalChangeClass = totalChangeToday >= 0 ? 'positive' : 'negative';
+                    const totalPLClass = totalPLUnrealized >= 0 ? 'positive' : 'negative';
+                    
+                    summaryText = `Total Value: ${this.formatCurrency(totalValue)}\n`;
+                    summaryText += `Total Unrealized P/L: <span class="${totalPLClass}">${this.formatCurrency(totalPLUnrealized)}</span> (<span class="${totalPLClass}">${this.formatNumber(totalPLPercent, 2)}%</span>)\n`;
+                    summaryText += `Total Change Today: <span class="${totalChangeClass}">${this.formatCurrency(totalChangeToday)}</span>`;
                 }
 
                 return { title: summaryTitle, text: summaryText };
@@ -2486,7 +2506,7 @@
                 const interval = parseInt(this.elements.modalRefreshInterval.value, 10);
                 
                 localStorage.setItem('finnhubApiKey', finnhubKey);
-                localStorage.setItem('alphaVantageKey', alphaVantageKey);
+                localStorage.setItem('alphaVantageApiKey', alphaVantageKey);
                 if (interval && interval >= 10) {
                     localStorage.setItem('refreshIntervalMs', interval * 1000);
                 }
