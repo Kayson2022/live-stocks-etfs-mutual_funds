@@ -2324,9 +2324,6 @@
                     if(type === 'watchlist') card.querySelector('.move-to-portfolio-btn').addEventListener('click', () => this.moveToPortfolio(item.symbol));
                     
                     container.appendChild(card);
-                    if(type === 'stock' || type === 'fund') {
-                        this.updateStockCard(item, type);
-                    }
                 });
             }
 
