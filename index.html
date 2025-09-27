@@ -733,11 +733,35 @@
             margin-top: 20px;
             margin-bottom: 20px;
         }
-
-        .utility-buttons-grid .add-btn {
-            min-width: unset;
+        /* FIX: Ensure all buttons and elements in the grid are the same size/height */
+        .utility-buttons-grid > * {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
         }
+
+        .utility-buttons-grid .add-btn,
+        .utility-buttons-grid label {
+            min-width: unset;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        /* End FIX for button sizing */
         
+        /* FIX: Nesting issue fix CSS */
+        .utility-buttons-grid .import-wrapper {
+             display: flex;
+             flex-direction: column;
+        }
+        .utility-buttons-grid .import-wrapper .add-btn {
+             width: 100%;
+             margin-top: 5px;
+        }
+        /* End FIX */
+
+
         /* -- STYLES FOR COLLAPSE BUTTON AND SUMMARY -- */
         .group-footer {
             grid-column: 1 / -1;
@@ -1175,9 +1199,15 @@
                 <button class="add-btn" id="liveUpdateBtn" style="background: linear-gradient(45deg, #2ed573, #17c0eb);">🔄 Live Update</button>
                 <button class="add-btn" id="toggleLiveUpdateBtn" style="background: linear-gradient(45deg, #f7b731, #ff5e3a);">⏸️ Pause Live Update</button>
                 <button class="add-btn" id="clearAllBtn" style="background: #ff4757;">🗑️ Clear All Data</button>
-                <button class="add-btn" id="exportBtn" style="background: linear-gradient(45deg, #3498db, #2980b9);">📥 Export Data</label>
-                <label for="importFile" class="add-btn" style="background: linear-gradient(45deg, #2ecc71, #27ae60); cursor: pointer; text-align: center; display: flex; align-items: center; justify-content: center;">📤 Import Data</label>
-                <input type="file" id="importFile" accept=".json" style="display: none;">
+                
+                <!-- FIX: Separate Export Button from Import Label/Input, and group them to occupy two grid cells vertically -->
+                <div class="import-wrapper">
+                    <button class="add-btn" id="exportBtn" style="background: linear-gradient(45deg, #3498db, #2980b9);">📥 Export Data</button>
+                    <label for="importFile" class="add-btn" style="background: linear-gradient(45deg, #2ecc71, #27ae60); cursor: pointer; text-align: center;">📤 Import Data</label>
+                    <input type="file" id="importFile" accept=".json" style="display: none;">
+                </div>
+                <!-- End FIX -->
+
                 <button class="add-btn" id="settingsBtn" style="background: linear-gradient(45deg, #6c757d, #343a40);">⚙️ Settings</button>
                 <button class="add-btn" id="listAllBtn" style="background: #9b59b6;">📋 List All Stocks</button>
                 <button class="add-btn" id="toggleDarkModeBtn" style="background: #333;">🌙 Toggle Theme</button>
