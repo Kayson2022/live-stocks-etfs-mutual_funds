@@ -1393,7 +1393,7 @@
             
             async fetchNews(symbols) {
                  if (symbols.length === 0) return { success: true, data: [] };
-                const newsUrl = `https://www.alphavantage.co/query?function=NEWS_SENTIMENT&topics=economy_global&tickers=${symbols.join(',')}&apikey=${this.config.alphaVantageApiKey}`;
+                const newsUrl = `https://www.alphavantage.co/query?function=NEWS_SENTIMENT&topics=economy_global&tickers=${symbols.join(',')}&apikey=${this.config.alphaVantageKey}`;
                 try {
                     const response = await fetch(newsUrl);
                     if (!response.ok) return { success: false, reason: `HTTP Error: ${response.status}` };
@@ -1407,7 +1407,7 @@
             }
 
             async fetchFundData(symbol) {
-                const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${this.config.alphaVantageApiKey}`;
+                const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${this.config.alphaVantageKey}`;
                 try {
                     const response = await fetch(url);
                     if (!response.ok) return { success: false, symbol, reason: `HTTP Error: ${response.status}` };
@@ -1996,7 +1996,13 @@
             }
 
             openTransactionModal(symbol, type, transactionType, transactionIndex = -1) {
-                this.elements.transactionModal.style.display = 'flex';
+                // IMPORTANT: This function needs to set the modal to display: flex to be visible.
+                const modal = this.elements.transactionModal;
+                if (!modal) {
+                    this.showError("Transaction Modal element not found.");
+                    return;
+                }
+                modal.style.display = 'flex';
                 this.elements.modalSymbol.textContent = symbol;
                 this.elements.modalTitleAction.textContent = transactionIndex > -1 ? 'Edit' : transactionType.charAt(0).toUpperCase() + transactionType.slice(1);
                 ['modalShares', 'modalPrice', 'modalNote', 'modalDividendAmount'].forEach(id => { if(this.elements[id]) this.elements[id].value = ''; });
@@ -2025,7 +2031,17 @@
 
                 if (transactionType === 'buy' || transactionType === 'sell') {
                     const shares = parseFloat(this.elements.modalShares.value), price = parseFloat(this.elements.modalPrice.value);
-                    if (isNaN(shares) || shares <= 0 || isNaN(price) || price < 0) { this.showError('Invalid input.'); return; }
+                    if (isNaN(shares) || shares <= 0 || isNaN(price) || price < 0) { this.showError('Invalid input. Shares must be positive and Price must be non-negative.'); return; }
+                    
+                    // --- SELL Logic Check ---
+                    if (transactionType === 'sell') {
+                        const currentStats = this.calculateTransactionStats(item.transactions, item.price);
+                        if (shares > currentStats.totalSharesOwned) {
+                            this.showError(`Cannot sell ${shares} shares. You only own ${this.formatNumber(currentStats.totalSharesOwned)} shares of ${symbol}.`);
+                            return;
+                        }
+                    }
+
                     if (!item.transactions) item.transactions = [];
                     const newTransaction = { type: transactionType, shares, price, note: this.elements.modalNote.value.trim(), date: new Date().toISOString() };
                     index > -1 ? item.transactions[index] = newTransaction : item.transactions.push(newTransaction);
@@ -2039,6 +2055,7 @@
                 await this.saveData();
                 this.renderContent();
                 this.closeTransactionModal();
+                this.showSuccess(`✅ Saved ${transactionType.toUpperCase()} transaction for ${symbol}!`);
             }
             
             removeTransaction(symbol, index, type) {
@@ -2235,7 +2252,22 @@
                     }
 
                     const todayPL = (item.change || 0) * stats.totalSharesOwned;
-                    card.innerHTML = `<div class="stock-header"><span class="stock-symbol">${item.symbol}</span><button class="remove-btn" onclick="window.stockTracker.removeItem('${item.symbol}', '${type}')">×</button></div><div class="stock-price">${this.formatCurrency(item.price || 0)}</div><div class="stock-change ${item.change >= 0 ? 'positive' : 'negative'}"><span>${item.change >= 0 ? '▲' : '▼'} ${this.formatCurrency(item.change || 0)} (${(item.changePercent || 0).toFixed(2)}%)</span></div><div class="stock-info">${stockInfoHTML}</div>${transactionDetailsHTML}<div class="total-pl ${todayPL >= 0 ? 'positive' : 'negative'}">P/L Today: ${this.formatCurrency(todayPL)}</div>`;
+                    
+                    // --- FINAL CARD RENDER ---
+                    card.innerHTML = `
+                        <div class="stock-header">
+                            <span class="stock-symbol">${item.symbol}</span>
+                            <button class="remove-btn" onclick="window.stockTracker.removeItem('${item.symbol}', '${type}')">×</button>
+                        </div>
+                        <div class="stock-price">${this.formatCurrency(item.price || 0)}</div>
+                        <div class="stock-change ${item.change >= 0 ? 'positive' : 'negative'}">
+                            <span>${item.change >= 0 ? '▲' : '▼'} ${this.formatCurrency(item.change || 0)} (${(item.changePercent || 0).toFixed(2)}%)</span>
+                        </div>
+                        <div class="stock-info">${stockInfoHTML}</div>
+                        ${transactionDetailsHTML}
+                        <div class="total-pl ${todayPL >= 0 ? 'positive' : 'negative'}">P/L Today: ${this.formatCurrency(todayPL)}</div>
+                    `;
+                    // --- END FINAL CARD RENDER ---
                     
                     const transactionHeader = card.querySelector('.transaction-header');
                     if (transactionHeader) {
@@ -2389,7 +2421,7 @@
                 const interval = parseInt(this.elements.modalRefreshInterval.value, 10);
                 
                 localStorage.setItem('finnhubApiKey', finnhubKey);
-                localStorage.setItem('alphaVantageKey', alphaVantageKey);
+                localStorage.setItem('alphaVantageApiKey', alphaVantageKey);
                 if (interval && interval >= 10) {
                     localStorage.setItem('refreshIntervalMs', interval * 1000);
                 }
@@ -2527,4 +2559,3 @@
     </script>
 </body>
 </html>
-
