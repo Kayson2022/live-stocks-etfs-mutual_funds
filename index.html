@@ -548,6 +548,13 @@
             border-radius: 8px;
             margin-bottom: 10px;
             padding: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .transaction-info {
+            flex-grow: 1;
         }
 
         .transaction-info span {
@@ -559,7 +566,8 @@
         .transaction-entry-controls {
             display: flex;
             gap: 10px;
-            margin-top: 8px;
+            margin-left: 15px;
+            flex-shrink: 0;
         }
         
         .transaction-entry .info-value.buy { color: #2ed573; font-weight: bold; }
@@ -708,6 +716,7 @@
 
         .delete-transaction-btn {
             background: #ff4757;
+            margin-left: 5px;
         }
         
         .modal-title {
@@ -1166,7 +1175,7 @@
                 <button class="add-btn" id="liveUpdateBtn" style="background: linear-gradient(45deg, #2ed573, #17c0eb);">🔄 Live Update</button>
                 <button class="add-btn" id="toggleLiveUpdateBtn" style="background: linear-gradient(45deg, #f7b731, #ff5e3a);">⏸️ Pause Live Update</button>
                 <button class="add-btn" id="clearAllBtn" style="background: #ff4757;">🗑️ Clear All Data</button>
-                <button class="add-btn" id="exportBtn" style="background: linear-gradient(45deg, #3498db, #2980b9);">📥 Export Data</button>
+                <button class="add-btn" id="exportBtn" style="background: linear-gradient(45deg, #3498db, #2980b9);">📥 Export Data</label>
                 <label for="importFile" class="add-btn" style="background: linear-gradient(45deg, #2ecc71, #27ae60); cursor: pointer; text-align: center; display: flex; align-items: center; justify-content: center;">📤 Import Data</label>
                 <input type="file" id="importFile" accept=".json" style="display: none;">
                 <button class="add-btn" id="settingsBtn" style="background: linear-gradient(45deg, #6c757d, #343a40);">⚙️ Settings</button>
@@ -1222,8 +1231,8 @@
                 <button class="add-btn" id="updateWatchlistBtn">🔄 Update Watchlist</button>
                 <button class="add-btn" id="clearWatchlistBtn" style="background: #ff4757;">🗑️ Clear Watchlist</button>
             </div>
-            <!-- FIX: Removed outer parentheses and added them to the span to eliminate unwanted spacing -->
-            <h3 class="watchlist-title">Your Watchlist <span id="watchlist-count">(0)</span></h3>
+            <!-- FIX: Encapsulate the title and count in a single span for Flexbox alignment -->
+            <h3 class="watchlist-title"><span>Your Watchlist <span id="watchlist-count">(0)</span></span></h3>
         </div>
 
         <div id="news-tab" class="tab-content">
@@ -1658,7 +1667,7 @@
             
             // --- NEW: Event Delegation Handler ---
             handleCardAction(event) {
-                const clickedButton = event.target.closest('.transaction-btn, .edit-btn');
+                const clickedButton = event.target.closest('.transaction-btn, .edit-btn, .edit-transaction-btn, .delete-transaction-btn');
                 if (!clickedButton) return;
                 
                 // Find the parent stock card to get the necessary data
@@ -1668,26 +1677,36 @@
                 const cardType = card.classList.contains('stock-card') ? 'stock' : 'fund';
                 
                 // Use data attributes (which we added in renderCards) for reliability, 
-                // but fall back to innerHTML to be compatible with old cards if necessary.
                 const symbol = card.dataset.symbol || card.querySelector('.stock-symbol, .fund-symbol')?.textContent.trim();
                 if (!symbol) return;
+                
+                event.preventDefault(); 
+                event.stopPropagation();
+                
+                // --- Handle Transaction Edit/Delete Buttons ---
+                if (clickedButton.classList.contains('edit-transaction-btn')) {
+                    const transactionIndex = parseInt(clickedButton.dataset.index);
+                    const transactionType = clickedButton.dataset.type;
+                    this.openEditTransactionModal(symbol, cardType, transactionIndex, transactionType);
+                    return;
+                }
+                
+                if (clickedButton.classList.contains('delete-transaction-btn')) {
+                    const transactionIndex = parseInt(clickedButton.dataset.index);
+                    this.removeTransaction(symbol, transactionIndex, cardType);
+                    return;
+                }
+                // --- End Handle Transaction Edit/Delete Buttons ---
 
 
                 // Check for Buy/Sell/Edit buttons based on class name
                 if (clickedButton.classList.contains('buy-btn')) {
-                    event.preventDefault(); 
-                    event.stopPropagation();
                     console.log(`Delegated click detected: buy on ${symbol}`); // DEBUG LOG
                     this.openTransactionModal(symbol, cardType, 'buy');
                 } else if (clickedButton.classList.contains('sell-btn')) {
-                    event.preventDefault(); 
-                    event.stopPropagation();
                     console.log(`Delegated click detected: sell on ${symbol}`); // DEBUG LOG
                     this.openTransactionModal(symbol, cardType, 'sell');
                 } else if (clickedButton.classList.contains('edit-btn')) {
-                    // The Edit button relied on inline onclick, but handling it via delegation is more robust.
-                    event.preventDefault();
-                    event.stopPropagation();
                     console.log(`Delegated click detected: Edit on ${symbol}`); // DEBUG LOG
                     this.openEditStockModal(symbol);
                 }
@@ -2048,6 +2067,31 @@
                  return totalDividendsLastYear > 0 ? (totalDividendsLastYear / item.price) * 100 : 0;
             }
 
+            // New function to open modal for editing an existing transaction
+            openEditTransactionModal(symbol, type, index, transactionType) {
+                const list = (type === 'stock') ? this.stocks : this.mutualFunds;
+                const item = list.find(i => i.symbol === symbol);
+                if (!item || !item.transactions || index < 0 || index >= item.transactions.length) return;
+
+                const transaction = item.transactions[index];
+                
+                // Use the main openTransactionModal function, passing the transaction index
+                this.openTransactionModal(symbol, type, transaction.type, index);
+
+                // Populate the fields with the existing transaction data
+                if (this.elements.modalShares) this.elements.modalShares.value = transaction.shares;
+                if (this.elements.modalPrice) this.elements.modalPrice.value = transaction.price;
+                if (this.elements.modalNote) this.elements.modalNote.value = transaction.note || '';
+
+                // Handle dividends, if applicable (assuming dividends are stored in transactions list with specific format for now)
+                if (transaction.type === 'dividend' && this.elements.modalDividendAmount) {
+                     // Note: If you store dividends separately, you might need a separate index/logic here.
+                     // Assuming 'dividend' transactions would use the price field for 'amountPerShare' for simplicity in this structure.
+                     if(this.elements.modalPrice) this.elements.modalPrice.value = transaction.amountPerShare || 0;
+                }
+            }
+
+
             openTransactionModal(symbol, type, transactionType, transactionIndex = -1) {
                 const modal = this.elements.transactionModal;
                 if (!modal) {
@@ -2063,8 +2107,7 @@
                     if(this.elements[id]) this.elements[id].value = ''; 
                 });
                 
-                // --- FIX: Safely determine and set visibility of input fields ---
-                // Get the parent elements of the input fields safely.
+                // --- Safely determine and set visibility of input fields ---
                 const modalSharesParent = this.elements.modalShares?.parentNode;
                 const modalPriceParent = this.elements.modalPrice?.parentNode;
                 const modalDividendFields = this.elements.modalDividendFields;
@@ -2078,6 +2121,8 @@
                     if (modalPriceParent) modalPriceParent.style.display = 'block';
                 } else if (transactionType === 'dividend') {
                     if (modalSharesParent) modalSharesParent.style.display = 'block';
+                    // Note: If you have dividend transactions, you might need special handling if they use 'price' field differently.
+                    // For now, retaining price visibility if needed, but explicitly showing dividend fields.
                     if (modalDividendFields) modalDividendFields.style.display = 'block';
                 }
                 // --- END FIX ---
@@ -2090,6 +2135,7 @@
             async saveTransaction() {
                 const { symbol, type, transactionType, transactionIndex: indexStr } = this.elements.modalSaveBtn.dataset;
                 const index = parseInt(indexStr);
+                const isEditing = index > -1;
                 const list = (type === 'stock') ? this.stocks : this.mutualFunds;
                 const item = list.find(i => i.symbol === symbol);
                 if (!item) return;
@@ -2098,29 +2144,54 @@
                     const shares = parseFloat(this.elements.modalShares.value), price = parseFloat(this.elements.modalPrice.value);
                     if (isNaN(shares) || shares <= 0 || isNaN(price) || price < 0) { this.showError('Invalid input. Shares must be positive and Price must be non-negative.'); return; }
                     
-                    // --- SELL Logic Check ---
+                    // --- SELL Logic Check for current shares ---
                     if (transactionType === 'sell') {
-                        const currentStats = this.calculateTransactionStats(item.transactions, item.price);
-                        if (shares > currentStats.totalSharesOwned) {
-                            this.showError(`Cannot sell ${shares} shares. You only own ${this.formatNumber(currentStats.totalSharesOwned)} shares of ${symbol}.`);
-                            return;
+                        // Create a temporary transactions list excluding the transaction we are editing (if editing)
+                        const tempTransactions = isEditing 
+                            ? item.transactions.filter((_, i) => i !== index) 
+                            : item.transactions || [];
+                        
+                        // Calculate shares based on original transactions plus the current input (if adding/editing sell)
+                        const currentStats = this.calculateTransactionStats(tempTransactions, item.price);
+                        
+                        if (shares > currentStats.totalSharesOwned + (isEditing && item.transactions[index].type === 'sell' ? item.transactions[index].shares : 0)) {
+                             // This check is complex and should ideally use a deeper FIFO/LIFO tracking. 
+                             // For simplicity and safety against negative balance:
+                             if (shares > currentStats.totalSharesOwned) {
+                                this.showError(`Cannot sell ${shares} shares. You only own ${this.formatNumber(currentStats.totalSharesOwned)} shares of ${symbol}.`);
+                                return;
+                             }
                         }
                     }
 
                     if (!item.transactions) item.transactions = [];
-                    const newTransaction = { type: transactionType, shares, price, note: this.elements.modalNote.value.trim(), date: new Date().toISOString() };
-                    index > -1 ? item.transactions[index] = newTransaction : item.transactions.push(newTransaction);
+                    const newTransaction = { type: transactionType, shares, price, note: this.elements.modalNote.value.trim(), date: isEditing ? item.transactions[index].date : new Date().toISOString() };
+                    
+                    if (isEditing) {
+                        item.transactions[index] = newTransaction;
+                    } else {
+                        item.transactions.push(newTransaction);
+                    }
+
                 } else if (transactionType === 'dividend') {
                     const shares = parseFloat(this.elements.modalShares.value), amountPerShare = parseFloat(this.elements.modalDividendAmount.value);
                     if (isNaN(shares) || shares <= 0 || isNaN(amountPerShare) || amountPerShare < 0) { this.showError('Invalid input.'); return; }
+                    
                     if (!item.dividends) item.dividends = [];
-                    item.dividends.push({ shares, amountPerShare, totalAmount: shares * amountPerShare, date: new Date().toISOString() });
+                    
+                    const newDividend = { shares, amountPerShare, totalAmount: shares * amountPerShare, date: isEditing ? item.dividends[index].date : new Date().toISOString() };
+
+                    if (isEditing) {
+                        item.dividends[index] = newDividend;
+                    } else {
+                        item.dividends.push(newDividend);
+                    }
                 }
                 
                 await this.saveData();
                 this.renderContent();
                 this.closeTransactionModal();
-                this.showSuccess(`✅ Saved ${transactionType.toUpperCase()} transaction for ${symbol}!`);
+                this.showSuccess(`✅ ${isEditing ? 'Updated' : 'Saved'} ${transactionType.toUpperCase()} transaction for ${symbol}!`);
             }
             
             removeTransaction(symbol, index, type) {
@@ -2128,7 +2199,14 @@
                     const list = (type === 'stock') ? this.stocks : this.mutualFunds;
                     const item = list.find(i => i.symbol === symbol);
                     if (item) {
-                        item.transactions.splice(index, 1);
+                        // Assuming the index refers to the transaction array for stocks/funds
+                        if (item.transactions && index >= 0 && index < item.transactions.length) {
+                            item.transactions.splice(index, 1);
+                            this.showSuccess(`🗑️ Deleted transaction for ${symbol}.`);
+                        } else {
+                             this.showError(`Error: Transaction index ${index} not found for ${symbol}.`);
+                        }
+
                         await this.saveData();
                         this.renderContent();
                     }
@@ -2319,14 +2397,33 @@
                                     <span class="toggle-icon">▼</span>
                                 </div>
                             </div>
-                            <div class="transactions-container">${ (item.transactions || []).map((t, index) => `<div class="transaction-entry"><span><strong class="${t.type}">${t.type.toUpperCase()}</strong>: ${this.formatNumber(t.shares, 3)} @ ${this.formatCurrency(t.price)}</span>${t.note ? `<span>Note: ${t.note}</span>` : ''}</div>`).join('')}</div>
+                            <div class="transactions-container">${ (item.transactions || []).map((t, index) => `
+                                <div class="transaction-entry">
+                                    <div class="transaction-info">
+                                        <span><strong class="${t.type}">${t.type.toUpperCase()}</strong>: ${this.formatNumber(t.shares, 3)} @ ${this.formatCurrency(t.price)}</span>
+                                        ${t.note ? `<span>Note: ${t.note}</span>` : ''}
+                                    </div>
+                                    <div class="transaction-entry-controls">
+                                        <!-- NEW: Edit Transaction Button -->
+                                        <button class="edit-transaction-btn" 
+                                                data-index="${index}" 
+                                                data-type="${t.type}">
+                                            Edit
+                                        </button>
+                                        <!-- NEW: Delete Transaction Button -->
+                                        <button class="delete-transaction-btn" 
+                                                data-index="${index}">
+                                            &times;
+                                        </button>
+                                    </div>
+                                </div>`).join('')}</div>
                         </div>
                         <div class="card-actions">
                             <button class="transaction-btn buy-btn">Buy</button>
                             <button class="transaction-btn sell-btn" style="background: #ff4757;">Sell</button>
                         </div>
                         <div class="card-actions" style="grid-template-columns: 1fr;">
-                            <button class="add-btn edit-btn" style="background-color: #f7b731;" data-action="edit">Edit</button>
+                            <button class="add-btn edit-btn" style="background-color: #f7b731;" data-action="edit">Edit Stock Details</button>
                         </div>
                         `;
                     } else if (type === 'watchlist') {
