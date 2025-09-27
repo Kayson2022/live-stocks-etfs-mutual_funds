@@ -754,10 +754,21 @@
         .utility-buttons-grid .import-wrapper {
              display: flex;
              flex-direction: column;
+             /* Ensure the wrapper takes up two virtual grid rows */
+             grid-row: span 2; 
+             height: 100%;
+             justify-content: space-between;
         }
-        .utility-buttons-grid .import-wrapper .add-btn {
+        /* Make inner buttons/labels take up half the vertical space, equally */
+        .utility-buttons-grid .import-wrapper .add-btn,
+        .utility-buttons-grid .import-wrapper label {
              width: 100%;
-             margin-top: 5px;
+             margin-top: 0;
+             flex-grow: 1; /* Distribute space equally */
+        }
+        /* Add gap between stacked Export/Import buttons */
+        .utility-buttons-grid .import-wrapper #exportBtn {
+             margin-bottom: 5px;
         }
         /* End FIX */
 
@@ -1200,7 +1211,7 @@
                 <button class="add-btn" id="toggleLiveUpdateBtn" style="background: linear-gradient(45deg, #f7b731, #ff5e3a);">⏸️ Pause Live Update</button>
                 <button class="add-btn" id="clearAllBtn" style="background: #ff4757;">🗑️ Clear All Data</button>
                 
-                <!-- FIX: Separate Export Button from Import Label/Input, and group them to occupy two grid cells vertically -->
+                <!-- FIX: Separate Export Button from Import Label/Input, and group them to occupy one grid cell vertically, forcing equal sizing. -->
                 <div class="import-wrapper">
                     <button class="add-btn" id="exportBtn" style="background: linear-gradient(45deg, #3498db, #2980b9);">📥 Export Data</button>
                     <label for="importFile" class="add-btn" style="background: linear-gradient(45deg, #2ecc71, #27ae60); cursor: pointer; text-align: center;">📤 Import Data</label>
