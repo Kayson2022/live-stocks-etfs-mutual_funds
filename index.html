@@ -1595,7 +1595,6 @@
                     newsArticlesContainer: document.getElementById('news-articles-container'),
                     modalDividendFields: document.getElementById('modal-dividend-fields'),
                     modalDividendAmount: document.getElementById('modal-dividend-amount'),
-                    // NEW: Edit Stock Modal elements
                     editStockModal: document.getElementById('editStockModal'),
                     closeEditStockBtn: document.getElementById('closeEditStockBtn'),
                     editStockSymbol: document.getElementById('edit-stock-symbol'),
@@ -1648,7 +1647,6 @@
                 if (this.elements.updateWatchlistBtn) this.elements.updateWatchlistBtn.addEventListener('click', () => this.refreshWatchlist());
                 if (this.elements.clearWatchlistBtn) this.elements.clearWatchlistBtn.addEventListener('click', () => this.clearAllItems('watchlist'));
 
-                // NEW: Event Listeners for Edit Stock Modal
                 if (this.elements.closeEditStockBtn) this.elements.closeEditStockBtn.addEventListener('click', () => this.closeEditStockModal());
                 if (this.elements.saveStockEditBtn) this.elements.saveStockEditBtn.addEventListener('click', () => this.saveStockPlatform());
 
@@ -1827,12 +1825,17 @@
             toggleLiveUpdate() { this.isLiveUpdatePaused ? this.startLiveUpdate() : this.stopLiveUpdate(); }
             
             async refreshCurrentTab() {
-                const tabActions = {
-                    stocks: () => this.refreshStocks(),
-                    funds: () => this.refreshFunds(),
-                    watchlist: () => this.refreshWatchlist()
-                };
-                if (tabActions[this.currentTab]) tabActions[this.currentTab]();
+                switch (this.currentTab) {
+                    case 'stocks':
+                        await this.refreshStocks();
+                        break;
+                    case 'funds':
+                        await this.refreshFunds();
+                        break;
+                    case 'watchlist':
+                        await this.refreshWatchlist();
+                        break;
+                }
             }
             
             async refreshStocks() { await this.refreshItems(this.stocks, 'stock'); }
@@ -2131,7 +2134,6 @@
             updateStockCard(item, type) {
                 const cardElement = document.querySelector(`.stock-card[data-symbol="${item.symbol}"]`);
                 if (!cardElement) {
-                    // RENDER UPDATE: If the card doesn't exist, re-render the content.
                     this.renderContent(); 
                     return;
                 }
