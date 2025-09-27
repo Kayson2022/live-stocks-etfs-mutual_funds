@@ -2041,7 +2041,6 @@
             }
 
             openTransactionModal(symbol, type, transactionType, transactionIndex = -1) {
-                // IMPORTANT: This function needs to set the modal to display: flex to be visible.
                 const modal = this.elements.transactionModal;
                 if (!modal) {
                     this.showError("Transaction Modal element not found.");
@@ -2050,17 +2049,31 @@
                 modal.style.display = 'flex';
                 this.elements.modalSymbol.textContent = symbol;
                 this.elements.modalTitleAction.textContent = transactionIndex > -1 ? 'Edit' : transactionType.charAt(0).toUpperCase() + transactionType.slice(1);
-                ['modalShares', 'modalPrice', 'modalNote', 'modalDividendAmount'].forEach(id => { if(this.elements[id]) this.elements[id].value = ''; });
                 
-                const show = (el, d) => el.parentNode.style.display = d;
-                show(this.elements.modalDividendFields, 'none');
+                // Clear inputs
+                ['modalShares', 'modalPrice', 'modalNote', 'modalDividendAmount'].forEach(id => { 
+                    if(this.elements[id]) this.elements[id].value = ''; 
+                });
+                
+                // Helper to safely toggle visibility of the parent div
+                const safeToggleVisibility = (element, displayValue) => {
+                    if (element && element.parentNode) {
+                        element.parentNode.style.display = displayValue;
+                    }
+                };
+
+                // Hide dividend fields first
+                safeToggleVisibility(this.elements.modalDividendFields, 'none');
+
                 if (transactionType === 'buy' || transactionType === 'sell') {
-                    show(this.elements.modalShares, 'block');
-                    show(this.elements.modalPrice, 'block');
+                    // Ensure these are visible for buy/sell
+                    safeToggleVisibility(this.elements.modalShares, 'block');
+                    safeToggleVisibility(this.elements.modalPrice, 'block');
                 } else if (transactionType === 'dividend') {
-                    show(this.elements.modalShares, 'block');
-                    show(this.elements.modalPrice, 'none');
-                    show(this.elements.modalDividendFields, 'block');
+                    // Ensure shares is visible, price is hidden, and dividend fields are visible
+                    safeToggleVisibility(this.elements.modalShares, 'block');
+                    safeToggleVisibility(this.elements.modalPrice, 'none');
+                    safeToggleVisibility(this.elements.modalDividendFields, 'block');
                 }
                 Object.assign(this.elements.modalSaveBtn.dataset, { symbol, type, transactionType, transactionIndex });
             }
@@ -2475,7 +2488,7 @@
                 const interval = parseInt(this.elements.modalRefreshInterval.value, 10);
                 
                 localStorage.setItem('finnhubApiKey', finnhubKey);
-                localStorage.setItem('alphaVantageApiKey', alphaVantageKey);
+                localStorage.setItem('alphaVantageKey', alphaVantageKey);
                 if (interval && interval >= 10) {
                     localStorage.setItem('refreshIntervalMs', interval * 1000);
                 }
