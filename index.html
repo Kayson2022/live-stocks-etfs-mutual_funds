@@ -118,7 +118,7 @@
             border-radius: 20px;
             font-size: 0.9rem;
             z-index: 1000;
-            transition: opacity: 0.3s ease;
+            transition: opacity 0.3s ease;
             opacity: 1;
         }
 
@@ -467,7 +467,7 @@
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
             gap: 20px;
-            transition: max-height 0.5s ease-in-out, opacity: 0.3s ease-in-out, margin-top 0.3s ease;
+            transition: max-height 0.5s ease-in-out, opacity 0.3s ease-in-out, margin-top 0.3s ease;
             max-height: 50000px;
             opacity: 1;
             overflow: hidden;
@@ -799,7 +799,7 @@
         }
 
         .transactions-container {
-            transition: max-height 0.5s ease-in-out, opacity: 0.3s ease-in-out, margin-top 0.3s ease;
+            transition: max-height 0.5s ease-in-out, opacity 0.3s ease-in-out, margin-top 0.3s ease;
             max-height: 1000px; /* arbitrary large value */
             opacity: 1;
             overflow: hidden;
@@ -1240,7 +1240,6 @@
 
     <div class="small-countdown" id="small-countdown-container">Next update: <span id="smallCountdown">90s</span></div>
     
-    <!-- NEW: Edit Stock Modal -->
     <div id="editStockModal" class="modal" style="display: none;">
         <div class="modal-content">
             <button class="close-modal-btn" id="closeEditStockBtn">&times;</button>
@@ -1354,6 +1353,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, signInWithRedirect } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
         const firebaseConfig = {
             apiKey: "AIzaSyB3SIrzA5Y3nZhjZXvzKiW3irJubfNdD7g",
             authDomain: "live-stocks-etfs-mutual-funds.firebaseapp.com",
@@ -1362,12 +1362,14 @@
             messagingSenderId: "148439147431",
             appId: "1:148439147431:web:06d34e54a4e12af7cd8c82"
         };
+        
         let app, auth, db;
         if (firebaseConfig.apiKey !== "YOUR_API_KEY") {
             app = initializeApp(firebaseConfig);
             auth = getAuth(app);
             db = getFirestore(app);
         }
+
         class ApiService {
             constructor(config) { this.config = config; }
 
@@ -1380,8 +1382,8 @@
                     const [quoteData, profileData] = await Promise.all([quoteResponse.json(), profileResponse.json()]);
                     if ((quoteData.c === 0 && quoteData.pc === 0) || !profileData.name) return { success: false, symbol, reason: 'Invalid or empty API payload' };
                     return { success: true, data: { symbol, name: profileData.name ?? symbol, price: quoteData.c ?? 0, change: quoteData.d ?? 0, changePercent: quoteData.dp ?? 0, open: quoteData.o ?? 0, high: quoteData.h ?? 0, low: quoteData.l ?? 0, previousClose: quoteData.pc ?? 0, industry: profileData.finnhubIndustry ?? 'N/A' } };
-                } catch (error) {
-                    console.error(`Error fetching stock/ETF data for ${symbol}:`, error);
+                } catch (error) { 
+                    console.error(`Error fetching stock/ETF data for ${symbol}:`, error); 
                     return { success: false, symbol, reason: error.message };
                 }
             }
@@ -1430,6 +1432,7 @@
                 }
             }
         }
+
         class StockTracker {
             constructor() {
                 this.userId = null; this.stocks = []; this.mutualFunds = []; this.watchlist = []; this.portfolioHistory = [];
@@ -1449,7 +1452,7 @@
                     this.cacheDOMElements();
                     this.setupEventListeners();
                     this.applyTheme();
-                    if (!db) {
+                    if (!db) { 
                         this.showError("Firebase is not configured. Please add your firebaseConfig object to the script tag.");
                         this.elements.loginContainer.style.display = 'block';
                         return;
@@ -1606,11 +1609,11 @@
                     totalPnlSummaryStats: document.getElementById('totalPnlSummaryStats'),
                     closeTotalPnlSummaryBtn: document.getElementById('closeTotalPnlSummaryBtn'),
                 };
-        
+
                 this.elements.resizeObserver.observe(this.elements.diversificationChartContainer);
                 this.elements.resizeObserver.observe(this.elements.historyChartContainer);
             }
-        
+
             setupEventListeners() {
                 this.elements.googleSignInBtn.addEventListener('click', () => this.signIn());
                 this.elements.signOutBtn.addEventListener('click', () => this.signOut());
@@ -1644,11 +1647,11 @@
                 if (this.elements.clearAllFundsBtn) this.elements.clearAllFundsBtn.addEventListener('click', () => this.clearAllItems('fund'));
                 if (this.elements.updateWatchlistBtn) this.elements.updateWatchlistBtn.addEventListener('click', () => this.refreshWatchlist());
                 if (this.elements.clearWatchlistBtn) this.elements.clearWatchlistBtn.addEventListener('click', () => this.clearAllItems('watchlist'));
-        
+
                 // NEW: Event Listeners for Edit Stock Modal
                 if (this.elements.closeEditStockBtn) this.elements.closeEditStockBtn.addEventListener('click', () => this.closeEditStockModal());
                 if (this.elements.saveStockEditBtn) this.elements.saveStockEditBtn.addEventListener('click', () => this.saveStockPlatform());
-        
+
                 if (this.elements.closeTransactionModalBtn) this.elements.closeTransactionModalBtn.addEventListener('click', () => this.closeTransactionModal());
                 if (this.elements.closeConfirmModalBtn) this.elements.closeConfirmModalBtn.addEventListener('click', () => this.closeConfirmModal());
                 if (this.elements.closePriceAlertModalBtn) this.elements.closePriceAlertModalBtn.addEventListener('click', () => this.closePriceAlertModal());
@@ -1673,11 +1676,11 @@
                 
                 document.querySelector(`[onclick="window.stockTracker.switchTab('${tab}')"]`).classList.add('active');
                 document.getElementById(`${tab}-tab`).style.display = 'block';
-        
+
                 if (tab === 'news') this.fetchAndRenderNews();
                 else this.renderContent();
             }
-        
+
             sortItems(items, sortBy) {
                 switch (sortBy) {
                     case 'performance':
@@ -1702,13 +1705,13 @@
                         return items;
                 }
             }
-        
+
             renderContent() {
                 if (!this.userId && db) return;
                 const grid = this.elements.stocksGrid;
                 if (!grid) return;
                 grid.innerHTML = ''; 
-        
+
                 this.elements.portfolioSummary.style.display = 'none';
                 this.elements.fundsPortfolioSummary.style.display = 'none';
                 
@@ -1722,17 +1725,17 @@
                     this.fetchAndRenderNews();
                     return;
                 }
-        
+
                 const filterTerm = (this.currentTab === 'stocks' ? this.elements.portfolioFilter.value : '').toLowerCase();
                 let filteredItems = items.filter(item => 
                     item.symbol.toLowerCase().includes(filterTerm) || 
                     (item.name && item.name.toLowerCase().includes(filterTerm)) ||
                     (item.platform && item.platform.toLowerCase().includes(filterTerm))
                 );
-        
+
                 const sortBy = this.elements.portfolioSort.value;
                 const sortedItems = this.sortItems([...filteredItems], sortBy); 
-        
+
                 if (type === 'stock') {
                     this.renderPortfolioSummary();
                     if (sortBy === 'platform') {
@@ -1751,7 +1754,7 @@
                 
                 this.renderDiversificationChart();
                 this.renderHistoryChart();
-        
+
                 if (sortedItems.length === 0 && type !== 'stock') { 
                     grid.innerHTML = `<div class="loading">Your ${type} list is empty.</div>`; 
                 }
@@ -1766,7 +1769,7 @@
                 };
                 await setDoc(userDocRef, data);
             }
-        
+
             async loadData() {
                 if (!this.userId) return;
                 const userDocRef = doc(db, "users", this.userId);
@@ -1782,7 +1785,7 @@
                 this.updatePortfolioHistory();
                 this.renderContent();
             }
-        
+
             startLiveUpdate() {
                 this.stopLiveUpdate();
                 this.refreshIntervalId = setInterval(() => {
@@ -1794,7 +1797,7 @@
                 this.elements.toggleLiveUpdateBtn.textContent = '⏸️ Pause Live Update';
                 this.startCountdown();
             }
-        
+
             startCountdown() {
                 this.elements.smallCountdownContainer.innerHTML = `Next update: <span id="smallCountdown">${this.config.refreshIntervalMs / 1000}s</span>`;
                 this.elements.smallCountdown = document.getElementById('smallCountdown');
@@ -1812,7 +1815,7 @@
                 updateTimers();
                 this.countdownIntervalId = setInterval(updateTimers, 1000);
             }
-        
+
             stopLiveUpdate() {
                  clearInterval(this.refreshIntervalId);
                 clearInterval(this.countdownIntervalId);
@@ -1820,7 +1823,7 @@
                 this.elements.toggleLiveUpdateBtn.textContent = '▶️ Resume Live Update';
                  if(this.elements.smallCountdownContainer) this.elements.smallCountdownContainer.textContent = 'Updates Paused';
             }
-        
+
             toggleLiveUpdate() { this.isLiveUpdatePaused ? this.startLiveUpdate() : this.stopLiveUpdate(); }
             
             async refreshCurrentTab() {
@@ -1831,10 +1834,6 @@
                 };
                 if (tabActions[this.currentTab]) tabActions[this.currentTab]();
             }
-        
-            async refreshStocks() { await this.refreshItems(this.stocks, 'stock'); }
-            async refreshFunds() { await this.refreshItems(this.mutualFunds, 'fund'); }
-            async refreshWatchlist() { await this.refreshItems(this.watchlist, 'watchlist'); }
             
             async refreshItems(items, type) {
                 if (items.length === 0) return;
@@ -1861,7 +1860,7 @@
                 await this.saveData();
                 this.renderContent();
             }
-        
+
             renderPortfolioSummary() {
                 this.renderSummary(this.stocks, {
                     totalValue: document.getElementById('total-value'),
@@ -1873,7 +1872,7 @@
                     plRealized: document.getElementById('total-pl-realized'),
                 });
             }
-        
+
             renderFundsPortfolioSummary() {
                  this.renderSummary(this.mutualFunds, {
                     totalValue: document.getElementById('funds-total-value'),
@@ -1883,7 +1882,7 @@
                     overallPLPercent: document.getElementById('funds-overall-pl-percent'),
                 });
             }
-        
+
             renderSummary(items, elements) {
                 let totalCurrentValue = 0, totalUnrealizedPL = 0, totalRealizedPL = 0, totalPLToday = 0, totalPreviousDayValue = 0;
                 items.forEach(item => {
@@ -1914,7 +1913,7 @@
                 if(elements.overallPL) setElement(elements.overallPL, totalOverallPL);
                 if(elements.overallPLPercent) setElement(elements.overallPLPercent, totalOverallPLPercent, true);
             }
-        
+
             isMutualFund(symbol) { return symbol.length === 5 && symbol.endsWith('X'); }
             
             async addItemFromInput(type) {
@@ -1934,12 +1933,12 @@
                     if (type === 'stock') { [targetList, listName] = [this.stocks, 'portfolio']; } 
                     else if (type === 'fund') { [targetList, listName] = [this.mutualFunds, 'mutual funds list']; }
                     else { [targetList, listName] = [this.watchlist, 'watchlist']; }
-        
+
                     if (targetList.some(item => item.symbol === symbol)) { throw new Error(`${symbol} is already in your ${listName}.`); }
                     
                     const result = this.isMutualFund(symbol) ? await this.apiService.fetchFundData(symbol) : await this.apiService.fetchStockEtfData(symbol);
                     if (!result.success) throw new Error(result.reason);
-        
+
                     let newItem = { ...result.data };
                     if (type === 'watchlist') {
                         targetList.push(newItem);
@@ -1949,7 +1948,7 @@
                         if (platform) newItem.platform = platform;
                         targetList.push(newItem);
                     }
-        
+
                     await this.saveData();
                     this.renderContent();
                     this.showSuccess(`✅ Added ${symbol} to your ${listName}!`);
@@ -1959,7 +1958,7 @@
                     this.showLoading(false);
                 }
             }
-        
+
             removeItem(symbol, type) {
                 this.openConfirmModal(`Are you sure you want to remove ${symbol}?`, async () => {
                      if (type === 'stock') { this.stocks = this.stocks.filter(item => item.symbol !== symbol); }
@@ -1969,7 +1968,7 @@
                     this.renderContent();
                 });
             }
-        
+
             clearAllItems(type) {
                 this.openConfirmModal(`Are you sure you want to clear all ${type}s?`, async () => {
                     if (type === 'stock') this.stocks = [];
@@ -1979,7 +1978,7 @@
                     this.renderContent();
                 });
             }
-        
+
             calculateTransactionStats(transactions = [], currentPrice = 0) {
                 const buys = JSON.parse(JSON.stringify((transactions || []).filter(t => t.type === 'buy').sort((a,b) => new Date(a.date) - new Date(b.date))));
                 const sells = JSON.parse(JSON.stringify((transactions || []).filter(t => t.type === 'sell')));
@@ -2003,7 +2002,7 @@
                 let unrealizedPL = totalSharesOwned > 0 ? currentValue - costOfRemainingShares : 0;
                 return { totalSharesOwned, averageCostBasis, realizedPL, unrealizedPL, currentValue, costOfRemainingShares };
             }
-        
+
             calculateTotalContributions() {
                 return this.stocks.reduce((contributions, stock) => 
                     contributions + (stock.transactions || []).reduce((sum, t) => sum + (t.type === 'buy' ? t.shares * t.price : -t.shares * t.price), 0), 0);
@@ -2012,14 +2011,7 @@
             calculateTotalDividends() {
                 return this.stocks.reduce((sum, stock) => sum + (stock.dividends || []).reduce((divSum, div) => divSum + div.totalAmount, 0), 0);
             }
-        
-            calculateAnnualizedDividendYield(item) {
-                 if (!item.dividends || item.dividends.length === 0 || item.price === 0) return 0;
-                 const now = new Date(), lastYear = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
-                 const totalDividendsLastYear = item.dividends.filter(d => new Date(d.date) > lastYear).reduce((sum, d) => sum + d.totalAmount, 0);
-                 return totalDividendsLastYear > 0 ? (totalDividendsLastYear / item.price) * 100 : 0;
-            }
-        
+
             openTransactionModal(symbol, type, transactionType, transactionIndex = -1) {
                 if (!this.userId) {
                     this.showError("Please sign in with Google before recording a transaction.");
@@ -2057,80 +2049,118 @@
             
             async saveTransaction() {
                 try {
-                    const { symbol, type, transactionType } = this.elements.modalSaveBtn.dataset;
-                    const index = parseInt(this.elements.modalSaveBtn.dataset.transactionIndex);
-        
+                    const { symbol, type, transactionType, transactionIndex: indexStr } = this.elements.modalSaveBtn.dataset;
+                    const index = parseInt(indexStr);
+                    
+                    if (!symbol || !type || !transactionType) {
+                        this.showError('Missing transaction data');
+                        this.closeTransactionModal();
+                        return;
+                    }
+                    
                     const list = (type === 'stock') ? this.stocks : this.mutualFunds;
                     const item = list.find(i => i.symbol === symbol);
                     if (!item) {
                         this.showError(`Stock ${symbol} not found in portfolio.`);
-                        this.closeTransactionModal();
+                        this.closeTransactionModal(); 
                         return;
                     }
-        
+
                     if (transactionType === 'buy' || transactionType === 'sell') {
                         const shares = parseFloat(this.elements.modalShares.value);
                         const price = parseFloat(this.elements.modalPrice.value);
-                        if (isNaN(shares) || shares <= 0 || isNaN(price) || price < 0) {
-                            throw new Error('Invalid input: Shares and Price must be positive numbers.');
+                        
+                        if (isNaN(shares) || shares <= 0 || isNaN(price) || price <= 0) {
+                            this.showError('Invalid input: Shares and Price must be positive numbers.');
+                            this.closeTransactionModal(); 
+                            return;
                         }
+
                         if (!item.transactions) item.transactions = [];
-                        const newTransaction = { type: transactionType, shares, price, note: this.elements.modalNote.value.trim(), date: new Date().toISOString() };
-                        if (isNaN(index) || index < 0) {
+                        
+                        const newTransaction = { 
+                            type: transactionType, 
+                            shares, 
+                            price, 
+                            note: this.elements.modalNote.value.trim(), 
+                            date: new Date().toISOString() 
+                        };
+                        
+                        if (index === -1 || isNaN(index)) {
                             item.transactions.push(newTransaction);
                         } else {
                             item.transactions[index] = newTransaction;
                         }
+
                     } else if (transactionType === 'dividend') {
-                        // Dividend logic remains the same
+                        const shares = parseFloat(this.elements.modalShares.value);
+                        const amountPerShare = parseFloat(this.elements.modalDividendAmount.value);
+
+                        if (isNaN(shares) || shares <= 0 || isNaN(amountPerShare) || amountPerShare < 0) { 
+                            this.showError('Invalid input: Shares must be positive, Dividend amount non-negative.');
+                            this.closeTransactionModal(); 
+                            return;
+                        }
+                        
+                        if (!item.dividends) item.dividends = [];
+                        item.dividends.push({ shares, amountPerShare, totalAmount: shares * amountPerShare, date: new Date().toISOString() });
                     }
                     
                     await this.saveData();
-                    this.showSuccess(`✅ Transaction saved for ${symbol}!`);
-        
+
+                    // RENDER UPDATE: Update only the specific card and summary
                     this.updateStockCard(item, type);
-                    if (type === 'stock') {
+                    if(type === 'stock') {
                         this.renderPortfolioSummary();
                         this.renderDiversificationChart();
                         this.renderHistoryChart();
-                    } else if (type === 'fund') {
+                    } else if(type === 'fund') {
                         this.renderFundsPortfolioSummary();
                     }
                     
                     this.closeTransactionModal();
-        
+                    this.showSuccess(`✅ Transaction saved for ${symbol}!`);
+
                 } catch (error) {
-                    this.showError(`Error saving transaction: ${error.message}`);
+                    this.showError(`Critical Error saving transaction: ${error.message}`);
+                    this.closeTransactionModal(); 
                 }
             }
             
+            // RENDER UPDATE: New function to update a single stock card
             updateStockCard(item, type) {
-                const cardElement = document.querySelector(`[data-symbol="${item.symbol}"]`);
+                // Find the card element by its data attribute
+                const cardElement = document.querySelector(`.stocks-grid .${type}-card [data-symbol="${item.symbol}"]`)?.closest(`.${type}-card`);
+
                 if (!cardElement) return;
-        
+
                 const stats = this.calculateTransactionStats(item.transactions, item.price);
-                const todayPL = (item.change || 0) * stats.totalSharesOwned;
-                const totalPL = stats.unrealizedPL;
-                const totalPLPercent = stats.costOfRemainingShares > 0 ? (totalPL / stats.costOfRemainingShares) * 100 : 0;
                 const positiveClass = value => value >= 0 ? 'positive' : 'negative';
-        
+
+                // Update the price and change values
                 cardElement.querySelector('.stock-price').textContent = this.formatCurrency(item.price || 0);
                 cardElement.querySelector('.stock-change').innerHTML = `<span>${item.change >= 0 ? '▲' : '▼'} ${this.formatCurrency(item.change || 0)} (${(item.changePercent || 0).toFixed(2)}%)</span>`;
                 cardElement.querySelector('.stock-change').className = `stock-change ${positiveClass(item.change)}`;
-        
+
+                // Update the stock info section with new stats
                 if (type === 'stock') {
-                    const infoValues = cardElement.querySelectorAll('.info-row .info-value');
-                    infoValues[1].textContent = this.formatNumber(stats.totalSharesOwned, 3);
-                    infoValues[2].textContent = this.formatCurrency(stats.currentValue);
-                    infoValues[3].textContent = this.formatCurrency(stats.averageCostBasis);
-                    infoValues[4].textContent = this.formatCurrency(totalPL);
-                    infoValues[5].textContent = `${this.formatNumber(totalPLPercent, 2)}%`;
-                    infoValues[6].textContent = this.formatCurrency(stats.costOfRemainingShares);
+                    const totalPL = stats.unrealizedPL;
+                    const totalPLPercent = stats.costOfRemainingShares > 0 ? (totalPL / stats.costOfRemainingShares) * 100 : 0;
+                    const todayPL = (item.change || 0) * stats.totalSharesOwned;
+
+                    // This is a simple but fragile way to update. A more robust way would use data attributes.
+                    const infoValueElements = cardElement.querySelectorAll('.stock-info .info-value');
+                    infoValueElements[1].textContent = this.formatNumber(stats.totalSharesOwned, 3);
+                    infoValueElements[2].textContent = this.formatCurrency(stats.currentValue);
+                    infoValueElements[3].textContent = this.formatCurrency(stats.averageCostBasis);
+                    infoValueElements[4].textContent = this.formatCurrency(totalPL);
+                    infoValueElements[5].textContent = `${this.formatNumber(totalPLPercent, 2)}%`;
+                    infoValueElements[6].textContent = this.formatCurrency(stats.costOfRemainingShares);
+                    cardElement.querySelector('.total-pl').textContent = `P/L Today: ${this.formatCurrency(todayPL)}`;
+                    cardElement.querySelector('.total-pl').className = `total-pl ${positiveClass(todayPL)}`;
                 }
-                
-                cardElement.querySelector('.total-pl').textContent = `P/L Today: ${this.formatCurrency(todayPL)}`;
-                cardElement.querySelector('.total-pl').className = `total-pl ${positiveClass(todayPL)}`;
-        
+
+                // Rebuild transaction list
                 const transactionsContainer = cardElement.querySelector('.transactions-container');
                 if (transactionsContainer) {
                     transactionsContainer.innerHTML = (item.transactions || []).map((t, index) => 
@@ -2147,7 +2177,7 @@
                         </div>`).join('');
                 }
             }
-        
+            
             removeTransaction(symbol, index, type) {
                  this.openConfirmModal('Delete this transaction?', async () => {
                     const list = (type === 'stock') ? this.stocks : this.mutualFunds;
@@ -2156,11 +2186,16 @@
                         item.transactions.splice(index, 1);
                         await this.saveData();
                         this.updateStockCard(item, type);
-                        this.renderPortfolioSummary();
+                        if(type === 'stock') {
+                            this.renderPortfolioSummary();
+                            this.renderDiversificationChart();
+                            this.renderHistoryChart();
+                        }
+                        this.closeConfirmModal();
                     }
                 });
             }
-        
+
             renderGroupedStocks(items, container, type) {
                 const gains = items.filter(s => (s.changePercent || 0) >= 0).sort((a, b) => b.changePercent - a.changePercent);
                 const losses = items.filter(s => (s.changePercent || 0) < 0).sort((a, b) => a.changePercent - b.changePercent);
@@ -2175,7 +2210,7 @@
                 
                 this.createGroup('📉 Losses Today', losses, 'losses-header', container, type, this.getGroupSummary(losses, 'losses'));
             }
-        
+
             renderGroupedByPlatform(items, container, type) {
                 if (items.length === 0) { container.innerHTML = `<div class="loading">Your portfolio is empty.</div>`; return; }
                 
@@ -2187,12 +2222,12 @@
                     acc[platformName].push(item);
                     return acc;
                 }, {});
-        
+
                 for (const platformName in platformGroups) {
                     this.createGroup(platformName, platformGroups[platformName], 'platform-header', container, type, this.getGroupSummary(platformGroups[platformName], 'platform'));
                 }
             }
-        
+
             getGroupSummary(items, type) {
                 let summaryTitle = '';
                 let summaryText = '';
@@ -2210,7 +2245,7 @@
                         const totalValue = stats.currentValue;
                         const totalChangeToday = (item.change || 0) * stats.totalSharesOwned;
                         const totalChangeTodayClass = totalChangeToday >= 0 ? 'positive' : 'negative';
-        
+
                         summaryText = `Gained <span class="${changeClass}">${this.formatCurrency(item.change)}</span> today, a change of <span class="${changePercentClass}">${(item.changePercent || 0).toFixed(2)}%</span>.`;
                         summaryText += `\nTotal Value: <span class="${totalPL >= 0 ? 'positive' : 'negative'}">${this.formatCurrency(totalValue)}</span>`;
                         summaryText += `\nTotal Change Today: <span class="${totalChangeTodayClass}">${this.formatCurrency(totalChangeToday)}</span>`;
@@ -2222,10 +2257,10 @@
                     const totalChangeClass = totalChange >= 0 ? 'positive' : 'negative';
                     summaryText = `Total Value: ${this.formatCurrency(totalValue)}\nTotal Change Today: <span class="${totalChangeClass}">${this.formatCurrency(totalChange)}</span>`;
                 }
-        
+
                 return { title: summaryTitle, text: summaryText };
             }
-        
+
             createGroup(title, list, headerClass, parent, type, summary = { title: '', text: '' }) {
                 if(list.length === 0) return;
                 const groupWrapper = document.createElement('div');
@@ -2250,7 +2285,7 @@
                     toggleIcon.style.transform = isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
                     footer.querySelector('.collapse-group-btn').textContent = isCollapsed ? 'Expand' : 'Collapse';
                 };
-        
+
                 header.addEventListener('click', toggleGroup);
                 footer.querySelector('.collapse-group-btn').addEventListener('click', (e) => {
                     e.preventDefault();
@@ -2258,7 +2293,7 @@
                     toggleGroup();
                     header.scrollIntoView({ behavior: 'smooth' });
                 });
-        
+
                 groupWrapper.append(header, content, summaryContainer, footer);
                 parent.appendChild(groupWrapper);
                 this.renderCards(list, content, type);
@@ -2269,21 +2304,19 @@
                     if (!container.classList.contains('group-content')) {
                         container.innerHTML = ''; 
                     }
-        
+
                     itemList.forEach(item => {
                         const card = document.createElement('div');
                         card.className = `${type}-card`;
-                        card.dataset.symbol = item.symbol;
-                        
                         const stats = this.calculateTransactionStats(item.transactions, item.price);
                         
                         const platformHTML = item.platform ? `<div class="info-row"><span class="info-label">Platform:</span><span class="info-value">${item.platform}</span></div>` : '';
-        
+
                         const totalPL = stats.unrealizedPL;
                         const totalPLPercent = stats.costOfRemainingShares > 0 ? (totalPL / stats.costOfRemainingShares) * 100 : 0;
                         
                         const positiveClass = value => value >= 0 ? 'positive' : 'negative';
-        
+
                         let stockInfoHTML = '';
                         if (type === 'watchlist' || type === 'fund') {
                             stockInfoHTML = `<div class="info-row"><span class="info-label">Open:</span><span class="info-value">${this.formatCurrency(item.open || 0)}</span></div><div class="info-row"><span class="info-label">High:</span><span class="info-value">${this.formatCurrency(item.high || 0)}</span></div><div class="info-row"><span class="info-label">Low:</span><span class="info-value">${this.formatCurrency(item.low || 0)}</span></div><div class="info-row"><span class="info-label">Prev. Close:</span><span class="info-value">${this.formatCurrency(item.previousClose || 0)}</span></div>`;
@@ -2331,19 +2364,7 @@
                                         <span class="toggle-icon">▼</span>
                                     </div>
                                 </div>
-                                <div class="transactions-container">${ (item.transactions || []).map((t, index) => 
-                                    `<div class="transaction-entry">
-                                        <span>
-                                            <strong class="${t.type}">${t.type.toUpperCase()}</strong>: 
-                                            ${this.formatNumber(t.shares, 3)} @ ${this.formatCurrency(t.price)}
-                                        </span>
-                                        ${t.note ? `<span>Note: ${t.note}</span>` : ''}
-                                        <div class="transaction-entry-controls">
-                                            <button class="edit-transaction-btn" onclick="window.stockTracker.openTransactionModal('${item.symbol}', '${type}', 'edit', ${index})">Edit</button>
-                                            <button class="delete-transaction-btn" onclick="window.stockTracker.removeTransaction('${item.symbol}', ${index}, '${type}')">Delete</button>
-                                        </div>
-                                    </div>`).join('')}
-                                </div>
+                                <div class="transactions-container">${ (item.transactions || []).map((t, index) => `<div class="transaction-entry"><span><strong class="${t.type}">${t.type.toUpperCase()}</strong>: ${this.formatNumber(t.shares, 3)} @ ${this.formatCurrency(t.price)}</span>${t.note ? `<span>Note: ${t.note}</span>` : ''}</div>`).join('')}</div>
                             </div>
                             <div class="card-actions">
                                 <button class="transaction-btn" data-symbol="${item.symbol}" data-type="${type}" data-transaction-type="buy">Buy</button>
@@ -2356,7 +2377,7 @@
                         } else if (type === 'watchlist') {
                             transactionDetailsHTML = `<div class="card-actions" style="grid-template-columns: 1fr;"><button class="add-btn move-to-portfolio-btn" onclick="window.stockTracker.moveToPortfolio('${item.symbol}')">Move to Portfolio</button></div>`;
                         }
-        
+
                         const todayPL = (item.change || 0) * stats.totalSharesOwned;
                         card.innerHTML = `<div class="stock-header"><span class="stock-symbol">${item.symbol}</span><button class="remove-btn" onclick="window.stockTracker.removeItem('${item.symbol}', '${type}')">×</button></div><div class="stock-price">${this.formatCurrency(item.price || 0)}</div><div class="stock-change ${item.change >= 0 ? 'positive' : 'negative'}"><span>${item.change >= 0 ? '▲' : '▼'} ${this.formatCurrency(item.change || 0)} (${(item.changePercent || 0).toFixed(2)}%)</span></div><div class="stock-info">${stockInfoHTML}</div>${transactionDetailsHTML}<div class="total-pl ${todayPL >= 0 ? 'positive' : 'negative'}">P/L Today: ${this.formatCurrency(todayPL)}</div>`;
                         
@@ -2394,7 +2415,7 @@
                                 this.openTransactionModal(item.symbol, type, 'sell');
                             });
                         }
-        
+
                         container.appendChild(card);
                     });
                 } catch (error) {
@@ -2402,7 +2423,7 @@
                     console.error("Error in renderCards:", error);
                 }
             }
-        
+
             async moveToPortfolio(symbol) {
                 const stockToMove = this.watchlist.find(stock => stock.symbol === symbol);
                 if (!stockToMove || this.stocks.some(s => s.symbol === symbol)) return;
@@ -2412,7 +2433,7 @@
                 this.renderContent();
                 this.showSuccess(`✅ Moved ${symbol} to portfolio!`);
             }
-        
+
             showRefreshStatus(type, stats) {
                 const statusDiv = this.elements.refreshStatusPopup;
                 if (!statusDiv) return;
@@ -2432,7 +2453,7 @@
                 this.elements.successDiv.innerHTML = `<h4>Success</h4><p>${message}</p>`;
                 setTimeout(() => this.elements.successDiv.style.display = 'none', 3000);
             }
-        
+
             async exportData() {
                 const dataStr = JSON.stringify({ stocks: this.stocks, mutualFunds: this.mutualFunds, watchlist: this.watchlist }, null, 2);
                 const blob = new Blob([dataStr], {type: 'application/json'});
@@ -2442,7 +2463,7 @@
                 a.click();
                 URL.revokeObjectURL(a.href);
             }
-        
+
             async importData(e) {
                 const file = e.target.files[0];
                 if (!file) return;
@@ -2466,7 +2487,7 @@
                 const hasTransactions = this.stocks.some(s => s.transactions && s.transactions.length > 0 && this.calculateTransactionStats(s.transactions).currentValue > 0);
                 container.style.display = this.currentTab === 'stocks' && hasTransactions ? 'block' : 'none';
                 if (!container.style.display || container.style.display === 'none') return;
-        
+
                 const industryData = this.stocks.reduce((acc, stock) => {
                     const { currentValue } = this.calculateTransactionStats(stock.transactions, stock.price);
                     if (currentValue > 0) acc[stock.industry || 'Other'] = (acc[stock.industry || 'Other'] || 0) + currentValue;
@@ -2480,14 +2501,14 @@
                 const colors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'];
                 const gridColor = this.isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
                 const labelColor = this.isDarkMode ? '#f1f1f1' : '#666';
-        
+
                 this.diversificationChartInstance = new Chart(this.elements.diversificationChart, {
                     type: 'bar', 
                     data: { labels, datasets: [{ label: 'Value', data, backgroundColor: colors }] },
                     options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Portfolio by Industry', color: labelColor }, legend: { display: false } }, scales: { y: { ticks: { color: labelColor }, grid: { color: gridColor } }, x: { ticks: { color: labelColor }, grid: { color: gridColor } } } }
                 });
             }
-        
+
             async updatePortfolioHistory() {
                  const today = new Date().toISOString().slice(0, 10);
                 const lastEntry = this.portfolioHistory.at(-1);
@@ -2497,24 +2518,24 @@
                 else lastEntry.value = totalValue;
                 await this.saveData();
             }
-        
+
             renderHistoryChart() {
                 const container = this.elements.historyChartContainer;
                 container.style.display = this.currentTab === 'stocks' && this.portfolioHistory.length > 1 ? 'block' : 'none';
                 if (!container.style.display || container.style.display === 'none') return;
-        
+
                 const labels = this.portfolioHistory.map(e => e.date);
                 const data = this.portfolioHistory.map(e => e.value);
                 if (this.historyChartInstance) this.historyChartInstance.destroy();
                 const gridColor = this.isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
                 const labelColor = this.isDarkMode ? '#f1f1f1' : '#666';
-        
+
                 this.historyChartInstance = new Chart(this.elements.historyChart, {
                     type: 'line', data: { labels, datasets: [{ label: 'Portfolio Value', data, borderColor: '#667eea', tension: 0.1 }] },
                     options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Portfolio History', color: labelColor }, legend: { labels: { color: labelColor }} }, scales: { y: { ticks: { color: labelColor }, grid: { color: gridColor } }, x: { ticks: { color: labelColor }, grid: { color: gridColor } } } }
                 });
             }
-        
+
             openConfirmModal(text, onConfirmAction) { this.elements.confirmModal.style.display = 'flex'; this.elements.confirmModalText.textContent = text; this.onConfirm = onConfirmAction; }
             closeConfirmModal() { this.elements.confirmModal.style.display = 'none'; this.onConfirm = null; }
             handleConfirmAction() { if (this.onConfirm) this.onConfirm(); this.closeConfirmModal(); }
@@ -2525,9 +2546,9 @@
                 this.elements.modalRefreshInterval.value = this.config.refreshIntervalMs / 1000;
                 this.elements.settingsModal.style.display = 'flex';
             }
-        
+
             closeSettingsModal(){ this.elements.settingsModal.style.display = 'none'; }
-        
+
             saveSettings(){
                 const finnhubKey = this.elements.modalFinnhubKey.value.trim();
                 const alphaVantageKey = this.elements.modalAlphaVantageKey.value.trim();
@@ -2538,7 +2559,7 @@
                 if (interval && interval >= 10) {
                     localStorage.setItem('refreshIntervalMs', interval * 1000);
                 }
-        
+
                 this.loadConfig(); 
                 this.apiService = new ApiService(this.config);
                 
@@ -2552,7 +2573,7 @@
                 localStorage.setItem('darkMode', this.isDarkMode);
                 this.applyTheme();
             }
-        
+
             applyTheme() {
                 this.isDarkMode = localStorage.getItem('darkMode') === 'true';
                 document.body.classList.toggle('dark-mode', this.isDarkMode);
@@ -2561,7 +2582,7 @@
                     this.renderHistoryChart();
                 }
             }
-        
+
             openListAllModal() { this.elements.listAllModal.style.display = 'flex'; this.listAllSymbols(); }
             closeListAllModal() { this.elements.listAllModal.style.display = 'none'; }
             listAllSymbols() {
@@ -2594,7 +2615,7 @@
                 this.closePriceAlertModal();
                 this.showSuccess(`Alert set for ${symbol}.`);
             }
-        
+
             checkPriceAlerts() {
                 if(this.priceAlerts.length === 0) return;
                 const allItems = [...this.stocks, ...this.mutualFunds, ...this.watchlist];
@@ -2626,7 +2647,7 @@
                     this.elements.newsArticlesContainer.innerHTML = `<div class="error"><p>Failed to fetch news. ${result.reason}</p></div>`;
                 }
             }
-        
+
             renderNews() {
                 const container = this.elements.newsArticlesContainer;
                 container.innerHTML = '';
@@ -2640,7 +2661,7 @@
                     container.appendChild(card);
                 });
             }
-        
+
             // NEW: Functions for Edit Stock Modal
             openEditStockModal(symbol) {
                 const stock = this.stocks.find(s => s.symbol === symbol);
@@ -2650,11 +2671,11 @@
                 this.elements.editStockPlatform.value = stock.platform || '';
                 this.elements.saveStockEditBtn.dataset.symbol = symbol;
             }
-        
+
             closeEditStockModal() {
                 this.elements.editStockModal.style.display = 'none';
             }
-        
+
             async saveStockPlatform() {
                 const symbol = this.elements.saveStockEditBtn.dataset.symbol;
                 const stock = this.stocks.find(s => s.symbol === symbol);
@@ -2676,7 +2697,7 @@
                     const stats = this.calculateTransactionStats(stock.transactions, stock.price);
                     return sum + Math.min(0, stats.unrealizedPL + stats.realizedPL);
                 }, 0);
-        
+
                 this.elements.totalPnlSummaryStats.innerHTML = `
                     <div class="summary-item">
                         <span class="summary-label">Total Gains</span>
@@ -2687,13 +2708,13 @@
                         <span class="summary-value negative">${this.formatCurrency(totalLosses)}</span>
                     </div>
                 `;
-        
+
                 this.elements.totalPnlSummaryModal.style.display = 'flex';
             }
-        
+
         }
+        
         window.stockTracker = new StockTracker();
     </script>
 </body>
 </html>
-
