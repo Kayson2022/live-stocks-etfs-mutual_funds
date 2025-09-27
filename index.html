@@ -1401,7 +1401,8 @@
                  if (symbols.length === 0) return { success: true, data: [] };
                 const newsUrl = `https://www.alphavantage.co/query?function=NEWS_SENTIMENT&topics=economy_global&tickers=${symbols.join(',')}&apikey=${this.config.alphaVantageKey}`;
                 try {
-                    const response = await fetch(url);
+                    // FIX: Changed 'url' to 'newsUrl' to reference the correct variable
+                    const response = await fetch(newsUrl);
                     if (!response.ok) return { success: false, reason: `HTTP Error: ${response.status}` };
                     const data = await response.json();
                     if (data['Error Message'] || data.Note) return { success: false, reason: data['Error Message'] || data.Note };
