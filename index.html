@@ -1435,19 +1435,22 @@
             }
 
             init() {
-                document.addEventListener('DOMContentLoaded', () => {
-                    this.loadConfig();
-                    this.apiService = new ApiService(this.config);
-                    this.cacheDOMElements();
-                    this.setupEventListeners();
-                    this.applyTheme();
-                    if (!db) { 
-                        this.showError("Firebase is not configured. Please add your firebaseConfig object to the script tag.");
-                        this.elements.loginContainer.style.display = 'block';
-                        return;
-                    }
-                    this.handleAuthentication();
-                });
+                // FIX: Centralizing initialization to ensure methods exist before being called.
+                document.addEventListener('DOMContentLoaded', this.runInitialization.bind(this));
+            }
+
+            runInitialization() {
+                this.loadConfig();
+                this.apiService = new ApiService(this.config);
+                this.cacheDOMElements();
+                this.setupEventListeners();
+                this.applyTheme();
+                if (!db) { 
+                    this.showError("Firebase is not configured. Please add your firebaseConfig object to the script tag.");
+                    this.elements.loginContainer.style.display = 'block';
+                    return;
+                }
+                this.handleAuthentication();
             }
             
             formatCurrency(num) {
@@ -1639,7 +1642,49 @@
                         window.scrollTo(0, parseInt(scrollPosition));
                     }
                 });
+                
+                // --- FIX: Event Delegation for dynamic Buy/Sell buttons ---
+                this.elements.stocksGrid.addEventListener('click', (e) => this.handleCardAction(e));
+                // --------------------------------------------------------
             }
+            
+            // --- NEW: Event Delegation Handler ---
+            handleCardAction(event) {
+                const clickedButton = event.target.closest('.transaction-btn, .edit-btn');
+                if (!clickedButton) return;
+                
+                // Find the parent stock card to get the necessary data
+                const card = clickedButton.closest('.stock-card, .fund-card');
+                if (!card) return;
+                
+                const cardType = card.classList.contains('stock-card') ? 'stock' : 'fund';
+                
+                // Use data attributes (which we added in renderCards) for reliability, 
+                // but fall back to innerHTML to be compatible with old cards if necessary.
+                const symbol = card.dataset.symbol || card.querySelector('.stock-symbol, .fund-symbol')?.textContent.trim();
+                if (!symbol) return;
+
+
+                // Check for Buy/Sell/Edit buttons based on class name
+                if (clickedButton.classList.contains('buy-btn')) {
+                    event.preventDefault(); 
+                    event.stopPropagation();
+                    console.log(`Delegated click detected: buy on ${symbol}`); // DEBUG LOG
+                    this.openTransactionModal(symbol, cardType, 'buy');
+                } else if (clickedButton.classList.contains('sell-btn')) {
+                    event.preventDefault(); 
+                    event.stopPropagation();
+                    console.log(`Delegated click detected: sell on ${symbol}`); // DEBUG LOG
+                    this.openTransactionModal(symbol, cardType, 'sell');
+                } else if (clickedButton.classList.contains('edit-btn')) {
+                    // The Edit button relied on inline onclick, but handling it via delegation is more robust.
+                    event.preventDefault();
+                    event.stopPropagation();
+                    console.log(`Delegated click detected: Edit on ${symbol}`); // DEBUG LOG
+                    this.openEditStockModal(symbol);
+                }
+            }
+            // -------------------------------------
             
             switchTab(tab) {
                 this.currentTab = tab;
@@ -2181,6 +2226,10 @@
                 itemList.forEach(item => {
                     const card = document.createElement('div');
                     card.className = `${type}-card`;
+                    // Add data attributes to the card for delegation
+                    card.dataset.symbol = item.symbol;
+                    card.dataset.type = type;
+
                     const stats = this.calculateTransactionStats(item.transactions, item.price);
                     
                     const platformHTML = item.platform ? `<div class="info-row"><span class="info-label">Platform:</span><span class="info-value">${item.platform}</span></div>` : '';
@@ -2240,11 +2289,11 @@
                             <div class="transactions-container">${ (item.transactions || []).map((t, index) => `<div class="transaction-entry"><span><strong class="${t.type}">${t.type.toUpperCase()}</strong>: ${this.formatNumber(t.shares, 3)} @ ${this.formatCurrency(t.price)}</span>${t.note ? `<span>Note: ${t.note}</span>` : ''}</div>`).join('')}</div>
                         </div>
                         <div class="card-actions">
-                            <button class="transaction-btn" onclick="window.stockTracker.openTransactionModal('${item.symbol}', '${type}', 'buy')">Buy</button>
-                            <button class="transaction-btn" style="background: #ff4757;" onclick="window.stockTracker.openTransactionModal('${item.symbol}', '${type}', 'sell')">Sell</button>
+                            <button class="transaction-btn buy-btn">Buy</button>
+                            <button class="transaction-btn sell-btn" style="background: #ff4757;">Sell</button>
                         </div>
                         <div class="card-actions" style="grid-template-columns: 1fr;">
-                            <button class="add-btn" style="background-color: #f7b731;" onclick="window.stockTracker.openEditStockModal('${item.symbol}')">Edit</button>
+                            <button class="add-btn edit-btn" style="background-color: #f7b731;" data-action="edit">Edit</button>
                         </div>
                         `;
                     } else if (type === 'watchlist') {
@@ -2269,6 +2318,7 @@
                     `;
                     // --- END FINAL CARD RENDER ---
                     
+                    // Attach click handler for transaction header toggle
                     const transactionHeader = card.querySelector('.transaction-header');
                     if (transactionHeader) {
                         const toggleTransactions = () => {
@@ -2286,6 +2336,10 @@
                             toggleTransactions();
                         });
                     }
+
+                    // For the Edit button, since it was working with inline onclick, we rely on the Event Delegation
+                    // we added in setupEventListeners.
+
                     container.appendChild(card);
                 });
             }
