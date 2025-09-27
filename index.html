@@ -255,7 +255,7 @@
 
         .stock-card:hover, .fund-card:hover, .watchlist-card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+            box-shadow: 20px 40px rgba(0, 0, 0, 0.15);
         }
 
         .stock-header, .fund-header, .watchlist-header {
@@ -322,7 +322,6 @@
             grid-template-columns: auto 1fr;
             gap: 10px;
             align-items: center;
-            margin-bottom: 8px;
             font-size: 0.9rem;
         }
 
@@ -529,7 +528,7 @@
             padding: 20px;
             background: white;
             border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            box-shadow: 10px 30px rgba(0, 0, 0, 0.1);
             position: relative;
             height: 400px; /* Constrains the chart height */
         }
@@ -1395,7 +1394,7 @@
                  if (symbols.length === 0) return { success: true, data: [] };
                 const newsUrl = `https://www.alphavantage.co/query?function=NEWS_SENTIMENT&topics=economy_global&tickers=${symbols.join(',')}&apikey=${this.config.alphaVantageKey}`;
                 try {
-                    const response = await fetch(newsUrl);
+                    const response = await fetch(url);
                     if (!response.ok) return { success: false, reason: `HTTP Error: ${response.status}` };
                     const data = await response.json();
                     if (data['Error Message'] || data.Note) return { success: false, reason: data['Error Message'] || data.Note };
@@ -2055,26 +2054,25 @@
                     if(this.elements[id]) this.elements[id].value = ''; 
                 });
                 
-                // Helper to safely toggle visibility of the parent div
-                const safeToggleVisibility = (element, displayValue) => {
-                    if (element && element.parentNode) {
-                        element.parentNode.style.display = displayValue;
-                    }
-                };
+                // --- FIX: Safely determine and set visibility of input fields ---
+                // Get the parent elements of the input fields safely.
+                const modalSharesParent = this.elements.modalShares?.parentNode;
+                const modalPriceParent = this.elements.modalPrice?.parentNode;
+                const modalDividendFields = this.elements.modalDividendFields;
 
-                // Hide dividend fields first
-                safeToggleVisibility(this.elements.modalDividendFields, 'none');
+                if (modalSharesParent) modalSharesParent.style.display = 'none';
+                if (modalPriceParent) modalPriceParent.style.display = 'none';
+                if (modalDividendFields) modalDividendFields.style.display = 'none';
 
                 if (transactionType === 'buy' || transactionType === 'sell') {
-                    // Ensure these are visible for buy/sell
-                    safeToggleVisibility(this.elements.modalShares, 'block');
-                    safeToggleVisibility(this.elements.modalPrice, 'block');
+                    if (modalSharesParent) modalSharesParent.style.display = 'block';
+                    if (modalPriceParent) modalPriceParent.style.display = 'block';
                 } else if (transactionType === 'dividend') {
-                    // Ensure shares is visible, price is hidden, and dividend fields are visible
-                    safeToggleVisibility(this.elements.modalShares, 'block');
-                    safeToggleVisibility(this.elements.modalPrice, 'none');
-                    safeToggleVisibility(this.elements.modalDividendFields, 'block');
+                    if (modalSharesParent) modalSharesParent.style.display = 'block';
+                    if (modalDividendFields) modalDividendFields.style.display = 'block';
                 }
+                // --- END FIX ---
+
                 Object.assign(this.elements.modalSaveBtn.dataset, { symbol, type, transactionType, transactionIndex });
             }
             
