@@ -1835,6 +1835,10 @@
                 if (tabActions[this.currentTab]) tabActions[this.currentTab]();
             }
             
+            async refreshStocks() { await this.refreshItems(this.stocks, 'stock'); }
+            async refreshFunds() { await this.refreshItems(this.mutualFunds, 'fund'); }
+            async refreshWatchlist() { await this.refreshItems(this.watchlist, 'watchlist'); }
+            
             async refreshItems(items, type) {
                 if (items.length === 0) return;
                 this.showLoading(true, `Refreshing 0/${items.length} items...`);
@@ -2072,8 +2076,7 @@
                         
                         if (isNaN(shares) || shares <= 0 || isNaN(price) || price <= 0) {
                             this.showError('Invalid input: Shares and Price must be positive numbers.');
-                            this.closeTransactionModal(); 
-                            return;
+                            return; 
                         }
 
                         if (!item.transactions) item.transactions = [];
@@ -2098,7 +2101,6 @@
 
                         if (isNaN(shares) || shares <= 0 || isNaN(amountPerShare) || amountPerShare < 0) { 
                             this.showError('Invalid input: Shares must be positive, Dividend amount non-negative.');
-                            this.closeTransactionModal(); 
                             return;
                         }
                         
@@ -2108,7 +2110,6 @@
                     
                     await this.saveData();
 
-                    // RENDER UPDATE: Update only the specific card and summary
                     this.updateStockCard(item, type);
                     if(type === 'stock') {
                         this.renderPortfolioSummary();
@@ -2127,76 +2128,87 @@
                 }
             }
             
-            // RENDER UPDATE: New function to update a single stock card
             updateStockCard(item, type) {
-                // Find the card element by its data attribute
-                const cardElement = document.querySelector(`.stocks-grid .${type}-card [data-symbol="${item.symbol}"]`)?.closest(`.${type}-card`);
-
-                if (!cardElement) return;
+                const cardElement = document.querySelector(`.stock-card[data-symbol="${item.symbol}"]`);
+                if (!cardElement) {
+                    // RENDER UPDATE: If the card doesn't exist, re-render the content.
+                    this.renderContent(); 
+                    return;
+                }
 
                 const stats = this.calculateTransactionStats(item.transactions, item.price);
                 const positiveClass = value => value >= 0 ? 'positive' : 'negative';
 
-                // Update the price and change values
-                cardElement.querySelector('.stock-price').textContent = this.formatCurrency(item.price || 0);
-                cardElement.querySelector('.stock-change').innerHTML = `<span>${item.change >= 0 ? '▲' : '▼'} ${this.formatCurrency(item.change || 0)} (${(item.changePercent || 0).toFixed(2)}%)</span>`;
-                cardElement.querySelector('.stock-change').className = `stock-change ${positiveClass(item.change)}`;
+                const updateField = (selector, value, isCurrency = true, isPercent = false) => {
+                    const el = cardElement.querySelector(selector);
+                    if (el) {
+                        let formattedValue = isCurrency ? this.formatCurrency(value) : (isPercent ? `${this.formatNumber(value, 2)}%` : this.formatNumber(value, 3));
+                        el.textContent = formattedValue;
+                        if (selector.includes('pl') || selector.includes('change')) {
+                        el.classList.toggle('positive', value >= 0);
+                        el.classList.toggle('negative', value < 0);
+                        }
+                    }
+                };
 
-                // Update the stock info section with new stats
+                updateField('.stock-price', item.price || 0);
+                const changeEl = cardElement.querySelector('.stock-change span');
+                if (changeEl) {
+                    changeEl.innerHTML = `${item.change >= 0 ? '▲' : '▼'} ${this.formatCurrency(item.change || 0)} (${(item.changePercent || 0).toFixed(2)}%)`;
+                    changeEl.parentElement.className = `stock-change ${positiveClass(item.change)}`;
+                }
+
                 if (type === 'stock') {
                     const totalPL = stats.unrealizedPL;
                     const totalPLPercent = stats.costOfRemainingShares > 0 ? (totalPL / stats.costOfRemainingShares) * 100 : 0;
                     const todayPL = (item.change || 0) * stats.totalSharesOwned;
-
-                    // This is a simple but fragile way to update. A more robust way would use data attributes.
-                    const infoValueElements = cardElement.querySelectorAll('.stock-info .info-value');
-                    infoValueElements[1].textContent = this.formatNumber(stats.totalSharesOwned, 3);
-                    infoValueElements[2].textContent = this.formatCurrency(stats.currentValue);
-                    infoValueElements[3].textContent = this.formatCurrency(stats.averageCostBasis);
-                    infoValueElements[4].textContent = this.formatCurrency(totalPL);
-                    infoValueElements[5].textContent = `${this.formatNumber(totalPLPercent, 2)}%`;
-                    infoValueElements[6].textContent = this.formatCurrency(stats.costOfRemainingShares);
-                    cardElement.querySelector('.total-pl').textContent = `P/L Today: ${this.formatCurrency(todayPL)}`;
-                    cardElement.querySelector('.total-pl').className = `total-pl ${positiveClass(todayPL)}`;
+                    
+                    updateField('[data-field="total-shares"]', stats.totalSharesOwned, false);
+                    updateField('[data-field="total-value"]', stats.currentValue);
+                    updateField('[data-field="avg-cost"]', stats.averageCostBasis);
+                    updateField('[data-field="total-pl"]', totalPL);
+                    updateField('[data-field="total-pl-percent"]', totalPLPercent, false, true);
+                    updateField('[data-field="total-cost-basis"]', stats.costOfRemainingShares);
+                    updateField('.total-pl', todayPL);
                 }
 
-                // Rebuild transaction list
                 const transactionsContainer = cardElement.querySelector('.transactions-container');
                 if (transactionsContainer) {
                     transactionsContainer.innerHTML = (item.transactions || []).map((t, index) => 
                         `<div class="transaction-entry">
-                            <span>
-                                <strong class="${t.type}">${t.type.toUpperCase()}</strong>: 
-                                ${this.formatNumber(t.shares, 3)} @ ${this.formatCurrency(t.price)}
-                            </span>
-                            ${t.note ? `<span>Note: ${t.note}</span>` : ''}
+                            <div class="transaction-info">
+                                <span><strong class="${t.type}">${t.type.toUpperCase()}</strong>: 
+                                    <span class="info-value ${t.type}">${this.formatNumber(t.shares, 3)} @ ${this.formatCurrency(t.price)}</span>
+                                </span>
+                                ${t.note ? `<span>Note: <span class="info-value">${t.note}</span></span>` : ''}
+                            </div>
                             <div class="transaction-entry-controls">
-                                <button class="edit-transaction-btn" onclick="window.stockTracker.openTransactionModal('${item.symbol}', '${type}', 'edit', ${index})">Edit</button>
+                                <button class="edit-transaction-btn" onclick="window.stockTracker.openTransactionModal('${item.symbol}', '${type}', '${t.type}', ${index})">Edit</button>
                                 <button class="delete-transaction-btn" onclick="window.stockTracker.removeTransaction('${item.symbol}', ${index}, '${type}')">Delete</button>
                             </div>
                         </div>`).join('');
                 }
             }
-            
-            removeTransaction(symbol, index, type) {
+
+            async removeTransaction(symbol, index, type) {
                  this.openConfirmModal('Delete this transaction?', async () => {
                     const list = (type === 'stock') ? this.stocks : this.mutualFunds;
                     const item = list.find(i => i.symbol === symbol);
-                    if (item) {
+                    if (item && item.transactions) {
                         item.transactions.splice(index, 1);
                         await this.saveData();
                         this.updateStockCard(item, type);
                         if(type === 'stock') {
                             this.renderPortfolioSummary();
                             this.renderDiversificationChart();
-                            this.renderHistoryChart();
                         }
-                        this.closeConfirmModal();
                     }
+                    this.closeConfirmModal();
                 });
             }
 
             renderGroupedStocks(items, container, type) {
+                container.innerHTML = '';
                 const gains = items.filter(s => (s.changePercent || 0) >= 0).sort((a, b) => b.changePercent - a.changePercent);
                 const losses = items.filter(s => (s.changePercent || 0) < 0).sort((a, b) => a.changePercent - b.changePercent);
                 
@@ -2206,58 +2218,44 @@
                 if (biggestGain.length > 0) this.createGroup('🚀 Biggest Gain Today', biggestGain, 'biggest-gain-header', container, type, this.getGroupSummary(biggestGain, 'biggest-gain'));
                 
                 const otherGains = gains.filter(s => biggestGain.length === 0 || s.symbol !== biggestGain[0].symbol);
-                this.createGroup('📈 Gains Today', otherGains, 'gains-header', container, type, this.getGroupSummary(otherGains, 'gains'));
+                if (otherGains.length > 0) this.createGroup('📈 Gains Today', otherGains, 'gains-header', container, type, this.getGroupSummary(otherGains, 'gains'));
                 
-                this.createGroup('📉 Losses Today', losses, 'losses-header', container, type, this.getGroupSummary(losses, 'losses'));
+                if (losses.length > 0) this.createGroup('📉 Losses Today', losses, 'losses-header', container, type, this.getGroupSummary(losses, 'losses'));
             }
 
             renderGroupedByPlatform(items, container, type) {
+                container.innerHTML = '';
                 if (items.length === 0) { container.innerHTML = `<div class="loading">Your portfolio is empty.</div>`; return; }
                 
                 const platformGroups = items.reduce((acc, item) => {
                     const platformName = item.platform || 'Uncategorized';
-                    if (!acc[platformName]) {
-                        acc[platformName] = [];
-                    }
+                    if (!acc[platformName]) acc[platformName] = [];
                     acc[platformName].push(item);
                     return acc;
                 }, {});
 
-                for (const platformName in platformGroups) {
-                    this.createGroup(platformName, platformGroups[platformName], 'platform-header', container, type, this.getGroupSummary(platformGroups[platformName], 'platform'));
-                }
+                Object.entries(platformGroups).forEach(([platformName, groupItems]) => {
+                    this.createGroup(platformName, groupItems, 'platform-header', container, type, this.getGroupSummary(groupItems, 'platform'));
+                });
             }
 
             getGroupSummary(items, type) {
-                let summaryTitle = '';
-                let summaryText = '';
-                
-                if (type === 'biggest-gain') {
-                    if (items.length > 0) {
-                        const item = items[0];
-                        summaryTitle = `Biggest Gain: ${item.symbol}`;
-                        const changeClass = (item.change || 0) >= 0 ? 'positive' : 'negative';
-                        const changePercentClass = (item.changePercent || 0) >= 0 ? 'positive' : 'negative';
-                        
-                        const stats = this.calculateTransactionStats(item.transactions, item.price);
-                        const totalPL = stats.unrealizedPL + stats.realizedPL;
-                        const totalPLClass = totalPL >= 0 ? 'positive' : 'negative';
-                        const totalValue = stats.currentValue;
-                        const totalChangeToday = (item.change || 0) * stats.totalSharesOwned;
-                        const totalChangeTodayClass = totalChangeToday >= 0 ? 'positive' : 'negative';
-
-                        summaryText = `Gained <span class="${changeClass}">${this.formatCurrency(item.change)}</span> today, a change of <span class="${changePercentClass}">${(item.changePercent || 0).toFixed(2)}%</span>.`;
-                        summaryText += `\nTotal Value: <span class="${totalPL >= 0 ? 'positive' : 'negative'}">${this.formatCurrency(totalValue)}</span>`;
-                        summaryText += `\nTotal Change Today: <span class="${totalChangeTodayClass}">${this.formatCurrency(totalChangeToday)}</span>`;
-                    }
+                let summaryTitle = '', summaryText = '';
+                if (type === 'biggest-gain' && items.length > 0) {
+                    const item = items[0];
+                    const stats = this.calculateTransactionStats(item.transactions, item.price);
+                    const changeClass = (item.change || 0) >= 0 ? 'positive' : 'negative';
+                    summaryTitle = `Summary for: ${item.symbol}`;
+                    summaryText = `Today's Change: <span class="${changeClass}">${this.formatCurrency(item.change)} (${(item.changePercent || 0).toFixed(2)}%)</span>
+                                   Total Value: ${this.formatCurrency(stats.currentValue)}`;
                 } else {
-                    const totalChange = items.reduce((sum, item) => sum + (item.change || 0) * this.calculateTransactionStats(item.transactions, item.price).totalSharesOwned, 0);
                     const totalValue = items.reduce((sum, item) => sum + this.calculateTransactionStats(item.transactions, item.price).currentValue, 0);
-                    summaryTitle = `Summary of ${items.length} item(s)`;
-                    const totalChangeClass = totalChange >= 0 ? 'positive' : 'negative';
-                    summaryText = `Total Value: ${this.formatCurrency(totalValue)}\nTotal Change Today: <span class="${totalChangeClass}">${this.formatCurrency(totalChange)}</span>`;
+                    const totalChange = items.reduce((sum, item) => sum + ((item.change || 0) * this.calculateTransactionStats(item.transactions, item.price).totalSharesOwned), 0);
+                    const changeClass = totalChange >= 0 ? 'positive' : 'negative';
+                    summaryTitle = `Group Summary (${items.length} items)`;
+                    summaryText = `Total Value: ${this.formatCurrency(totalValue)}
+                                   Today's Total Change: <span class="${changeClass}">${this.formatCurrency(totalChange)}</span>`;
                 }
-
                 return { title: summaryTitle, text: summaryText };
             }
 
@@ -2265,163 +2263,115 @@
                 if(list.length === 0) return;
                 const groupWrapper = document.createElement('div');
                 groupWrapper.className = 'group-wrapper';
+                
                 const header = document.createElement('div');
                 header.className = `group-header ${headerClass}`;
                 header.innerHTML = `<span>${title} (${list.length})</span><span class="toggle-icon">▼</span>`;
+                
                 const content = document.createElement('div');
                 content.className = 'group-content';
+                
                 const summaryContainer = document.createElement('div');
                 summaryContainer.className = 'summary-content collapsed';
                 summaryContainer.innerHTML = `<div class="summary-card"><h4>${summary.title}</h4><p>${summary.text}</p></div>`;
+                
                 const footer = document.createElement('div');
                 footer.className = 'group-footer';
-                footer.innerHTML = `<button class="add-btn collapse-group-btn">Collapse</button>`;
                 
-                const toggleGroup = () => {
-                    const isCollapsed = header.classList.toggle('collapsed');
-                    content.classList.toggle('collapsed');
-                    summaryContainer.classList.toggle('collapsed');
-                    const toggleIcon = header.querySelector('.toggle-icon');
-                    toggleIcon.style.transform = isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
-                    footer.querySelector('.collapse-group-btn').textContent = isCollapsed ? 'Expand' : 'Collapse';
+                const toggleGroup = (isCollapsing) => {
+                    const shouldCollapse = isCollapsing;
+                    header.classList.toggle('collapsed', shouldCollapse);
+                    content.classList.toggle('collapsed', shouldCollapse);
+                    summaryContainer.classList.toggle('collapsed', !shouldCollapse);
                 };
 
-                header.addEventListener('click', toggleGroup);
-                footer.querySelector('.collapse-group-btn').addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    toggleGroup();
-                    header.scrollIntoView({ behavior: 'smooth' });
-                });
-
-                groupWrapper.append(header, content, summaryContainer, footer);
+                header.addEventListener('click', () => toggleGroup(header.classList.contains('collapsed')));
+                
+                groupWrapper.append(header, summaryContainer, content);
                 parent.appendChild(groupWrapper);
                 this.renderCards(list, content, type);
             }
             
             renderCards(itemList, container, type) {
-                try {
-                    if (!container.classList.contains('group-content')) {
-                        container.innerHTML = ''; 
+                if (!container.classList.contains('group-content')) {
+                    container.innerHTML = ''; 
+                }
+
+                itemList.forEach(item => {
+                    const card = document.createElement('div');
+                    card.className = `${type}-card`;
+                    card.setAttribute('data-symbol', item.symbol);
+                    const stats = this.calculateTransactionStats(item.transactions, item.price);
+                    
+                    const platformHTML = item.platform ? `<div class="info-row"><span class="info-label">Platform:</span><span class="info-value" data-field="platform">${item.platform}</span></div>` : '';
+                    const totalPL = stats.unrealizedPL;
+                    const totalPLPercent = stats.costOfRemainingShares > 0 ? (totalPL / stats.costOfRemainingShares) * 100 : 0;
+                    const positiveClass = value => value >= 0 ? 'positive' : 'negative';
+
+                    let stockInfoHTML = '';
+                    if (type === 'stock') {
+                        stockInfoHTML = `
+                        <div class="info-row"><span class="info-label">Open:</span><span class="info-value">${this.formatCurrency(item.open || 0)}</span></div>
+                        <div class="info-row"><span class="info-label">Total Shares:</span><span class="info-value" data-field="total-shares">${this.formatNumber(stats.totalSharesOwned, 3)}</span></div>
+                        <div class="info-row"><span class="info-label">Total Value:</span><span class="info-value" data-field="total-value">${this.formatCurrency(stats.currentValue)}</span></div>
+                        <div class="info-row"><span class="info-label">Avg. Cost:</span><span class="info-value" data-field="avg-cost">${this.formatCurrency(stats.averageCostBasis)}</span></div>
+                        <div class="info-row"><span class="info-label">Total P/L:</span><span class="info-value ${positiveClass(totalPL)}" data-field="total-pl">${this.formatCurrency(totalPL)}</span></div>
+                        <div class="info-row"><span class="info-label">Total P/L %:</span><span class="info-value ${positiveClass(totalPLPercent)}" data-field="total-pl-percent">${this.formatNumber(totalPLPercent, 2)}%</span></div>
+                        <div class="info-row"><span class="info-label">Total Cost Basis:</span><span class="info-value" data-field="total-cost-basis">${this.formatCurrency(stats.costOfRemainingShares)}</span></div>
+                        ${platformHTML}`;
+                    } else {
+                        stockInfoHTML = `<div class="info-row"><span class="info-label">Open:</span><span class="info-value">${this.formatCurrency(item.open || 0)}</span></div><div class="info-row"><span class="info-label">High:</span><span class="info-value">${this.formatCurrency(item.high || 0)}</span></div><div class="info-row"><span class="info-label">Low:</span><span class="info-value">${this.formatCurrency(item.low || 0)}</span></div><div class="info-row"><span class="info-label">Prev. Close:</span><span class="info-value">${this.formatCurrency(item.previousClose || 0)}</span></div>`;
+                    }
+                    
+                    let transactionDetailsHTML = '';
+                    if (type === 'stock' || type === 'fund') {
+                        transactionDetailsHTML = `
+                        <div class="transaction-details">
+                            <div class="transaction-header"><h4>Transactions:</h4><span class="toggle-icon">▼</span></div>
+                            <div class="transactions-container collapsed"></div>
+                        </div>
+                        <div class="card-actions">
+                            <button class="transaction-btn">Buy</button>
+                            <button class="transaction-btn" style="background: #ff4757;">Sell</button>
+                        </div>
+                        <div class="card-actions" style="grid-template-columns: 1fr;">
+                            <button class="add-btn" style="background-color: #f7b731;">Edit</button>
+                        </div>`;
+                    } else if (type === 'watchlist') {
+                        transactionDetailsHTML = `<div class="card-actions" style="grid-template-columns: 1fr;"><button class="add-btn move-to-portfolio-btn">Move to Portfolio</button></div>`;
                     }
 
-                    itemList.forEach(item => {
-                        const card = document.createElement('div');
-                        card.className = `${type}-card`;
-                        const stats = this.calculateTransactionStats(item.transactions, item.price);
-                        
-                        const platformHTML = item.platform ? `<div class="info-row"><span class="info-label">Platform:</span><span class="info-value">${item.platform}</span></div>` : '';
-
-                        const totalPL = stats.unrealizedPL;
-                        const totalPLPercent = stats.costOfRemainingShares > 0 ? (totalPL / stats.costOfRemainingShares) * 100 : 0;
-                        
-                        const positiveClass = value => value >= 0 ? 'positive' : 'negative';
-
-                        let stockInfoHTML = '';
-                        if (type === 'watchlist' || type === 'fund') {
-                            stockInfoHTML = `<div class="info-row"><span class="info-label">Open:</span><span class="info-value">${this.formatCurrency(item.open || 0)}</span></div><div class="info-row"><span class="info-label">High:</span><span class="info-value">${this.formatCurrency(item.high || 0)}</span></div><div class="info-row"><span class="info-label">Low:</span><span class="info-value">${this.formatCurrency(item.low || 0)}</span></div><div class="info-row"><span class="info-label">Prev. Close:</span><span class="info-value">${this.formatCurrency(item.previousClose || 0)}</span></div>`;
-                        } else { 
-                            stockInfoHTML = `
-                            <div class="info-row">
-                                <span class="info-label">Open:</span>
-                                <span class="info-value">${this.formatCurrency(item.open || 0)}</span>
-                            </div>
-                            <div class="info-row">
-                                <span class="info-label">Total Shares:</span>
-                                <span class="info-value">${this.formatNumber(stats.totalSharesOwned, 3)}</span>
-                            </div>
-                            <div class="info-row">
-                                <span class="info-label">Total Value:</span>
-                                <span class="info-value ${positiveClass(totalPL)}">${this.formatCurrency(stats.currentValue)}</span>
-                            </div>
-                            <div class="info-row">
-                                <span class="info-label">Avg. Cost:</span>
-                                <span class="info-value">${this.formatCurrency(stats.averageCostBasis)}</span>
-                            </div>
-                            <div class="info-row">
-                                <span class="info-label">Total P/L:</span>
-                                <span class="info-value ${positiveClass(totalPL)}">${this.formatCurrency(totalPL)}</span>
-                            </div>
-                            <div class="info-row">
-                                <span class="info-label">Total P/L %:</span>
-                                <span class="info-value ${positiveClass(totalPLPercent)}">${this.formatNumber(totalPLPercent, 2)}%</span>
-                            </div>
-                            <div class="info-row">
-                                <span class="info-label">Total Cost Basis:</span>
-                                <span class="info-value">${this.formatCurrency(stats.costOfRemainingShares)}</span>
-                            </div>
-                            ${platformHTML}`;
-                        }
-                        
-                        let transactionDetailsHTML = '';
-                        if (type === 'stock' || type === 'fund') {
-                            transactionDetailsHTML = `
-                            <div class="transaction-details">
-                                <div class="transaction-header">
-                                    <h4>Transactions:</h4>
-                                    <div class="header-controls">
-                                        <button class="add-btn header-collapse-btn">Collapse</button>
-                                        <span class="toggle-icon">▼</span>
-                                    </div>
-                                </div>
-                                <div class="transactions-container">${ (item.transactions || []).map((t, index) => `<div class="transaction-entry"><span><strong class="${t.type}">${t.type.toUpperCase()}</strong>: ${this.formatNumber(t.shares, 3)} @ ${this.formatCurrency(t.price)}</span>${t.note ? `<span>Note: ${t.note}</span>` : ''}</div>`).join('')}</div>
-                            </div>
-                            <div class="card-actions">
-                                <button class="transaction-btn" data-symbol="${item.symbol}" data-type="${type}" data-transaction-type="buy">Buy</button>
-                                <button class="transaction-btn" style="background: #ff4757;" data-symbol="${item.symbol}" data-type="${type}" data-transaction-type="sell">Sell</button>
-                            </div>
-                            <div class="card-actions" style="grid-template-columns: 1fr;">
-                                <button class="add-btn" style="background-color: #f7b731;" onclick="window.stockTracker.openEditStockModal('${item.symbol}')">Edit</button>
-                            </div>
-                            `;
-                        } else if (type === 'watchlist') {
-                            transactionDetailsHTML = `<div class="card-actions" style="grid-template-columns: 1fr;"><button class="add-btn move-to-portfolio-btn" onclick="window.stockTracker.moveToPortfolio('${item.symbol}')">Move to Portfolio</button></div>`;
-                        }
-
-                        const todayPL = (item.change || 0) * stats.totalSharesOwned;
-                        card.innerHTML = `<div class="stock-header"><span class="stock-symbol">${item.symbol}</span><button class="remove-btn" onclick="window.stockTracker.removeItem('${item.symbol}', '${type}')">×</button></div><div class="stock-price">${this.formatCurrency(item.price || 0)}</div><div class="stock-change ${item.change >= 0 ? 'positive' : 'negative'}"><span>${item.change >= 0 ? '▲' : '▼'} ${this.formatCurrency(item.change || 0)} (${(item.changePercent || 0).toFixed(2)}%)</span></div><div class="stock-info">${stockInfoHTML}</div>${transactionDetailsHTML}<div class="total-pl ${todayPL >= 0 ? 'positive' : 'negative'}">P/L Today: ${this.formatCurrency(todayPL)}</div>`;
-                        
-                        const transactionHeader = card.querySelector('.transaction-header');
-                        if (transactionHeader) {
-                            const toggleTransactions = () => {
-                                transactionHeader.classList.toggle('collapsed');
-                                const transactionsContainer = transactionHeader.nextElementSibling;
-                                if (transactionsContainer) {
-                                    transactionsContainer.classList.toggle('collapsed');
-                                    const button = transactionHeader.querySelector('.header-collapse-btn');
-                                    button.textContent = transactionHeader.classList.contains('collapsed') ? 'Expand' : 'Collapse';
-                                }
-                            };
-                            transactionHeader.addEventListener('click', toggleTransactions);
-                            transactionHeader.querySelector('.header-collapse-btn').addEventListener('click', (e) => {
-                                e.stopPropagation();
-                                toggleTransactions();
-                            });
-                        }
-                        
-                        const buyBtn = card.querySelector('.card-actions .transaction-btn:first-child');
-                        const sellBtn = card.querySelector('.card-actions .transaction-btn:last-child');
-                        if (buyBtn) {
-                            buyBtn.addEventListener('click', (e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                this.openTransactionModal(item.symbol, type, 'buy');
-                            });
-                        }
-                        if (sellBtn) {
-                            sellBtn.addEventListener('click', (e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                this.openTransactionModal(item.symbol, type, 'sell');
-                            });
-                        }
-
-                        container.appendChild(card);
-                    });
-                } catch (error) {
-                    this.showError(`Error rendering content: ${error.message}`);
-                    console.error("Error in renderCards:", error);
-                }
+                    const todayPL = (item.change || 0) * stats.totalSharesOwned;
+                    card.innerHTML = `
+                        <div class="stock-header">
+                            <span class="stock-symbol">${item.symbol}</span>
+                            <button class="remove-btn">×</button>
+                        </div>
+                        <div class="stock-price ${positiveClass(item.price)}">${this.formatCurrency(item.price || 0)}</div>
+                        <div class="stock-change ${positiveClass(item.change)}"><span>${item.change >= 0 ? '▲' : '▼'} ${this.formatCurrency(item.change || 0)} (${(item.changePercent || 0).toFixed(2)}%)</span></div>
+                        <div class="stock-info">${stockInfoHTML}</div>
+                        ${transactionDetailsHTML}
+                        <div class="total-pl ${positiveClass(todayPL)}">P/L Today: ${this.formatCurrency(todayPL)}</div>`;
+                    
+                    const transactionHeader = card.querySelector('.transaction-header');
+                    if (transactionHeader) {
+                        transactionHeader.addEventListener('click', () => {
+                            transactionHeader.classList.toggle('collapsed');
+                            transactionHeader.nextElementSibling.classList.toggle('collapsed');
+                        });
+                    }
+                    
+                    card.querySelector('.remove-btn').addEventListener('click', () => this.removeItem(item.symbol, type));
+                    if(type === 'stock' || type === 'fund') {
+                        card.querySelector('.transaction-btn:nth-child(1)').addEventListener('click', () => this.openTransactionModal(item.symbol, type, 'buy'));
+                        card.querySelector('.transaction-btn:nth-child(2)').addEventListener('click', () => this.openTransactionModal(item.symbol, type, 'sell'));
+                        card.querySelector('.add-btn').addEventListener('click', () => this.openEditStockModal(item.symbol));
+                    }
+                    if(type === 'watchlist') card.querySelector('.move-to-portfolio-btn').addEventListener('click', () => this.moveToPortfolio(item.symbol));
+                    
+                    container.appendChild(card);
+                    if(type === 'stock') this.updateStockCard(item, 'stock');
+                });
             }
 
             async moveToPortfolio(symbol) {
@@ -2484,9 +2434,9 @@
             
             renderDiversificationChart() {
                 const container = this.elements.diversificationChartContainer;
-                const hasTransactions = this.stocks.some(s => s.transactions && s.transactions.length > 0 && this.calculateTransactionStats(s.transactions).currentValue > 0);
+                const hasTransactions = this.stocks.some(s => s.transactions && s.transactions.length > 0 && this.calculateTransactionStats(s.transactions, s.price).currentValue > 0);
                 container.style.display = this.currentTab === 'stocks' && hasTransactions ? 'block' : 'none';
-                if (!container.style.display || container.style.display === 'none') return;
+                if (container.style.display === 'none') return;
 
                 const industryData = this.stocks.reduce((acc, stock) => {
                     const { currentValue } = this.calculateTransactionStats(stock.transactions, stock.price);
@@ -2522,7 +2472,7 @@
             renderHistoryChart() {
                 const container = this.elements.historyChartContainer;
                 container.style.display = this.currentTab === 'stocks' && this.portfolioHistory.length > 1 ? 'block' : 'none';
-                if (!container.style.display || container.style.display === 'none') return;
+                if (container.style.display === 'none') return;
 
                 const labels = this.portfolioHistory.map(e => e.date);
                 const data = this.portfolioHistory.map(e => e.value);
@@ -2652,17 +2602,18 @@
                 const container = this.elements.newsArticlesContainer;
                 container.innerHTML = '';
                 if (this.newsFeed.length === 0) { container.innerHTML = `<div class="loading">No recent news found.</div>`; return; }
-                this.newsFeed.slice(0, 20).forEach(article => { // Limit to 20 articles
+                this.newsFeed.slice(0, 20).forEach(article => {
                     const card = document.createElement('a');
                     card.href = article.url;
                     card.target = "_blank";
+                    card.rel = "noopener noreferrer";
                     card.className = "news-article-card";
-                    card.innerHTML = `<img src="${article.banner_image || 'https://placehold.co/100x100/eee/ccc?text=News'}" onerror="this.src='https://placehold.co/100x100/eee/ccc?text=Error'"><div class="news-article-content"><h4>${article.title}</h4><p>${article.summary}</p></div>`;
+                    const imageUrl = article.banner_image || 'https://placehold.co/100x100/eee/ccc?text=News';
+                    card.innerHTML = `<img src="${imageUrl}" alt="News article image" style="width:100px; height: 100px; object-fit: cover; border-radius: 8px;" onerror="this.style.display='none'"><div class="news-article-content"><h4>${article.title}</h4><p>${article.summary}</p></div>`;
                     container.appendChild(card);
                 });
             }
 
-            // NEW: Functions for Edit Stock Modal
             openEditStockModal(symbol) {
                 const stock = this.stocks.find(s => s.symbol === symbol);
                 if (!stock) return;
@@ -2682,7 +2633,7 @@
                 if (stock) {
                     stock.platform = this.elements.editStockPlatform.value.trim();
                     await this.saveData();
-                    this.renderContent();
+                    this.renderContent(); 
                     this.closeEditStockModal();
                     this.showSuccess(`✅ Updated platform for ${symbol}.`);
                 }
@@ -2713,7 +2664,7 @@
             }
 
         }
-        
+
         window.stockTracker = new StockTracker();
     </script>
 </body>
