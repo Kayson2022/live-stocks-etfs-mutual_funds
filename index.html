@@ -2196,31 +2196,36 @@
                 if(list.length === 0) return;
                 const groupWrapper = document.createElement('div');
                 groupWrapper.className = 'group-wrapper';
-                
                 const header = document.createElement('div');
                 header.className = `group-header ${headerClass}`;
                 header.innerHTML = `<span>${title} (${list.length})</span><span class="toggle-icon">▼</span>`;
-                
                 const content = document.createElement('div');
                 content.className = 'group-content';
-                
                 const summaryContainer = document.createElement('div');
                 summaryContainer.className = 'summary-content collapsed';
                 summaryContainer.innerHTML = `<div class="summary-card"><h4>${summary.title}</h4><p>${summary.text}</p></div>`;
-                
                 const footer = document.createElement('div');
                 footer.className = 'group-footer';
+                footer.innerHTML = `<button class="add-btn collapse-group-btn">Collapse</button>`;
                 
-                const toggleGroup = (isCollapsing) => {
-                    const shouldCollapse = isCollapsing;
-                    header.classList.toggle('collapsed', shouldCollapse);
-                    content.classList.toggle('collapsed', shouldCollapse);
-                    summaryContainer.classList.toggle('collapsed', !shouldCollapse);
+                const toggleGroup = () => {
+                    const isCollapsed = header.classList.toggle('collapsed');
+                    content.classList.toggle('collapsed');
+                    summaryContainer.classList.toggle('collapsed');
+                    const toggleIcon = header.querySelector('.toggle-icon');
+                    toggleIcon.style.transform = isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
+                    footer.querySelector('.collapse-group-btn').textContent = isCollapsed ? 'Expand' : 'Collapse';
                 };
 
-                header.addEventListener('click', () => toggleGroup(header.classList.contains('collapsed')));
-                
-                groupWrapper.append(header, summaryContainer, content);
+                header.addEventListener('click', toggleGroup);
+                footer.querySelector('.collapse-group-btn').addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleGroup();
+                    header.scrollIntoView({ behavior: 'smooth' });
+                });
+
+                groupWrapper.append(header, content, summaryContainer, footer);
                 parent.appendChild(groupWrapper);
                 this.renderCards(list, content, type);
             }
@@ -2260,8 +2265,14 @@
                     if (type === 'stock' || type === 'fund') {
                         transactionDetailsHTML = `
                         <div class="transaction-details">
-                            <div class="transaction-header"><h4>Transactions:</h4><span class="toggle-icon">▼</span></div>
-                            <div class="transactions-container collapsed"></div>
+                            <div class="transaction-header">
+                                <h4>Transactions:</h4>
+                                <div class="header-controls">
+                                    <button class="add-btn header-collapse-btn">Collapse</button>
+                                    <span class="toggle-icon">▼</span>
+                                </div>
+                            </div>
+                            <div class="transactions-container"></div>
                         </div>
                         <div class="card-actions">
                             <button class="transaction-btn">Buy</button>
@@ -2288,9 +2299,19 @@
                     
                     const transactionHeader = card.querySelector('.transaction-header');
                     if (transactionHeader) {
-                        transactionHeader.addEventListener('click', () => {
+                        const toggleTransactions = () => {
                             transactionHeader.classList.toggle('collapsed');
-                            transactionHeader.nextElementSibling.classList.toggle('collapsed');
+                            const transactionsContainer = transactionHeader.nextElementSibling;
+                            if (transactionsContainer) {
+                                transactionsContainer.classList.toggle('collapsed');
+                                const button = transactionHeader.querySelector('.header-collapse-btn');
+                                button.textContent = transactionHeader.classList.contains('collapsed') ? 'Expand' : 'Collapse';
+                            }
+                        };
+                        transactionHeader.addEventListener('click', toggleTransactions);
+                        transactionHeader.querySelector('.header-collapse-btn').addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            toggleTransactions();
                         });
                     }
                     
@@ -2303,7 +2324,7 @@
                     if(type === 'watchlist') card.querySelector('.move-to-portfolio-btn').addEventListener('click', () => this.moveToPortfolio(item.symbol));
                     
                     container.appendChild(card);
-                    if(type === 'stock') this.updateStockCard(item, 'stock');
+                    if(type === 'stock' || type === 'fund') this.updateStockCard(item, type);
                 });
             }
 
@@ -2570,3 +2591,4 @@
     </script>
 </body>
 </html>
+
