@@ -1165,6 +1165,15 @@
                 </div>
             </div>
             
+            <!-- NEW SECTION: Fundamental Data Summary -->
+            <div id="fundamentals-summary" class="portfolio-summary" style="display: none; border: 2px solid #2a2a72;">
+                <h3>Top 3 Holdings Fundamentals</h3>
+                <div id="fundamental-stats" class="summary-stats">
+                    <!-- Fundamental data cards will be rendered here -->
+                </div>
+            </div>
+            <!-- END NEW SECTION -->
+
             <div class="search-section">
                 <input type="text" class="search-input" id="stockInput" placeholder="Enter stock symbol (e.g., AAPL)">
                 <input type="text" class="search-input" id="platformInput" placeholder="Platform (e.g., Fidelity)">
@@ -1648,7 +1657,7 @@
                 const userFmpKey = localStorage.getItem('fmpApiKey'); // Load FMP Key
                 this.config = {
                     refreshIntervalMs: parseInt(localStorage.getItem('refreshIntervalMs')) || 90000,
-                    finnhubApiKey: userFinnhubKey || "d316lc1r01qnu2r0opjgd316lc1r01qnu2r0opk0",
+                    finnhubApiKey: userFinnhubKey || "d316lc1r01qnu2r0opjgd316lc1r01opk0",
                     alphaVantageKey: userAlphaVantageKey || "0ZPH51BZ2N5O9G8Q",
                     // FIX: Set the provided FMP key as the default, overriding local storage if key is bad
                     fmpApiKey: "vOqUU3gDIDYWghK8m4ZlsVQwLDnhfYMS", 
@@ -1944,6 +1953,13 @@
 
                 if (type === 'stock') {
                     this.renderPortfolioSummary();
+                    // NEW: Check if we have stocks before rendering fundamental summary
+                    if (this.stocks.length > 0) {
+                        this.renderFundamentalData();
+                    } else {
+                        this.elements.fundamentalsSummary.style.display = 'none';
+                    }
+
                     if (sortBy === 'platform') {
                         this.renderGroupedByPlatform(sortedItems, grid, type);
                     } else if (sortBy === 'performance') {
@@ -1952,10 +1968,14 @@
                         this.renderCards(sortedItems, grid, type);
                     }
                 } else if (type ==='fund') {
+                    this.elements.fundamentalsSummary.style.display = 'none';
                     this.renderFundsPortfolioSummary();
                     this.renderCards(sortedItems, grid, type);
                 } else if (type === 'watchlist') {
+                    this.elements.fundamentalsSummary.style.display = 'none';
                     this.renderCards(sortedItems, grid, type);
+                } else {
+                    this.elements.fundamentalsSummary.style.display = 'none';
                 }
                 
                 this.renderDiversificationChart();
@@ -2800,6 +2820,85 @@
                     options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Portfolio History', color: labelColor }, legend: { labels: { color: labelColor }} }, scales: { y: { ticks: { color: labelColor }, grid: { color: gridColor } }, x: { ticks: { color: labelColor }, grid: { color: gridColor } } } }
                 });
             }
+            
+            // NEW: Fetch and Render Fundamental Data Summary
+            async fetchFundamentalData(symbols) {
+                if (!this.config.fmpApiKey || this.config.fmpApiKey === 'YOUR_FMP_API_KEY') {
+                    this.elements.fundamentalsSummary.style.display = 'none';
+                    return;
+                }
+                
+                const dataUrl = `https://financialmodelingprep.com/api/v3/ratios-ttm/${symbols.join(',')}?apikey=${this.config.fmpApiKey}`;
+                
+                try {
+                    const response = await fetch(dataUrl);
+                    if (!response.ok) {
+                        console.error("FMP Fundamental fetch failed:", response.status);
+                        return [];
+                    }
+                    const data = await response.json();
+                    return data || [];
+                } catch (error) {
+                    console.error("Error fetching fundamental data:", error);
+                    return [];
+                }
+            }
+
+            async renderFundamentalData() {
+                const container = this.elements.fundamentalStats;
+                const summaryDiv = this.elements.fundamentalsSummary;
+                container.innerHTML = '';
+                
+                // 1. Identify top 3 stocks by market value
+                const valuedStocks = this.stocks
+                    .map(item => ({
+                        symbol: item.symbol,
+                        value: this.calculateTransactionStats(item.transactions, item.price).currentValue,
+                        price: item.price
+                    }))
+                    .filter(item => item.value > 0)
+                    .sort((a, b) => b.value - a.value)
+                    .slice(0, 3);
+
+                if (valuedStocks.length === 0) {
+                    summaryDiv.style.display = 'none';
+                    return;
+                }
+                
+                const symbols = valuedStocks.map(s => s.symbol);
+                
+                // 2. Fetch fundamental data for top symbols
+                const fundamentalData = await this.fetchFundamentalData(symbols);
+                
+                let statsHtml = '';
+                
+                valuedStocks.forEach(stock => {
+                    const data = fundamentalData.find(f => f.symbol === stock.symbol) || {};
+                    
+                    const marketCap = data.marketCap || data.marketCapitalization || null;
+                    const peRatio = data.peRatio || data.priceEarningsRatio || null;
+                    
+                    const formatValue = (value, isCurrency = false) => {
+                        if (value === null || value === undefined) return 'N/A';
+                        if (isCurrency) return this.formatCurrency(value);
+                        return this.formatNumber(value, 2);
+                    };
+
+                    statsHtml += `
+                        <div class="summary-item" style="border-right: 1px solid #ddd; padding-right: 15px; margin-right: 15px;">
+                            <span class="summary-label" style="font-weight: 700; color: #2a2a72;">${stock.symbol}</span>
+                            <span class="summary-label">Market Cap</span>
+                            <span class="summary-value">${formatValue(marketCap, true)}</span>
+                            <span class="summary-label" style="margin-top: 10px;">P/E Ratio</span>
+                            <span class="summary-value">${formatValue(peRatio, false)}</span>
+                        </div>
+                    `;
+                });
+                
+                container.innerHTML = statsHtml;
+                summaryDiv.style.display = 'block';
+            }
+
 
             openConfirmModal(text, onConfirmAction, onCancelAction = null) { 
                 this.elements.alertsSummaryModal.style.display = 'none'; // Ensure alerts modal is hidden first
