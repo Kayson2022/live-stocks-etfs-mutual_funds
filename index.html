@@ -1516,20 +1516,36 @@
                     
                     const data = await response.json();
 
-                    if (!Array.isArray(data) || data.length === 0) {
-                         return { success: true, data: [] }; // No profile found, means no news articles could be generated
-                    }
+                    // --- NEW FIX: Iterate over ALL requested symbols and generate a card for every one.
+                    // If FMP returned data for a symbol, use it. Otherwise, create a placeholder link.
+                    const generatedNews = symbols.map(symbol => {
+                        const profile = data.find(p => p.symbol === symbol);
+                        
+                        if (profile && profile.companyName) {
+                            // Case 1: FMP returned a valid profile
+                            return {
+                                url: profile.website || `https://www.google.com/search?q=${symbol}+stock+news`,
+                                title: `Official News Source for ${profile.companyName} (${symbol})`, 
+                                summary: `Profile data pulled successfully. Check the company website for the latest official news. (Industry: ${profile.industry})`, 
+                                banner_image: profile.image || 'https://placehold.co/100x100/eee/ccc?text=FMP', 
+                                source: profile.website ? new URL(profile.website).hostname : 'Google Search',
+                                date: new Date().toISOString(),
+                            };
+                        } else {
+                            // Case 2: FMP failed to return a profile (missing data/bad ticker). Force a Google Search link.
+                            return {
+                                url: `https://www.google.com/search?q=${symbol}+stock+news`,
+                                title: `Searching for News: ${symbol}`, 
+                                summary: `FMP profile data unavailable. Clicking this card will perform a real-time Google search for news on ${symbol}.`, 
+                                banner_image: 'https://placehold.co/100x100/34a853/ffffff?text=Google', 
+                                source: 'Google Search Fallback',
+                                date: new Date().toISOString(),
+                            };
+                        }
+                    });
+                    // --- END NEW FIX ---
                     
-                    // Generate synthetic news articles based on profile data to satisfy the news feed structure
-                    const generatedNews = data.map(profile => ({
-                        url: profile.website || `https://www.google.com/search?q=${profile.symbol}+stock+news`,
-                        title: `Latest News for ${profile.companyName} (${profile.symbol})`, 
-                        summary: `Profile data pulled successfully. Check the company website for the latest official news. (Industry: ${profile.industry})`, 
-                        banner_image: profile.image || 'https://placehold.co/100x100/eee/ccc?text=FMP', 
-                        source: profile.website ? new URL(profile.website).hostname : 'Google Search',
-                        date: new Date().toISOString(),
-                    }));
-
+                    // We return the full list of 33 synthetic news items.
                     return { success: true, data: generatedNews };
 
                 } catch (error) {
