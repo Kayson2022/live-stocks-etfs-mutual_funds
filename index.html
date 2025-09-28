@@ -1187,7 +1187,7 @@
 
                 <button class="add-btn" id="settingsBtn" style="background: linear-gradient(45deg, #6c757d, #343a40);">⚙️ Settings</button>
                 
-                <!-- NEW: View Active Alerts Button (Takes List All's spot in grid for visual balance) -->
+                <!-- NEW: View Active Alerts Button -->
                 <button class="add-btn" id="viewAlertsBtn" style="background: linear-gradient(45deg, #9b59b6, #8e44ad);">🔔 View Active Alerts</button>
                 <!-- END NEW -->
 
@@ -1889,7 +1889,7 @@
                     case 'pl_overall':
                          return items.sort((a, b) => {
                             const plA = this.calculateTransactionStats(a.transactions, a.price).unrealizedPL;
-                            const plB = this.calculateTransactionStats(b.transactions, b.price).unrealizedPL;
+                            const plB = this.calculateTransactionStats(b.transactions, a.price).unrealizedPL;
                             return plB - plA;
                         });
                     case 'platform':
@@ -2915,16 +2915,23 @@
                     const priceClass = alert.condition === 'above' ? 'positive' : 'negative';
                     const targetPrice = this.formatCurrency(alert.price);
                     
+                    // FIX: Add delete button and timestamp
                     html += `
                         <li style="padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
                             <div>
                                 <strong style="font-size: 1.1rem;">${alert.symbol}</strong><br>
                                 <span style="color: #666;">
-                                    Alert set: Price is 
+                                    Alert: Price is 
                                     <span class="${priceClass}">${alert.condition} ${targetPrice}</span>
+                                </span><br>
+                                <span style="font-size: 0.8rem; color: #aaa;">
+                                    Set on: ${new Date(alert.date || new Date()).toLocaleDateString()}
                                 </span>
                             </div>
-                            <button onclick="window.stockTracker.openPriceAlertModal('${alert.symbol}')" class="edit-transaction-btn" style="background: #667eea; padding: 5px 10px;">Edit</button>
+                            <div style="display:flex; gap: 5px;">
+                                <button onclick="window.stockTracker.openPriceAlertModal('${alert.symbol}')" class="edit-transaction-btn" style="background: #667eea; padding: 5px 10px;">Edit</button>
+                                <button onclick="window.stockTracker.removePriceAlert('${alert.symbol}')" class="delete-transaction-btn" style="padding: 5px 10px;">Delete</button>
+                            </div>
                         </li>
                     `;
                 });
@@ -2932,6 +2939,19 @@
                 contentDiv.innerHTML = html;
             }
             
+            // NEW: Function to remove an alert directly from the summary modal
+            removePriceAlert(symbol) {
+                this.openConfirmModal(`Are you sure you want to delete the active price alert for ${symbol}?`, async () => {
+                    // Filter out the non-triggered alert for this symbol
+                    this.priceAlerts = this.priceAlerts.filter(a => a.symbol !== symbol || a.triggered);
+                    await this.saveData();
+                    this.showSuccess(`🗑️ Deleted price alert for ${symbol}.`);
+                    // Re-render the summary modal immediately
+                    this.openAlertsSummaryModal(); 
+                });
+            }
+
+
             checkPriceAlerts() {
                 if(this.priceAlerts.length === 0) return;
                 const allItems = [...this.stocks, ...this.mutualFunds, ...this.watchlist];
