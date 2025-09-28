@@ -883,49 +883,6 @@
         .refresh-status-popup.active {
             display: block;
         }
-        
-        .move-to-portfolio-btn {
-            width: 100%;
-            margin-top: 15px;
-        }
-        
-        #firebase-auth-error {
-            background-color: #ffdddd;
-            border-left: 6px solid #f44336;
-            color: #333;
-            padding: 15px;
-            margin-top: 20px;
-            border-radius: 5px;
-            text-align: left;
-            font-size: 0.9rem;
-        }
-
-        #firebase-auth-error h4 {
-            margin-top: 0;
-            color: #f44336;
-        }
-
-        #firebase-auth-error code {
-            background-color: #e0e0e0;
-            padding: 2px 4px;
-            border-radius: 3px;
-            font-family: monospace;
-        }
-
-        #list-all-content {
-            max-height: 400px;
-            overflow-y: auto;
-            text-align: left;
-        }
-        #list-all-content h4 {
-            margin-top: 15px;
-            margin-bottom: 5px;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 5px;
-        }
-        #list-all-content p {
-            padding: 2px 5px;
-        }
 
         .alert-notification {
             position: fixed;
@@ -2879,6 +2836,18 @@
                 // --- FIX: Reset fields before opening ---
                 this.elements.alertPrice.value = '';
                 this.elements.alertCondition.value = 'above';
+                
+                // NEW: Find existing alert and pre-fill fields
+                const existingAlert = this.priceAlerts.find(a => a.symbol === symbol && !a.triggered);
+
+                if (existingAlert) {
+                    this.elements.alertPrice.value = existingAlert.price;
+                    this.elements.alertCondition.value = existingAlert.condition;
+                    // Change save button text to indicate update/modification
+                    this.elements.saveAlertBtn.textContent = 'Update Alert';
+                } else {
+                    this.elements.saveAlertBtn.textContent = 'Save Alert';
+                }
                 // --- END FIX ---
 
                 this.elements.priceAlertModal.style.display = 'flex';
@@ -2890,10 +2859,16 @@
                 const { symbol } = this.elements.saveAlertBtn.dataset;
                 const price = parseFloat(this.elements.alertPrice.value);
                 if (!symbol || isNaN(price) || price <= 0) { this.showError("Invalid alert data."); return; }
+                
+                // Find and remove any existing active alert for this symbol
+                this.priceAlerts = this.priceAlerts.filter(a => a.symbol !== symbol || a.triggered);
+                
+                // Save the new/updated alert
                 this.priceAlerts.push({ symbol, condition: this.elements.alertCondition.value, price, triggered: false });
+                
                 await this.saveData();
                 this.closePriceAlertModal();
-                this.showSuccess(`Alert set for ${symbol}.`);
+                this.showSuccess(`Alert set for ${symbol} at $${this.formatNumber(price, 2)}!`);
             }
 
             checkPriceAlerts() {
