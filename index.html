@@ -1651,7 +1651,8 @@
                     refreshIntervalMs: parseInt(localStorage.getItem('refreshIntervalMs')) || 90000,
                     finnhubApiKey: userFinnhubKey || "d316lc1r01qnu2r0opjgd316lc1r01qnu2r0opk0",
                     alphaVantageKey: userAlphaVantageKey || "0ZPH51BZ2N5O9G8Q",
-                    fmpApiKey: userFmpKey || "YOUR_FMP_API_KEY", // Default FMP Key
+                    // FIX: Hardcode the provided FMP key as the default to prevent initial 403 unless overridden.
+                    fmpApiKey: userFmpKey || "vOqUU3gDIDYWghK8m4ZlsVQwLDnhfYMS", 
                 };
             }
 
