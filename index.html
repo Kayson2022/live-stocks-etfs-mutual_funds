@@ -490,7 +490,6 @@
         .group-header .toggle-icon {
             transition: transform 0.3s ease;
             display: inline-block;
-            font-size: 1.2rem;
         }
 
         .group-header.collapsed .toggle-icon {
@@ -2877,6 +2876,11 @@
             }
             
             openPriceAlertModal(symbol) {
+                // --- FIX: Reset fields before opening ---
+                this.elements.alertPrice.value = '';
+                this.elements.alertCondition.value = 'above';
+                // --- END FIX ---
+
                 this.elements.priceAlertModal.style.display = 'flex';
                 this.elements.alertSymbol.textContent = symbol;
                 this.elements.saveAlertBtn.dataset.symbol = symbol;
