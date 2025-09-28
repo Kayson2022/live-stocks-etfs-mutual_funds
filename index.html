@@ -421,7 +421,6 @@
             text-align: left;
             margin-top: 20px;
             position: relative;
-            border-radius: 10px;
             user-select: none;
             display: flex;
             justify-content: space-between;
@@ -1321,6 +1320,21 @@
                 <label for="edit-stock-name">Name:</label>
                 <input type="text" class="search-input" id="edit-stock-name" placeholder="Company Name">
             </div>
+
+            <!-- ADDED: Inputs for Shares and Average Cost (Derived from first transaction) -->
+            <div class="transaction-input-group">
+                <label for="edit-stock-shares">Shares (Edit First Buy):</label>
+                <input type="number" class="search-input" id="edit-stock-shares" placeholder="Total Shares (First Buy)">
+            </div>
+            <div class="transaction-input-group">
+                <label for="edit-stock-cost">Average Cost (Edit First Buy):</label>
+                <input type="number" class="search-input" id="edit-stock-cost" placeholder="Average Cost Basis">
+            </div>
+            <div class="transaction-input-group">
+                <label for="edit-stock-date">Initial Buy Date (Edit First Buy):</label>
+                <input type="date" class="search-input" id="edit-stock-date">
+            </div>
+
             <!-- Existing: Platform Input -->
             <div class="transaction-input-group">
                 <label for="edit-stock-platform">Platform:</label>
@@ -1681,6 +1695,11 @@
                     editStockSymbol: document.getElementById('edit-stock-symbol'),
                     editStockName: document.getElementById('edit-stock-name'),
                     editStockPlatform: document.getElementById('edit-stock-platform'),
+                    // ADDED for #editStockModal:
+                    editStockShares: document.getElementById('edit-stock-shares'),
+                    editStockCost: document.getElementById('edit-stock-cost'),
+                    editStockDate: document.getElementById('edit-stock-date'),
+                    // End ADDED
                     saveStockEditBtn: document.getElementById('save-stock-edit-btn'),
                 };
 
@@ -2878,15 +2897,27 @@
             openEditStockModal(symbol) {
                 const stock = this.stocks.find(s => s.symbol === symbol);
                 if (!stock) return;
+                
+                // --- Prepare data for editing shares/cost/date ---
+                const stats = this.calculateTransactionStats(stock.transactions, stock.price);
+                const firstBuyTransaction = stock.transactions ? stock.transactions.find(t => t.type === 'buy') : null;
+                const initialDate = firstBuyTransaction ? firstBuyTransaction.date.split('T')[0] : '';
+                // ------------------------------------------------
+                
                 this.elements.editStockModal.style.display = 'flex';
                 
                 // Populate display symbol
                 this.elements.editStockSymbolDisplay.textContent = symbol;
 
-                // Populate editable fields
+                // Populate editable fields (Stock Details)
                 this.elements.editStockSymbol.value = stock.symbol || '';
                 this.elements.editStockName.value = stock.name || '';
                 this.elements.editStockPlatform.value = stock.platform || '';
+                
+                // Populate editable fields (Transaction Details - affecting the first buy to set basis)
+                this.elements.editStockShares.value = stats.totalSharesOwned > 0 ? stats.totalSharesOwned.toFixed(3) : 0;
+                this.elements.editStockCost.value = stats.averageCostBasis > 0 ? stats.averageCostBasis.toFixed(4) : 0;
+                this.elements.editStockDate.value = initialDate;
                 
                 this.elements.saveStockEditBtn.dataset.originalSymbol = symbol;
             }
@@ -2900,6 +2931,10 @@
                 const newSymbol = this.elements.editStockSymbol.value.trim().toUpperCase();
                 const newName = this.elements.editStockName.value.trim();
                 const newPlatform = this.elements.editStockPlatform.value.trim();
+                
+                const newShares = parseFloat(this.elements.editStockShares.value);
+                const newCost = parseFloat(this.elements.editStockCost.value);
+                const newDateInput = this.elements.editStockDate.value;
 
                 let stock = this.stocks.find(s => s.symbol === originalSymbol);
 
@@ -2908,6 +2943,13 @@
                     return;
                 }
                 
+                // --- Input validation for holding data ---
+                if (isNaN(newShares) || newShares < 0 || isNaN(newCost) || newCost < 0 || !newDateInput) {
+                    this.showError("Shares, Average Cost, and Initial Date must be valid numbers/date.");
+                    return;
+                }
+                // --- End validation ---
+
                 // 1. Check for symbol change/conflict
                 if (newSymbol !== originalSymbol) {
                     const exists = this.stocks.some(s => s.symbol === newSymbol);
@@ -2919,15 +2961,47 @@
                     stock.symbol = newSymbol;
                 }
 
-                // 2. Update other fields
+                // 2. Update stock details
                 stock.name = newName;
                 stock.platform = newPlatform;
                 
-                // 3. Save and refresh
+                // 3. Update the *first* buy transaction to match new shares/cost/date
+                // This is a simplification to set the cost basis without recalculating all transactions.
+                if (stock.transactions && stock.transactions.length > 0) {
+                    // Find or create the first buy transaction
+                    let firstBuyIndex = stock.transactions.findIndex(t => t.type === 'buy');
+                    
+                    if (firstBuyIndex !== -1) {
+                        // Update existing first buy transaction
+                        stock.transactions[firstBuyIndex].shares = newShares;
+                        stock.transactions[firstBuyIndex].price = newCost;
+                        stock.transactions[firstBuyIndex].date = new Date(newDateInput).toISOString();
+                    } else {
+                        // If no buy transaction exists (e.g., deleted or only sells exist), create one.
+                        stock.transactions.push({
+                            type: 'buy',
+                            shares: newShares,
+                            price: newCost,
+                            note: 'Initial Basis Adjustment (via Edit Stock Details)',
+                            date: new Date(newDateInput).toISOString()
+                        });
+                    }
+                } else if (newShares > 0) {
+                    // Create the initial transaction if the list was empty and shares > 0
+                     stock.transactions = [{
+                        type: 'buy',
+                        shares: newShares,
+                        price: newCost,
+                        note: 'Initial Basis Set (via Edit Stock Details)',
+                        date: new Date(newDateInput).toISOString()
+                    }];
+                }
+
+                // 4. Save and refresh
                 await this.saveData();
                 this.renderContent();
                 this.closeEditStockModal();
-                this.showSuccess(`✅ Updated details for ${originalSymbol} to ${newSymbol}!`);
+                this.showSuccess(`✅ Updated details and cost basis for ${newSymbol}!`);
             }
         }
         
