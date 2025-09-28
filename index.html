@@ -1517,7 +1517,6 @@
                     const data = await response.json();
 
                     // --- NEW FIX: Iterate over ALL requested symbols and generate a card for every one.
-                    // If FMP returned data for a symbol, use it. Otherwise, create a placeholder link.
                     const generatedNews = symbols.map(symbol => {
                         const profile = data.find(p => p.symbol === symbol);
                         
@@ -1545,7 +1544,7 @@
                     });
                     // --- END NEW FIX ---
                     
-                    // We return the full list of 33 synthetic news items.
+                    // We return the full list of generated news items (33 cards for 33 symbols).
                     return { success: true, data: generatedNews };
 
                 } catch (error) {
@@ -1668,7 +1667,7 @@
                     refreshIntervalMs: parseInt(localStorage.getItem('refreshIntervalMs')) || 90000,
                     finnhubApiKey: userFinnhubKey || "d316lc1r01qnu2r0opjgd316lc1r01qnu2r0opk0",
                     alphaVantageKey: userAlphaVantageKey || "0ZPH51BZ2N5O9G8Q",
-                    // FIX: Hardcode the provided FMP key as the default, overriding local storage if key is bad
+                    // FIX: Set the provided FMP key as the default, overriding local storage if key is bad
                     fmpApiKey: "vOqUU3gDIDYWghK8m4ZlsVQwLDnhfYMS", 
                 };
                 
@@ -1834,14 +1833,14 @@
             
             // --- NEW: Event Delegation Handler ---
             handleCardAction(event) {
-                const clickedButton = event.target.closest('.transaction-btn, .edit-btn, .edit-transaction-btn, .delete-transaction-btn');
+                const clickedButton = event.target.closest('.transaction-btn, .edit-btn, .edit-transaction-btn, .delete-transaction-btn, .set-alert-btn'); // Added set-alert-btn
                 if (!clickedButton) return;
                 
                 // Find the parent stock card to get the necessary data
-                const card = clickedButton.closest('.stock-card, .fund-card');
+                const card = clickedButton.closest('.stock-card, .fund-card, .watchlist-card');
                 if (!card) return;
                 
-                const cardType = card.classList.contains('stock-card') ? 'stock' : 'fund';
+                const cardType = card.classList.contains('stock-card') ? 'stock' : card.classList.contains('fund-card') ? 'fund' : 'watchlist';
                 
                 // Use data attributes for reliability
                 const symbol = card.dataset.symbol || card.querySelector('.stock-symbol, .fund-symbol')?.textContent.trim();
@@ -1866,13 +1865,15 @@
                 // --- End Handle Transaction Edit/Delete Buttons ---
 
 
-                // Check for Buy/Sell/Edit buttons based on class name
+                // Check for Buy/Sell/Edit/Alert buttons based on class name
                 if (clickedButton.classList.contains('buy-btn')) {
                     this.openTransactionModal(symbol, cardType, 'buy');
                 } else if (clickedButton.classList.contains('sell-btn')) {
                     this.openTransactionModal(symbol, cardType, 'sell');
                 } else if (clickedButton.classList.contains('edit-btn')) {
                     this.openEditStockModal(symbol);
+                } else if (clickedButton.classList.contains('set-alert-btn')) { // Handle New Alert Button
+                    this.openPriceAlertModal(symbol);
                 }
             }
             // -------------------------------------
@@ -2635,7 +2636,10 @@
                         </div>
                         `;
                     } else if (type === 'watchlist') {
-                         transactionDetailsHTML = `<div class="card-actions" style="grid-template-columns: 1fr;"><button class="add-btn move-to-portfolio-btn" onclick="window.stockTracker.moveToPortfolio('${item.symbol}')">Move to Portfolio</button></div>`;
+                         transactionDetailsHTML = `<div class="card-actions card-actions-watchlist" style="grid-template-columns: 1fr;">
+                             <button class="add-btn move-to-portfolio-btn" onclick="window.stockTracker.moveToPortfolio('${item.symbol}')">Move to Portfolio</button>
+                             <button class="transaction-btn set-alert-btn" style="background: #9b59b6; margin-top: 5px;">🔔 Set Alert</button>
+                         </div>`;
                     }
 
                     const todayPL = (item.change || 0) * stats.totalSharesOwned;
@@ -2892,13 +2896,34 @@
                     if (alert.triggered) return;
                     const item = allItems.find(i => i.symbol === alert.symbol);
                     if (!item) return;
-                    const trigger = (alert.condition === 'above' && item.price > alert.price) || (alert.condition === 'below' && item.price < alert.price);
+                    
+                    // --- Price Check Logic ---
+                    const trigger = (alert.condition === 'above' && item.price > alert.price) || 
+                                    (alert.condition === 'below' && item.price < alert.price);
+                    // --- End Price Check Logic ---
+                    
                     if (trigger) {
                         alert.triggered = true;
-                        this.showPriceAlert(item, alert);
+                        // Display the alert
+                        this.showAlertNotification(item, alert); 
                         this.saveData();
                     }
                 });
+            }
+
+            // NEW: Method to display the custom alert UI
+            showAlertNotification(item, alert) {
+                const type = alert.condition === 'above' ? 'positive' : 'negative';
+                const message = `🔔 ALERT: ${item.symbol} reached $${this.formatNumber(item.price)}! It is ${alert.condition} your target of $${this.formatNumber(alert.price)}.`;
+
+                const alertDiv = this.elements.alertNotification;
+                alertDiv.classList.remove('positive', 'negative');
+                alertDiv.classList.add('active', type);
+                alertDiv.innerHTML = `<h4>Price Alert Triggered</h4><p>${message}</p>`;
+
+                setTimeout(() => {
+                    alertDiv.classList.remove('active');
+                }, 10000); // Alert displays for 10 seconds
             }
             
             async fetchAndRenderNews() {
