@@ -2895,6 +2895,7 @@
                 this.elements.alertCondition.value = 'above';
                 
                 // NEW: Find existing alert and pre-fill fields
+                // Note: We need to find the *first* active alert to pre-fill, as multiple can exist now.
                 const existingAlert = this.priceAlerts.find(a => a.symbol === symbol && !a.triggered);
 
                 if (existingAlert) {
