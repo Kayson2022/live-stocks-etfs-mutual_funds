@@ -483,7 +483,6 @@
             opacity: 0;
             margin-top: 0;
             padding: 0;
-            border: none;
             pointer-events: none;
             display: none;
         }
@@ -1311,7 +1310,7 @@
             <button class="close-modal-btn" id="closeEditStockBtn">&times;</button>
             <h3 class="modal-title">Edit Stock: <span id="edit-stock-symbol-display"></span></h3>
             
-            <!-- ADDED: Inputs for Symbol and Name -->
+            <!-- Inputs for Symbol and Name -->
             <div class="transaction-input-group">
                 <label for="edit-stock-symbol">Symbol:</label>
                 <input type="text" class="search-input" id="edit-stock-symbol" placeholder="Stock Symbol (e.g., AAPL)">
@@ -1321,7 +1320,7 @@
                 <input type="text" class="search-input" id="edit-stock-name" placeholder="Company Name">
             </div>
 
-            <!-- ADDED: Inputs for Shares and Average Cost (Derived from first transaction) -->
+            <!-- ADDED: Inputs for Shares, Average Cost, and Initial Date (Affects first buy transaction) -->
             <div class="transaction-input-group">
                 <label for="edit-stock-shares">Shares (Edit First Buy):</label>
                 <input type="number" class="search-input" id="edit-stock-shares" placeholder="Total Shares (First Buy)">
@@ -1383,9 +1382,15 @@
                 <input type="text" class="search-input" id="modal-finnhub-key" placeholder="Enter your Finnhub API Key">
             </div>
             <div class="transaction-input-group">
-                <label for="modal-alpha-vantage-key">Alpha Vantage API Key:</label>
+                <label for="modal-alpha-vantage-key">Alpha Vantage API Key (Used for Mutual Funds):</label>
                 <input type="text" class="search-input" id="modal-alpha-vantage-key" placeholder="Enter your Alpha Vantage API Key">
             </div>
+            <!-- ADDED: FMP API Key Input -->
+            <div class="transaction-input-group">
+                <label for="modal-fmp-key">FMP API Key (Used for News):</label>
+                <input type="text" class="search-input" id="modal-fmp-key" placeholder="Enter your Financial Modeling Prep API Key">
+            </div>
+            <!-- END ADDED -->
             <div class="transaction-input-group">
                 <label for="modal-refresh-interval">Auto-Refresh Interval (seconds):</label>
                 <input type="number" class="search-input" id="modal-refresh-interval" placeholder="e.g., 60" min="10">
@@ -1493,14 +1498,39 @@
             
             async fetchNews(symbols) {
                  if (symbols.length === 0) return { success: true, data: [] };
-                const newsUrl = `https://www.alphavantage.co/query?function=NEWS_SENTIMENT&topics=economy_global&tickers=${symbols.join(',')}&apikey=${this.config.alphaVantageKey}`;
+                
+                // CHECK: Ensure FMP Key is present
+                if (!this.config.fmpApiKey || this.config.fmpApiKey === 'YOUR_FMP_API_KEY') {
+                    return { success: false, reason: "FMP API Key is missing. Please set it in Settings to fetch news." };
+                }
+
+                // Using FMP API for news
+                const newsUrl = `https://financialmodelingprep.com/api/v3/stock_news?tickers=${symbols.join(',')}&limit=50&apikey=${this.config.fmpApiKey}`;
+                
                 try {
-                    // FIX: Changed 'url' to 'newsUrl' to reference the correct variable
                     const response = await fetch(newsUrl);
-                    if (!response.ok) return { success: false, reason: `HTTP Error: ${response.status}` };
+                    if (!response.ok) {
+                        return { success: false, reason: `HTTP Error: ${response.status}. Check your FMP API key.` };
+                    }
+                    
                     const data = await response.json();
-                    if (data['Error Message'] || data.Note) return { success: false, reason: data['Error Message'] || data.Note };
-                    return { success: true, data: data.feed || [] };
+
+                    if (data.error || (Array.isArray(data) && data.length > 0 && data[0].hasOwnProperty('Error Message'))) {
+                         return { success: false, reason: data.error || data[0]['Error Message'] || 'FMP API Error' };
+                    }
+                    
+                    // FMP returns an array directly. Map FMP fields to existing structure expected by renderNews
+                    const mappedNews = data.map(article => ({
+                        url: article.url,
+                        title: article.title,
+                        summary: article.text, 
+                        banner_image: article.image, 
+                        source: article.site,
+                        date: article.publishedDate,
+                    }));
+
+                    return { success: true, data: mappedNews };
+
                 } catch (error) {
                     console.error("Error fetching news:", error);
                     return { success: false, reason: error.message };
@@ -1616,10 +1646,12 @@
             loadConfig() {
                 const userFinnhubKey = localStorage.getItem('finnhubApiKey');
                 const userAlphaVantageKey = localStorage.getItem('alphaVantageApiKey');
+                const userFmpKey = localStorage.getItem('fmpApiKey'); // Load FMP Key
                 this.config = {
                     refreshIntervalMs: parseInt(localStorage.getItem('refreshIntervalMs')) || 90000,
                     finnhubApiKey: userFinnhubKey || "d316lc1r01qnu2r0opjgd316lc1r01qnu2r0opk0",
                     alphaVantageKey: userAlphaVantageKey || "0ZPH51BZ2N5O9G8Q",
+                    fmpApiKey: userFmpKey || "YOUR_FMP_API_KEY", // Default FMP Key
                 };
             }
 
@@ -1648,6 +1680,7 @@
                     closeSettingsBtn: document.getElementById('closeSettingsBtn'),
                     modalFinnhubKey: document.getElementById('modal-finnhub-key'),
                     modalAlphaVantageKey: document.getElementById('modal-alpha-vantage-key'),
+                    modalFmpKey: document.getElementById('modal-fmp-key'), // FMP Key element
                     modalRefreshInterval: document.getElementById('modal-refresh-interval'),
                     modalSaveSettingsBtn: document.getElementById('modal-save-settings-btn'),
                     diversificationChartContainer: document.getElementById('diversification-chart-container'),
@@ -1758,9 +1791,9 @@
                 });
                 // ------------------------------------------
                 
-                // --- FIX: Event Delegation for dynamic Buy/Sell buttons ---
+                // --- FIX: Event Delegation for dynamic Buy/Sell/Edit/Delete buttons ---
                 this.elements.stocksGrid.addEventListener('click', (e) => this.handleCardAction(e));
-                // --------------------------------------------------------
+                // ---------------------------------------------------------------------
             }
 
             // --- NEW: Scroll position helper methods ---
@@ -1787,7 +1820,7 @@
                 
                 const cardType = card.classList.contains('stock-card') ? 'stock' : 'fund';
                 
-                // Use data attributes (which we added in renderCards) for reliability, 
+                // Use data attributes for reliability
                 const symbol = card.dataset.symbol || card.querySelector('.stock-symbol, .fund-symbol')?.textContent.trim();
                 if (!symbol) return;
                 
@@ -1812,13 +1845,10 @@
 
                 // Check for Buy/Sell/Edit buttons based on class name
                 if (clickedButton.classList.contains('buy-btn')) {
-                    console.log(`Delegated click detected: buy on ${symbol}`); // DEBUG LOG
                     this.openTransactionModal(symbol, cardType, 'buy');
                 } else if (clickedButton.classList.contains('sell-btn')) {
-                    console.log(`Delegated click detected: sell on ${symbol}`); // DEBUG LOG
                     this.openTransactionModal(symbol, cardType, 'sell');
                 } else if (clickedButton.classList.contains('edit-btn')) {
-                    console.log(`Delegated click detected: Edit on ${symbol}`); // DEBUG LOG
                     this.openEditStockModal(symbol);
                 }
             }
@@ -2298,16 +2328,12 @@
                             ? item.transactions.filter((_, i) => i !== index) 
                             : item.transactions || [];
                         
-                        // Calculate shares based on original transactions plus the current input (if adding/editing sell)
                         const currentStats = this.calculateTransactionStats(tempTransactions, item.price);
                         
-                        if (shares > currentStats.totalSharesOwned + (isEditing && item.transactions[index].type === 'sell' ? item.transactions[index].shares : 0)) {
-                             // This check is complex and should ideally use a deeper FIFO/LIFO tracking. 
-                             // For simplicity and safety against negative balance:
-                             if (shares > currentStats.totalSharesOwned) {
-                                this.showError(`Cannot sell ${shares} shares. You only own ${this.formatNumber(currentStats.totalSharesOwned)} shares of ${symbol}.`);
-                                return;
-                             }
+                        // Safety check: Cannot sell more than currently owned (after excluding the current transaction being edited/added)
+                        if (shares > currentStats.totalSharesOwned) {
+                            this.showError(`Cannot sell ${this.formatNumber(shares)} shares. You only own ${this.formatNumber(currentStats.totalSharesOwned)} shares of ${symbol}.`);
+                            return;
                         }
                     }
 
@@ -2760,6 +2786,7 @@
             openSettingsModal(){
                 this.elements.modalFinnhubKey.value = localStorage.getItem('finnhubApiKey') || '';
                 this.elements.modalAlphaVantageKey.value = localStorage.getItem('alphaVantageApiKey') || '';
+                this.elements.modalFmpKey.value = localStorage.getItem('fmpApiKey') || '';
                 this.elements.modalRefreshInterval.value = this.config.refreshIntervalMs / 1000;
                 this.elements.settingsModal.style.display = 'flex';
             }
@@ -2769,10 +2796,12 @@
             saveSettings(){
                 const finnhubKey = this.elements.modalFinnhubKey.value.trim();
                 const alphaVantageKey = this.elements.modalAlphaVantageKey.value.trim();
+                const fmpKey = this.elements.modalFmpKey.value.trim();
                 const interval = parseInt(this.elements.modalRefreshInterval.value, 10);
                 
                 localStorage.setItem('finnhubApiKey', finnhubKey);
                 localStorage.setItem('alphaVantageKey', alphaVantageKey);
+                localStorage.setItem('fmpApiKey', fmpKey);
                 if (interval && interval >= 10) {
                     localStorage.setItem('refreshIntervalMs', interval * 1000);
                 }
@@ -2854,7 +2883,7 @@
                 
                 const symbols = [...new Set([...this.stocks.map(s => s.symbol), ...this.watchlist.map(s => s.symbol)])];
                 if (symbols.length === 0) { 
-                    this.elements.newsArticlesContainer.innerHTML = `<div class="loading">No symbols to fetch news for.</div>`; 
+                    this.elements.newsArticlesContainer.innerHTML = `<div class="loading">No symbols to fetch news for. Add stocks or watchlist items first.</div>`; 
                     this.restoreScrollPosition(); // Restore even if empty
                     return; 
                 }
@@ -2873,7 +2902,8 @@
                     this.newsFetchTime = now;
                     this.renderNews();
                 } else {
-                    this.elements.newsArticlesContainer.innerHTML = `<div class="error"><p>Failed to fetch news. ${result.reason}</p></div>`;
+                    // FIX: Display the specific reason from the API service
+                    this.elements.newsArticlesContainer.innerHTML = `<div class="error"><p>Failed to fetch news. Reason: ${result.reason}</p></div>`;
                 }
                 
                 this.restoreScrollPosition(); // Restore scroll position after async operation
@@ -2882,7 +2912,7 @@
             renderNews() {
                 const container = this.elements.newsArticlesContainer;
                 container.innerHTML = '';
-                if (this.newsFeed.length === 0) { container.innerHTML = `<div class="loading">No recent news found.</div>`; return; }
+                if (this.newsFeed.length === 0) { container.innerHTML = `<div class="loading">No recent news found for your tracked symbols.</div>`; return; }
                 this.newsFeed.slice(0, 20).forEach(article => { // Limit to 20 articles
                     const card = document.createElement('a');
                     card.href = article.url;
