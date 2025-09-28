@@ -1186,6 +1186,11 @@
                 <!-- End FIX -->
 
                 <button class="add-btn" id="settingsBtn" style="background: linear-gradient(45deg, #6c757d, #343a40);">⚙️ Settings</button>
+                
+                <!-- NEW: View Active Alerts Button (Takes List All's spot in grid for visual balance) -->
+                <button class="add-btn" id="viewAlertsBtn" style="background: linear-gradient(45deg, #9b59b6, #8e44ad);">🔔 View Active Alerts</button>
+                <!-- END NEW -->
+
                 <button class="add-btn" id="listAllBtn" style="background: #9b59b6;">📋 List All Stocks</button>
                 <button class="add-btn" id="toggleDarkModeBtn" style="background: #333;">🌙 Toggle Theme</button>
             </div>
@@ -1389,6 +1394,18 @@
             <button class="add-btn" id="save-alert-btn">Save Alert</button>
         </div>
     </div>
+
+    <!-- NEW MODAL: Active Alerts Summary -->
+    <div id="alertsSummaryModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <button class="close-modal-btn" id="closeAlertsSummaryBtn">&times;</button>
+            <h3 class="modal-title">📋 Active Price Alerts</h3>
+            <div id="alerts-summary-content" style="max-height: 300px; overflow-y: auto; text-align: left;">
+                <!-- Content will be rendered here -->
+            </div>
+        </div>
+    </div>
+    <!-- END NEW MODAL -->
 
     <div id="listAllModal" class="modal" style="display: none;">
         <div class="modal-content">
@@ -1712,6 +1729,11 @@
                     editStockDate: document.getElementById('edit-stock-date'),
                     // End ADDED
                     saveStockEditBtn: document.getElementById('save-stock-edit-btn'),
+                    // NEW: Active Alerts Modal elements
+                    viewAlertsBtn: document.getElementById('viewAlertsBtn'),
+                    alertsSummaryModal: document.getElementById('alertsSummaryModal'),
+                    closeAlertsSummaryBtn: document.getElementById('closeAlertsSummaryBtn'),
+                    alertsSummaryContent: document.getElementById('alerts-summary-content'),
                 };
 
                 this.elements.resizeObserver.observe(this.elements.diversificationChartContainer);
@@ -1755,6 +1777,10 @@
                 this.elements.closeEditStockBtn.addEventListener('click', () => this.closeEditStockModal());
                 this.elements.saveStockEditBtn.addEventListener('click', () => this.saveStockDetails()); // Renamed function
 
+                // NEW: Alerts Summary Button Listeners
+                this.elements.viewAlertsBtn.addEventListener('click', () => this.openAlertsSummaryModal());
+                this.elements.closeAlertsSummaryBtn.addEventListener('click', () => this.elements.alertsSummaryModal.style.display = 'none');
+                
                 // --- Scroll position persistence logic ---
                 window.addEventListener('beforeunload', () => {
                     sessionStorage.setItem('scrollPosition', window.scrollY);
@@ -2871,6 +2897,41 @@
                 this.showSuccess(`Alert set for ${symbol} at $${this.formatNumber(price, 2)}!`);
             }
 
+            // NEW: Function to open the alert summary modal
+            openAlertsSummaryModal() {
+                this.elements.alertsSummaryModal.style.display = 'flex';
+                const contentDiv = this.elements.alertsSummaryContent;
+                contentDiv.innerHTML = '';
+
+                const activeAlerts = this.priceAlerts.filter(a => !a.triggered);
+
+                if (activeAlerts.length === 0) {
+                    contentDiv.innerHTML = `<p style="text-align: center; color: #666; margin-top: 20px;">No active price alerts currently set.</p>`;
+                    return;
+                }
+
+                let html = '<ul style="list-style-type: none; padding: 0;">';
+                activeAlerts.forEach(alert => {
+                    const priceClass = alert.condition === 'above' ? 'positive' : 'negative';
+                    const targetPrice = this.formatCurrency(alert.price);
+                    
+                    html += `
+                        <li style="padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong style="font-size: 1.1rem;">${alert.symbol}</strong><br>
+                                <span style="color: #666;">
+                                    Alert set: Price is 
+                                    <span class="${priceClass}">${alert.condition} ${targetPrice}</span>
+                                </span>
+                            </div>
+                            <button onclick="window.stockTracker.openPriceAlertModal('${alert.symbol}')" class="edit-transaction-btn" style="background: #667eea; padding: 5px 10px;">Edit</button>
+                        </li>
+                    `;
+                });
+                html += '</ul>';
+                contentDiv.innerHTML = html;
+            }
+            
             checkPriceAlerts() {
                 if(this.priceAlerts.length === 0) return;
                 const allItems = [...this.stocks, ...this.mutualFunds, ...this.watchlist];
