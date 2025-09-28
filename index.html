@@ -1691,20 +1691,37 @@
                 this.elements.closeEditStockBtn.addEventListener('click', () => this.closeEditStockModal());
                 this.elements.saveStockEditBtn.addEventListener('click', () => this.saveStockPlatform());
 
+                // --- Scroll position persistence logic ---
                 window.addEventListener('beforeunload', () => {
                     sessionStorage.setItem('scrollPosition', window.scrollY);
                 });
                 window.addEventListener('load', () => {
                     const scrollPosition = sessionStorage.getItem('scrollPosition');
                     if (scrollPosition) {
+                        // FIX: Only restore on initial load, not after refresh.
+                        // We will rely on explicit calls in renderContent/refreshCurrentTab.
                         window.scrollTo(0, parseInt(scrollPosition));
                     }
                 });
+                // ------------------------------------------
                 
                 // --- FIX: Event Delegation for dynamic Buy/Sell buttons ---
                 this.elements.stocksGrid.addEventListener('click', (e) => this.handleCardAction(e));
                 // --------------------------------------------------------
             }
+
+            // --- NEW: Scroll position helper methods ---
+            saveScrollPosition() {
+                this.lastScrollPosition = window.scrollY;
+            }
+
+            restoreScrollPosition() {
+                if (this.lastScrollPosition !== undefined) {
+                    window.scrollTo(0, this.lastScrollPosition);
+                    this.lastScrollPosition = undefined; // Clear after use
+                }
+            }
+            // ---------------------------------------------
             
             // --- NEW: Event Delegation Handler ---
             handleCardAction(event) {
@@ -1755,6 +1772,7 @@
             // -------------------------------------
             
             switchTab(tab) {
+                this.saveScrollPosition(); // Save position before switching
                 this.currentTab = tab;
                 document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
                 document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
@@ -1764,6 +1782,7 @@
 
                 if (tab === 'news') this.fetchAndRenderNews();
                 else this.renderContent();
+                // Scroll is restored in renderContent or fetchAndRenderNews
             }
 
             sortItems(items, sortBy) {
@@ -1793,6 +1812,9 @@
 
             renderContent() {
                 if (!this.userId && db) return;
+                
+                this.saveScrollPosition(); // Save scroll position right before redrawing
+
                 const grid = this.elements.stocksGrid;
                 if (!grid) return;
                 grid.innerHTML = ''; 
@@ -1843,6 +1865,8 @@
                 if (sortedItems.length === 0 && type !== 'stock') { 
                     grid.innerHTML = `<div class="loading">Your ${type} list is empty.</div>`; 
                 }
+                
+                this.restoreScrollPosition(); // Restore scroll position after redrawing
             }
             
             async saveData() {
@@ -1875,13 +1899,32 @@
                 this.stopLiveUpdate();
                 this.refreshIntervalId = setInterval(() => {
                     if (this.isLiveUpdatePaused) return;
-                    this.refreshCurrentTab();
+                    this.refreshCurrentTab(true); // Pass flag to indicate auto-refresh
                     this.checkPriceAlerts();
                 }, this.config.refreshIntervalMs);
                 this.isLiveUpdatePaused = false;
                 this.elements.toggleLiveUpdateBtn.textContent = '⏸️ Pause Live Update';
                 this.startCountdown();
             }
+
+            // Overloading refreshCurrentTab to handle manual vs auto-refresh scroll logic
+            async refreshCurrentTab(isAutoRefresh = false) {
+                if (isAutoRefresh) {
+                    this.saveScrollPosition(); // Save position for auto-refresh
+                }
+                
+                const tabActions = {
+                    stocks: () => this.refreshStocks(),
+                    funds: () => this.refreshFunds(),
+                    watchlist: () => this.refreshWatchlist()
+                };
+                if (tabActions[this.currentTab]) await tabActions[this.currentTab]();
+                
+                if (isAutoRefresh) {
+                    this.restoreScrollPosition(); // Restore position after auto-refresh completes
+                }
+            }
+
 
             startCountdown() {
                 this.elements.smallCountdownContainer.innerHTML = `Next update: <span id="smallCountdown">${this.config.refreshIntervalMs / 1000}s</span>`;
@@ -1911,15 +1954,6 @@
 
             toggleLiveUpdate() { this.isLiveUpdatePaused ? this.startLiveUpdate() : this.stopLiveUpdate(); }
             
-            async refreshCurrentTab() {
-                const tabActions = {
-                    stocks: () => this.refreshStocks(),
-                    funds: () => this.refreshFunds(),
-                    watchlist: () => this.refreshWatchlist()
-                };
-                if (tabActions[this.currentTab]) tabActions[this.currentTab]();
-            }
-
             async refreshStocks() { await this.refreshItems(this.stocks, 'stock'); }
             async refreshFunds() { await this.refreshItems(this.mutualFunds, 'fund'); }
             async refreshWatchlist() { await this.refreshItems(this.watchlist, 'watchlist'); }
@@ -2020,7 +2054,7 @@
                 try {
                     let targetList, listName;
                     if (type === 'stock') { [targetList, listName] = [this.stocks, 'portfolio']; } 
-                    else if (type === 'fund') { [targetList, listName] = [this.mutualFunds, 'mutual funds list']; }
+                    else if (type === 'fund') { [targetList, listName] = [this.mutualFunds, 'fund']; }
                     else { [targetList, listName] = [this.watchlist, 'watchlist']; }
 
                     if (targetList.some(item => item.symbol === symbol)) { throw new Error(`${symbol} is already in your ${listName}.`); }
@@ -2546,6 +2580,8 @@
             }
 
             async exportData() {
+                this.saveScrollPosition(); // Save scroll position before opening the file dialog
+                
                 const dataStr = JSON.stringify({ stocks: this.stocks, mutualFunds: this.mutualFunds, watchlist: this.watchlist }, null, 2);
                 const blob = new Blob([dataStr], {type: 'application/json'});
                 const a = document.createElement('a');
@@ -2553,11 +2589,17 @@
                 a.download = 'portfolio-data.json';
                 a.click();
                 URL.revokeObjectURL(a.href);
+                
+                // Note: Restoring scroll after file dialog is tricky and browser-dependent, 
+                // but the current implementation handles it on content render, which should be sufficient.
             }
 
             async importData(e) {
                 const file = e.target.files[0];
                 if (!file) return;
+                
+                this.saveScrollPosition(); // Save scroll position before file operation
+                
                 const reader = new FileReader();
                 reader.onload = async (event) => {
                     try {
@@ -2724,12 +2766,24 @@
             }
             
             async fetchAndRenderNews() {
+                this.saveScrollPosition(); // Save scroll position before fetching news
+                
                 const symbols = [...new Set([...this.stocks.map(s => s.symbol), ...this.watchlist.map(s => s.symbol)])];
-                if (symbols.length === 0) { this.elements.newsArticlesContainer.innerHTML = `<div class="loading">No symbols to fetch news for.</div>`; return; }
+                if (symbols.length === 0) { 
+                    this.elements.newsArticlesContainer.innerHTML = `<div class="loading">No symbols to fetch news for.</div>`; 
+                    this.restoreScrollPosition(); // Restore even if empty
+                    return; 
+                }
                 const now = Date.now();
-                if (this.newsFeed.length > 0 && now - this.newsFetchTime < 15 * 60 * 1000) { this.renderNews(); return; }
+                if (this.newsFeed.length > 0 && now - this.newsFetchTime < 15 * 60 * 1000) { 
+                    this.renderNews(); 
+                    this.restoreScrollPosition(); // Restore after static render
+                    return; 
+                }
+                
                 this.elements.newsArticlesContainer.innerHTML = '<div class="loading">Fetching news...</div>';
                 const result = await this.apiService.fetchNews(symbols);
+                
                 if (result.success) {
                     this.newsFeed = result.data;
                     this.newsFetchTime = now;
@@ -2737,6 +2791,8 @@
                 } else {
                     this.elements.newsArticlesContainer.innerHTML = `<div class="error"><p>Failed to fetch news. ${result.reason}</p></div>`;
                 }
+                
+                this.restoreScrollPosition(); // Restore scroll position after async operation
             }
 
             renderNews() {
