@@ -682,6 +682,16 @@
             background: transparent;
             color: #666;
         }
+        
+        /* --- FIX: High Z-index for nested Confirmation Modal --- */
+        #confirmModal {
+             z-index: 2000; 
+        }
+        /* --- FIX: High Z-index for Active Alerts Modal (needs to be over app content but under confirmation) --- */
+        #alertsSummaryModal {
+             z-index: 1500;
+        }
+
 
         .transaction-input-group {
             margin-bottom: 15px;
@@ -2791,7 +2801,12 @@
                 });
             }
 
-            openConfirmModal(text, onConfirmAction) { this.elements.confirmModal.style.display = 'flex'; this.elements.confirmModalText.textContent = text; this.onConfirm = onConfirmAction; }
+            openConfirmModal(text, onConfirmAction) { 
+                this.elements.alertsSummaryModal.style.display = 'none'; // Ensure alerts modal is hidden first
+                this.elements.confirmModal.style.display = 'flex'; 
+                this.elements.confirmModalText.textContent = text; 
+                this.onConfirm = onConfirmAction; 
+            }
             closeConfirmModal() { this.elements.confirmModal.style.display = 'none'; this.onConfirm = null; }
             handleConfirmAction() { if (this.onConfirm) this.onConfirm(); this.closeConfirmModal(); }
             
