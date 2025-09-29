@@ -531,7 +531,7 @@
             padding: 20px;
             background: white;
             border-radius: 15px;
-            box-shadow: 10px 30px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
             position: relative;
             height: 400px; /* Constrains the chart height */
         }
@@ -545,13 +545,6 @@
             border-radius: 8px;
             margin-bottom: 10px;
             padding: 10px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .transaction-info {
-            flex-grow: 1;
         }
 
         .transaction-info span {
@@ -563,8 +556,7 @@
         .transaction-entry-controls {
             display: flex;
             gap: 10px;
-            margin-left: 15px;
-            flex-shrink: 0;
+            margin-top: 8px;
         }
         
         .transaction-entry .info-value.buy { color: #2ed573; font-weight: bold; }
@@ -682,16 +674,6 @@
             background: transparent;
             color: #666;
         }
-        
-        /* --- FIX: High Z-index for nested Confirmation Modal --- */
-        #confirmModal {
-             z-index: 2000; 
-        }
-        /* --- FIX: High Z-index for Active Alerts Modal (needs to be over app content but under confirmation) --- */
-        #alertsSummaryModal {
-             z-index: 1500;
-        }
-
 
         .transaction-input-group {
             margin-bottom: 15px;
@@ -723,7 +705,6 @@
 
         .delete-transaction-btn {
             background: #ff4757;
-            margin-left: 5px;
         }
         
         .modal-title {
@@ -740,46 +721,11 @@
             margin-top: 20px;
             margin-bottom: 20px;
         }
-        /* FIX: Ensure all buttons and elements in the grid are the same size/height */
-        .utility-buttons-grid > * {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
 
-        .utility-buttons-grid .add-btn,
-        .utility-buttons-grid label {
+        .utility-buttons-grid .add-btn {
             min-width: unset;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
         }
-        /* End FIX for button sizing */
         
-        /* FIX: Nesting issue fix CSS */
-        .utility-buttons-grid .import-wrapper {
-             display: flex;
-             flex-direction: column;
-             /* Ensure the wrapper takes up two virtual grid rows */
-             grid-row: span 2; 
-             height: 100%;
-             justify-content: space-between;
-        }
-        /* Make inner buttons/labels take up half the vertical space, equally */
-        .utility-buttons-grid .import-wrapper .add-btn,
-        .utility-buttons-grid .import-wrapper label {
-             width: 100%;
-             margin-top: 0;
-             flex-grow: 1; /* Distribute space equally */
-        }
-        /* Add gap between stacked Export/Import buttons */
-        .utility-buttons-grid .import-wrapper #exportBtn {
-             margin-bottom: 5px;
-        }
-        /* End FIX */
-
-
         /* -- STYLES FOR COLLAPSE BUTTON AND SUMMARY -- */
         .group-footer {
             grid-column: 1 / -1;
@@ -869,7 +815,7 @@
 
        .refresh-status-popup {
             position: fixed;
-            bottom: 60px;
+            top: 20px;
             left: 50%;
             transform: translateX(-50%);
             z-index: 2002;
@@ -979,18 +925,6 @@
         .dark-mode .portfolio-summary h3 {
             color: #f1f1f1;
         }
-        
-        /* --- FIX: Performance Colors in Dark Mode --- */
-        .dark-mode .positive, 
-        .dark-mode .total-pl.positive {
-            color: #2ed573 !important;
-        }
-
-        .dark-mode .negative,
-        .dark-mode .total-pl.negative {
-            color: #ff4757 !important;
-        }
-        /* --- END FIX --- */
 
         .dark-mode .info-label, .dark-mode .close-modal-btn {
              color: #aaa;
@@ -1140,7 +1074,7 @@
                     </div>
                     <div class="summary-item">
                         <span class="summary-label">Total Contributions</span>
-                        <span id="total-contributions" class="summary-value total-contributions">$0.00</span>
+                        <span id="total-contributions" class="summary-value positive">$0.00</span>
                     </div>
                     <div class="summary-item">
                         <span class="summary-label">Total Dividends</span>
@@ -1186,21 +1120,10 @@
                 <button class="add-btn" id="liveUpdateBtn" style="background: linear-gradient(45deg, #2ed573, #17c0eb);">🔄 Live Update</button>
                 <button class="add-btn" id="toggleLiveUpdateBtn" style="background: linear-gradient(45deg, #f7b731, #ff5e3a);">⏸️ Pause Live Update</button>
                 <button class="add-btn" id="clearAllBtn" style="background: #ff4757;">🗑️ Clear All Data</button>
-                
-                <!-- FIX: Separate Export Button from Import Label/Input, and group them to occupy one grid cell vertically, forcing equal sizing. -->
-                <div class="import-wrapper">
-                    <button class="add-btn" id="exportBtn" style="background: linear-gradient(45deg, #3498db, #2980b9);">📥 Export Data</button>
-                    <label for="importFile" class="add-btn" style="background: linear-gradient(45deg, #2ecc71, #27ae60); cursor: pointer; text-align: center;">📤 Import Data</label>
-                    <input type="file" id="importFile" accept=".json" style="display: none;">
-                </div>
-                <!-- End FIX -->
-
+                <button class="add-btn" id="exportBtn" style="background: linear-gradient(45deg, #3498db, #2980b9);">📥 Export Data</button>
+                <label for="importFile" class="add-btn" style="background: linear-gradient(45deg, #2ecc71, #27ae60); cursor: pointer; text-align: center; display: flex; align-items: center; justify-content: center;">📤 Import Data</label>
+                <input type="file" id="importFile" accept=".json" style="display: none;">
                 <button class="add-btn" id="settingsBtn" style="background: linear-gradient(45deg, #6c757d, #343a40);">⚙️ Settings</button>
-                
-                <!-- NEW: View Active Alerts Button -->
-                <button class="add-btn" id="viewAlertsBtn" style="background: linear-gradient(45deg, #9b59b6, #8e44ad);">🔔 View Active Alerts</button>
-                <!-- END NEW -->
-
                 <button class="add-btn" id="listAllBtn" style="background: #9b59b6;">📋 List All Stocks</button>
                 <button class="add-btn" id="toggleDarkModeBtn" style="background: #333;">🌙 Toggle Theme</button>
             </div>
@@ -1253,8 +1176,7 @@
                 <button class="add-btn" id="updateWatchlistBtn">🔄 Update Watchlist</button>
                 <button class="add-btn" id="clearWatchlistBtn" style="background: #ff4757;">🗑️ Clear Watchlist</button>
             </div>
-            <!-- FIX: Encapsulate the title and count in a single span for Flexbox alignment -->
-            <h3 class="watchlist-title"><span>Your Watchlist <span id="watchlist-count">(0)</span></span></h3>
+            <h3 class="watchlist-title">Your Watchlist (<span id="watchlist-count">0</span>)</h3>
         </div>
 
         <div id="news-tab" class="tab-content">
@@ -1279,38 +1201,12 @@
     <div id="editStockModal" class="modal" style="display: none;">
         <div class="modal-content">
             <button class="close-modal-btn" id="closeEditStockBtn">&times;</button>
-            <h3 class="modal-title">Edit Stock: <span id="edit-stock-symbol-display"></span></h3>
-            
-            <!-- Inputs for Symbol and Name -->
-            <div class="transaction-input-group">
-                <label for="edit-stock-symbol">Symbol:</label>
-                <input type="text" class="search-input" id="edit-stock-symbol" placeholder="Stock Symbol (e.g., AAPL)">
-            </div>
-            <div class="transaction-input-group">
-                <label for="edit-stock-name">Name:</label>
-                <input type="text" class="search-input" id="edit-stock-name" placeholder="Company Name">
-            </div>
-
-            <!-- ADDED: Inputs for Shares, Average Cost, and Initial Date (Affects first buy transaction) -->
-            <div class="transaction-input-group">
-                <label for="edit-stock-shares">Shares (Edit First Buy):</label>
-                <input type="number" class="search-input" id="edit-stock-shares" placeholder="Total Shares (First Buy)">
-            </div>
-            <div class="transaction-input-group">
-                <label for="edit-stock-cost">Average Cost (Edit First Buy):</label>
-                <input type="number" class="search-input" id="edit-stock-cost" placeholder="Average Cost Basis">
-            </div>
-            <div class="transaction-input-group">
-                <label for="edit-stock-date">Initial Buy Date (Edit First Buy):</label>
-                <input type="date" class="search-input" id="edit-stock-date">
-            </div>
-
-            <!-- Existing: Platform Input -->
+            <h3 class="modal-title">Edit Stock: <span id="edit-stock-symbol"></span></h3>
             <div class="transaction-input-group">
                 <label for="edit-stock-platform">Platform:</label>
                 <input type="text" class="search-input" id="edit-stock-platform" placeholder="e.g., Fidelity, Robinhood">
             </div>
-            <button class="add-btn" id="save-stock-edit-btn">Save All Details</button>
+            <button class="add-btn" id="save-stock-edit-btn">Save Changes</button>
         </div>
     </div>
 
@@ -1326,15 +1222,9 @@
                 <label for="modal-price">Price:</label>
                 <input type="number" class="search-input" id="modal-price" placeholder="Price per share" min="0">
             </div>
-            <!-- NEW: Date input with calendar selector -->
-            <div class="transaction-input-group">
-                <label for="modal-date">Transaction Date:</label>
-                <input type="date" class="search-input" id="modal-date" required>
-            </div>
-            <!-- End NEW -->
             <div class="transaction-input-group">
                 <label for="modal-note">Note:</label>
-                <input type="text" class="search-input" id="modal-note" placeholder="Optional notes">
+                <input type="text" class="search-input" id="modal-note" placeholder="e.g., Fidelity, Robinhood, 1/15/2024">
             </div>
              <div class="transaction-input-group" id="modal-dividend-fields" style="display: none;">
                 <label for="modal-dividend-amount">Dividend Amount (per share):</label>
@@ -1353,15 +1243,9 @@
                 <input type="text" class="search-input" id="modal-finnhub-key" placeholder="Enter your Finnhub API Key">
             </div>
             <div class="transaction-input-group">
-                <label for="modal-alpha-vantage-key">Alpha Vantage API Key (Used for Mutual Funds):</label>
+                <label for="modal-alpha-vantage-key">Alpha Vantage API Key:</label>
                 <input type="text" class="search-input" id="modal-alpha-vantage-key" placeholder="Enter your Alpha Vantage API Key">
             </div>
-            <!-- ADDED: FMP API Key Input -->
-            <div class="transaction-input-group">
-                <label for="modal-fmp-key">FMP API Key (Used for News):</label>
-                <input type="text" class="search-input" id="modal-fmp-key" placeholder="Enter your Financial Modeling Prep API Key">
-            </div>
-            <!-- END ADDED -->
             <div class="transaction-input-group">
                 <label for="modal-refresh-interval">Auto-Refresh Interval (seconds):</label>
                 <input type="number" class="search-input" id="modal-refresh-interval" placeholder="e.g., 60" min="10">
@@ -1376,7 +1260,6 @@
 
     <div id="confirmModal" class="modal" style="display: none;">
         <div class="modal-content">
-            <button class="close-modal-btn" id="closeConfirmModalBtn" onclick="window.stockTracker.closeConfirmModal()">&times;</button>
             <h3 class="modal-title">Are you sure?</h3>
             <p id="confirm-modal-text" style="text-align: center; margin-bottom: 20px;"></p>
             <div class="modal-actions">
@@ -1404,18 +1287,6 @@
             <button class="add-btn" id="save-alert-btn">Save Alert</button>
         </div>
     </div>
-
-    <!-- NEW MODAL: Active Alerts Summary -->
-    <div id="alertsSummaryModal" class="modal" style="display: none;">
-        <div class="modal-content">
-            <button class="close-modal-btn" id="closeAlertsSummaryBtn">&times;</button>
-            <h3 class="modal-title">📋 Active Price Alerts</h3>
-            <div id="alerts-summary-content" style="max-height: 300px; overflow-y: auto; text-align: left;">
-                <!-- Content will be rendered here -->
-            </div>
-        </div>
-    </div>
-    <!-- END NEW MODAL -->
 
     <div id="listAllModal" class="modal" style="display: none;">
         <div class="modal-content">
@@ -1481,57 +1352,15 @@
             
             async fetchNews(symbols) {
                  if (symbols.length === 0) return { success: true, data: [] };
-                
-                // CHECK: Ensure FMP Key is present
-                if (!this.config.fmpApiKey || this.config.fmpApiKey === 'YOUR_FMP_API_KEY') {
-                    return { success: false, reason: "FMP API Key is missing. Please set it in Settings to fetch news." };
-                }
-
-                // --- FIX: Using the Company Profile endpoint as a fallback for news since the news endpoint is failing (403) ---
-                // We fetch the company's website (used in the news card as a source/link) and construct a minimal result.
-                const profileUrl = `https://financialmodelingprep.com/api/v3/profile/${symbols.join(',')}?apikey=${this.config.fmpApiKey}`;
-                
+                const newsUrl = `https://www.alphavantage.co/query?function=NEWS_SENTIMENT&topics=economy_global&tickers=${symbols.join(',')}&apikey=${this.config.alphaVantageKey}`;
                 try {
-                    const response = await fetch(profileUrl);
-                    if (!response.ok) {
-                        return { success: false, reason: `HTTP Error: ${response.status}. Check your FMP API key/plan access.` };
-                    }
-                    
+                    const response = await fetch(newsUrl);
+                    if (!response.ok) return { success: false, reason: `HTTP Error: ${response.status}` };
                     const data = await response.json();
-
-                    // --- NEW FIX: Iterate over ALL requested symbols and generate a card for every one.
-                    const generatedNews = symbols.map(symbol => {
-                        const profile = data.find(p => p.symbol === symbol);
-                        
-                        if (profile && profile.companyName) {
-                            // Case 1: FMP returned a valid profile
-                            return {
-                                url: profile.website || `https://www.google.com/search?q=${symbol}+stock+news`,
-                                title: `Official News Source for ${profile.companyName} (${symbol})`, 
-                                summary: `Profile data pulled successfully. Check the company website for the latest official news. (Industry: ${profile.industry})`, 
-                                banner_image: profile.image || 'https://placehold.co/100x100/eee/ccc?text=FMP', 
-                                source: profile.website ? new URL(profile.website).hostname : 'Google Search',
-                                date: new Date().toISOString(),
-                            };
-                        } else {
-                            // Case 2: FMP failed to return a profile (missing data/bad ticker). Force a Google Search link.
-                            return {
-                                url: `https://www.google.com/search?q=${symbol}+stock+news`,
-                                title: `Searching for News: ${symbol}`, 
-                                summary: `FMP profile data unavailable. Clicking this card will perform a real-time Google search for news on ${symbol}.`, 
-                                banner_image: 'https://placehold.co/100x100/34a853/ffffff?text=Google', 
-                                source: 'Google Search Fallback',
-                                date: new Date().toISOString(),
-                            };
-                        }
-                    });
-                    // --- END NEW FIX ---
-                    
-                    // We return the full list of generated news items (33 cards for 33 symbols).
-                    return { success: true, data: generatedNews };
-
+                    if (data['Error Message'] || data.Note) return { success: false, reason: data['Error Message'] || data.Note };
+                    return { success: true, data: data.feed || [] };
                 } catch (error) {
-                    console.error("Error fetching news (FMP Profile Fallback):", error);
+                    console.error("Error fetching news:", error);
                     return { success: false, reason: error.message };
                 }
             }
@@ -1565,22 +1394,19 @@
             }
 
             init() {
-                // FIX: Centralizing initialization to ensure methods exist before being called.
-                document.addEventListener('DOMContentLoaded', this.runInitialization.bind(this));
-            }
-
-            runInitialization() {
-                this.loadConfig();
-                this.apiService = new ApiService(this.config);
-                this.cacheDOMElements();
-                this.setupEventListeners();
-                this.applyTheme();
-                if (!db) { 
-                    this.showError("Firebase is not configured. Please add your firebaseConfig object to the script tag.");
-                    this.elements.loginContainer.style.display = 'block';
-                    return;
-                }
-                this.handleAuthentication();
+                document.addEventListener('DOMContentLoaded', () => {
+                    this.loadConfig();
+                    this.apiService = new ApiService(this.config);
+                    this.cacheDOMElements();
+                    this.setupEventListeners();
+                    this.applyTheme();
+                    if (!db) { 
+                        this.showError("Firebase is not configured. Please add your firebaseConfig object to the script tag.");
+                        this.elements.loginContainer.style.display = 'block';
+                        return;
+                    }
+                    this.handleAuthentication();
+                });
             }
             
             formatCurrency(num) {
@@ -1645,19 +1471,11 @@
             loadConfig() {
                 const userFinnhubKey = localStorage.getItem('finnhubApiKey');
                 const userAlphaVantageKey = localStorage.getItem('alphaVantageApiKey');
-                const userFmpKey = localStorage.getItem('fmpApiKey'); // Load FMP Key
                 this.config = {
                     refreshIntervalMs: parseInt(localStorage.getItem('refreshIntervalMs')) || 90000,
                     finnhubApiKey: userFinnhubKey || "d316lc1r01qnu2r0opjgd316lc1r01qnu2r0opk0",
                     alphaVantageKey: userAlphaVantageKey || "0ZPH51BZ2N5O9G8Q",
-                    // FIX: Set the provided FMP key as the default, overriding local storage if key is bad
-                    fmpApiKey: "vOqUU3gDIDYWghK8m4ZlsVQwLDnhfYMS", 
                 };
-                
-                // If local storage has a key, use it. Otherwise, use the hardcoded one.
-                if (userFmpKey && userFmpKey !== 'YOUR_FMP_API_KEY') {
-                    this.config.fmpApiKey = userFmpKey;
-                }
             }
 
             cacheDOMElements() {
@@ -1678,14 +1496,11 @@
                     exportBtn: document.getElementById('exportBtn'), importFile: document.getElementById('importFile'),
                     portfolioSummary: document.getElementById('portfolio-summary'), fundsPortfolioSummary: document.getElementById('funds-portfolio-summary'),
                     transactionModal: document.getElementById('transactionModal'), modalTitleAction: document.getElementById('modal-title-action'), modalSymbol: document.getElementById('modal-symbol'),
-                    modalShares: document.getElementById('modal-shares'), modalPrice: document.getElementById('modal-price'), modalNote: document.getElementById('modal-note'), 
-                    modalDate: document.getElementById('modal-date'), // Added Date Input
-                    modalSaveBtn: document.getElementById('modal-save-btn'),
+                    modalShares: document.getElementById('modal-shares'), modalPrice: document.getElementById('modal-price'), modalNote: document.getElementById('modal-note'), modalSaveBtn: document.getElementById('modal-save-btn'),
                     settingsModal: document.getElementById('settingsModal'),
                     closeSettingsBtn: document.getElementById('closeSettingsBtn'),
                     modalFinnhubKey: document.getElementById('modal-finnhub-key'),
                     modalAlphaVantageKey: document.getElementById('modal-alpha-vantage-key'),
-                    modalFmpKey: document.getElementById('modal-fmp-key'), // FMP Key element
                     modalRefreshInterval: document.getElementById('modal-refresh-interval'),
                     modalSaveSettingsBtn: document.getElementById('modal-save-settings-btn'),
                     diversificationChartContainer: document.getElementById('diversification-chart-container'),
@@ -1728,22 +1543,9 @@
                     // NEW: Edit Stock Modal elements
                     editStockModal: document.getElementById('editStockModal'),
                     closeEditStockBtn: document.getElementById('closeEditStockBtn'),
-                    editStockSymbolDisplay: document.getElementById('edit-stock-symbol-display'),
-                    // NEW: Editable fields
                     editStockSymbol: document.getElementById('edit-stock-symbol'),
-                    editStockName: document.getElementById('edit-stock-name'),
                     editStockPlatform: document.getElementById('edit-stock-platform'),
-                    // ADDED for #editStockModal:
-                    editStockShares: document.getElementById('edit-stock-shares'),
-                    editStockCost: document.getElementById('edit-stock-cost'),
-                    editStockDate: document.getElementById('edit-stock-date'),
-                    // End ADDED
                     saveStockEditBtn: document.getElementById('save-stock-edit-btn'),
-                    // NEW: Active Alerts Modal elements
-                    viewAlertsBtn: document.getElementById('viewAlertsBtn'),
-                    alertsSummaryModal: document.getElementById('alertsSummaryModal'),
-                    closeAlertsSummaryBtn: document.getElementById('closeAlertsSummaryBtn'),
-                    alertsSummaryContent: document.getElementById('alerts-summary-content'),
                 };
 
                 this.elements.resizeObserver.observe(this.elements.diversificationChartContainer);
@@ -1772,10 +1574,10 @@
                 this.elements.settingsBtn.addEventListener('click', () => this.openSettingsModal());
                 this.elements.closeSettingsBtn.addEventListener('click', () => this.closeSettingsModal());
                 this.elements.modalSaveSettingsBtn.addEventListener('click', () => this.saveSettings());
-                this.elements.confirmModalCancelBtn.addEventListener('click', () => this.closeConfirmModal(true)); // Pass true to indicate return to list
+                this.elements.confirmModalCancelBtn.addEventListener('click', () => this.closeConfirmModal());
                 this.elements.confirmModalConfirmBtn.addEventListener('click', () => this.handleConfirmAction());
                 this.elements.listAllBtn.addEventListener('click', () => this.openListAllModal());
-                this.elements.closeListAllBtn.addEventListener('click', () => this.closeListAllModal());
+                this.elements.closeListAllBtn.addEventListener('click', () => this.closeListAllModal()); // FIX: Added listener for List All close button
                 this.elements.toggleDarkModeBtn.addEventListener('click', () => this.toggleDarkMode());
                 this.elements.saveAlertBtn.addEventListener('click', () => this.savePriceAlert());
                 this.elements.updateAllFundsBtn.addEventListener('click', () => this.refreshFunds());
@@ -1785,103 +1587,29 @@
 
                 // NEW: Event Listeners for Edit Stock Modal
                 this.elements.closeEditStockBtn.addEventListener('click', () => this.closeEditStockModal());
-                this.elements.saveStockEditBtn.addEventListener('click', () => this.saveStockDetails()); // Renamed function
+                this.elements.saveStockEditBtn.addEventListener('click', () => this.saveStockPlatform());
 
-                // NEW: Alerts Summary Button Listeners
-                this.elements.viewAlertsBtn.addEventListener('click', () => this.openAlertsSummaryModal());
-                this.elements.closeAlertsSummaryBtn.addEventListener('click', () => this.elements.alertsSummaryModal.style.display = 'none');
-                
-                // --- Scroll position persistence logic ---
                 window.addEventListener('beforeunload', () => {
                     sessionStorage.setItem('scrollPosition', window.scrollY);
                 });
                 window.addEventListener('load', () => {
                     const scrollPosition = sessionStorage.getItem('scrollPosition');
                     if (scrollPosition) {
-                        // FIX: Only restore on initial load, not after refresh.
-                        // We will rely on explicit calls in renderContent/refreshCurrentTab.
                         window.scrollTo(0, parseInt(scrollPosition));
                     }
                 });
-                // ------------------------------------------
-                
-                // --- FIX: Event Delegation for dynamic Buy/Sell/Edit/Delete buttons ---
-                this.elements.stocksGrid.addEventListener('click', (e) => this.handleCardAction(e));
-                // ---------------------------------------------------------------------
             }
-
-            // --- NEW: Scroll position helper methods ---
-            saveScrollPosition() {
-                this.lastScrollPosition = window.scrollY;
-            }
-
-            restoreScrollPosition() {
-                if (this.lastScrollPosition !== undefined) {
-                    window.scrollTo(0, this.lastScrollPosition);
-                    this.lastScrollPosition = undefined; // Clear after use
-                }
-            }
-            // ---------------------------------------------
-            
-            // --- NEW: Event Delegation Handler ---
-            handleCardAction(event) {
-                const clickedButton = event.target.closest('.transaction-btn, .edit-btn, .edit-transaction-btn, .delete-transaction-btn, .set-alert-btn'); // Added set-alert-btn
-                if (!clickedButton) return;
-                
-                // Find the parent stock card to get the necessary data
-                const card = clickedButton.closest('.stock-card, .fund-card, .watchlist-card');
-                if (!card) return;
-                
-                const cardType = card.classList.contains('stock-card') ? 'stock' : card.classList.contains('fund-card') ? 'fund' : 'watchlist';
-                
-                // Use data attributes for reliability
-                const symbol = card.dataset.symbol || card.querySelector('.stock-symbol, .fund-symbol')?.textContent.trim();
-                if (!symbol) return;
-                
-                event.preventDefault(); 
-                event.stopPropagation();
-                
-                // --- Handle Transaction Edit/Delete Buttons ---
-                if (clickedButton.classList.contains('edit-transaction-btn')) {
-                    const transactionIndex = parseInt(clickedButton.dataset.index);
-                    const transactionType = clickedButton.dataset.type;
-                    this.openEditTransactionModal(symbol, cardType, transactionIndex, transactionType);
-                    return;
-                }
-                
-                if (clickedButton.classList.contains('delete-transaction-btn')) {
-                    const transactionIndex = parseInt(clickedButton.dataset.index);
-                    this.removeTransaction(symbol, transactionIndex, cardType);
-                    return;
-                }
-                // --- End Handle Transaction Edit/Delete Buttons ---
-
-
-                // Check for Buy/Sell/Edit/Alert buttons based on class name
-                if (clickedButton.classList.contains('buy-btn')) {
-                    this.openTransactionModal(symbol, cardType, 'buy');
-                } else if (clickedButton.classList.contains('sell-btn')) {
-                    this.openTransactionModal(symbol, cardType, 'sell');
-                } else if (clickedButton.classList.contains('edit-btn')) {
-                    this.openEditStockModal(symbol);
-                } else if (clickedButton.classList.contains('set-alert-btn')) { // Handle New Alert Button
-                    this.openPriceAlertModal(symbol);
-                }
-            }
-            // -------------------------------------
             
             switchTab(tab) {
-                this.saveScrollPosition(); // Save position before switching
                 this.currentTab = tab;
                 document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active')); // Ensure only one active
+                document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
                 
                 document.querySelector(`[onclick="window.stockTracker.switchTab('${tab}')"]`).classList.add('active');
-                document.getElementById(`${tab}-tab`).classList.add('active'); // Use class to toggle display
+                document.getElementById(`${tab}-tab`).style.display = 'block';
 
                 if (tab === 'news') this.fetchAndRenderNews();
                 else this.renderContent();
-                // Scroll is restored in renderContent or fetchAndRenderNews
             }
 
             sortItems(items, sortBy) {
@@ -1899,7 +1627,7 @@
                     case 'pl_overall':
                          return items.sort((a, b) => {
                             const plA = this.calculateTransactionStats(a.transactions, a.price).unrealizedPL;
-                            const plB = this.calculateTransactionStats(b.transactions, a.price).unrealizedPL;
+                            const plB = this.calculateTransactionStats(b.transactions, b.price).unrealizedPL;
                             return plB - plA;
                         });
                     case 'platform':
@@ -1911,9 +1639,6 @@
 
             renderContent() {
                 if (!this.userId && db) return;
-                
-                this.saveScrollPosition(); // Save scroll position right before redrawing
-
                 const grid = this.elements.stocksGrid;
                 if (!grid) return;
                 grid.innerHTML = ''; 
@@ -1964,8 +1689,6 @@
                 if (sortedItems.length === 0 && type !== 'stock') { 
                     grid.innerHTML = `<div class="loading">Your ${type} list is empty.</div>`; 
                 }
-                
-                this.restoreScrollPosition(); // Restore scroll position after redrawing
             }
             
             async saveData() {
@@ -1998,32 +1721,13 @@
                 this.stopLiveUpdate();
                 this.refreshIntervalId = setInterval(() => {
                     if (this.isLiveUpdatePaused) return;
-                    this.refreshCurrentTab(true); // Pass flag to indicate auto-refresh
+                    this.refreshCurrentTab();
                     this.checkPriceAlerts();
                 }, this.config.refreshIntervalMs);
                 this.isLiveUpdatePaused = false;
                 this.elements.toggleLiveUpdateBtn.textContent = '⏸️ Pause Live Update';
                 this.startCountdown();
             }
-
-            // Overloading refreshCurrentTab to handle manual vs auto-refresh scroll logic
-            async refreshCurrentTab(isAutoRefresh = false) {
-                if (isAutoRefresh) {
-                    this.saveScrollPosition(); // Save position for auto-refresh
-                }
-                
-                const tabActions = {
-                    stocks: () => this.refreshStocks(),
-                    funds: () => this.refreshFunds(),
-                    watchlist: () => this.refreshWatchlist()
-                };
-                if (tabActions[this.currentTab]) await tabActions[this.currentTab]();
-                
-                if (isAutoRefresh) {
-                    this.restoreScrollPosition(); // Restore position after auto-refresh completes
-                }
-            }
-
 
             startCountdown() {
                 this.elements.smallCountdownContainer.innerHTML = `Next update: <span id="smallCountdown">${this.config.refreshIntervalMs / 1000}s</span>`;
@@ -2053,6 +1757,15 @@
 
             toggleLiveUpdate() { this.isLiveUpdatePaused ? this.startLiveUpdate() : this.stopLiveUpdate(); }
             
+            async refreshCurrentTab() {
+                const tabActions = {
+                    stocks: () => this.refreshStocks(),
+                    funds: () => this.refreshFunds(),
+                    watchlist: () => this.refreshWatchlist()
+                };
+                if (tabActions[this.currentTab]) tabActions[this.currentTab]();
+            }
+
             async refreshStocks() { await this.refreshItems(this.stocks, 'stock'); }
             async refreshFunds() { await this.refreshItems(this.mutualFunds, 'fund'); }
             async refreshWatchlist() { await this.refreshItems(this.watchlist, 'watchlist'); }
@@ -2153,7 +1866,7 @@
                 try {
                     let targetList, listName;
                     if (type === 'stock') { [targetList, listName] = [this.stocks, 'portfolio']; } 
-                    else if (type === 'fund') { [targetList, listName] = [this.mutualFunds, 'fund']; }
+                    else if (type === 'fund') { [targetList, listName] = [this.mutualFunds, 'mutual funds list']; }
                     else { [targetList, listName] = [this.watchlist, 'watchlist']; }
 
                     if (targetList.some(item => item.symbol === symbol)) { throw new Error(`${symbol} is already in your ${listName}.`); }
@@ -2241,78 +1954,22 @@
                  return totalDividendsLastYear > 0 ? (totalDividendsLastYear / item.price) * 100 : 0;
             }
 
-            // New function to open modal for editing an existing transaction
-            openEditTransactionModal(symbol, type, index, transactionType) {
-                const list = (type === 'stock') ? this.stocks : this.mutualFunds;
-                const item = list.find(i => i.symbol === symbol);
-                if (!item || !item.transactions || index < 0 || index >= item.transactions.length) return;
-
-                const transaction = item.transactions[index];
-                
-                // Use the main openTransactionModal function, passing the transaction index
-                this.openTransactionModal(symbol, type, transaction.type, index);
-
-                // Populate the fields with the existing transaction data
-                if (this.elements.modalShares) this.elements.modalShares.value = transaction.shares;
-                if (this.elements.modalPrice) this.elements.modalPrice.value = transaction.price;
-                if (this.elements.modalNote) this.elements.modalNote.value = transaction.note || '';
-                
-                // Set date field
-                const dateString = transaction.date ? transaction.date.split('T')[0] : '';
-                if (this.elements.modalDate) this.elements.modalDate.value = dateString;
-
-
-                // Handle dividends, if applicable (assuming dividends are stored in transactions list with specific format for now)
-                if (transaction.type === 'dividend' && this.elements.modalDividendAmount) {
-                     // Note: If you store dividends separately, you might need a separate index/logic here.
-                     // Assuming 'dividend' transactions would use the price field for 'amountPerShare' for simplicity in this structure.
-                     if(this.elements.modalPrice) this.elements.modalPrice.value = transaction.amountPerShare || 0;
-                }
-            }
-
-
             openTransactionModal(symbol, type, transactionType, transactionIndex = -1) {
-                const modal = this.elements.transactionModal;
-                if (!modal) {
-                    this.showError("Transaction Modal element not found.");
-                    return;
-                }
-                modal.style.display = 'flex';
+                this.elements.transactionModal.style.display = 'flex';
                 this.elements.modalSymbol.textContent = symbol;
                 this.elements.modalTitleAction.textContent = transactionIndex > -1 ? 'Edit' : transactionType.charAt(0).toUpperCase() + transactionType.slice(1);
+                ['modalShares', 'modalPrice', 'modalNote', 'modalDividendAmount'].forEach(id => { if(this.elements[id]) this.elements[id].value = ''; });
                 
-                // Clear inputs
-                ['modalShares', 'modalPrice', 'modalNote', 'modalDividendAmount'].forEach(id => { 
-                    if(this.elements[id]) this.elements[id].value = ''; 
-                });
-                
-                // Set default date to today for new transactions
-                if (transactionIndex === -1) {
-                    if (this.elements.modalDate) {
-                        this.elements.modalDate.value = new Date().toISOString().split('T')[0];
-                    }
-                }
-
-                // --- Safely determine and set visibility of input fields ---
-                const modalSharesParent = this.elements.modalShares?.parentNode;
-                const modalPriceParent = this.elements.modalPrice?.parentNode;
-                const modalDividendFields = this.elements.modalDividendFields;
-
-                if (modalSharesParent) modalSharesParent.style.display = 'none';
-                if (modalPriceParent) modalPriceParent.style.display = 'none';
-                if (modalDividendFields) modalDividendFields.style.display = 'none';
-
+                const show = (el, d) => el.parentNode.style.display = d;
+                show(this.elements.modalDividendFields, 'none');
                 if (transactionType === 'buy' || transactionType === 'sell') {
-                    if (modalSharesParent) modalSharesParent.style.display = 'block';
-                    if (modalPriceParent) modalPriceParent.style.display = 'block';
+                    show(this.elements.modalShares.parentNode, 'block');
+                    show(this.elements.modalPrice.parentNode, 'block');
                 } else if (transactionType === 'dividend') {
-                    if (modalSharesParent) modalSharesParent.style.display = 'block';
-                    // Note: If you have dividend transactions, you might need special handling if they use 'price' field differently.
-                    // For now, retaining price visibility if needed, but explicitly showing dividend fields.
-                    if (modalDividendFields) modalDividendFields.style.display = 'block';
+                    show(this.elements.modalShares.parentNode, 'block');
+                    show(this.elements.modalPrice.parentNode, 'none');
+                    show(this.elements.modalDividendFields, 'block');
                 }
-                // --- END FIX ---
-
                 Object.assign(this.elements.modalSaveBtn.dataset, { symbol, type, transactionType, transactionIndex });
             }
             
@@ -2321,77 +1978,26 @@
             async saveTransaction() {
                 const { symbol, type, transactionType, transactionIndex: indexStr } = this.elements.modalSaveBtn.dataset;
                 const index = parseInt(indexStr);
-                const isEditing = index > -1;
                 const list = (type === 'stock') ? this.stocks : this.mutualFunds;
                 const item = list.find(i => i.symbol === symbol);
                 if (!item) return;
 
-                const dateInput = this.elements.modalDate?.value;
-                if (!dateInput) {
-                    this.showError('Transaction date is required.');
-                    return;
-                }
-                const transactionDateISO = new Date(dateInput).toISOString();
-
                 if (transactionType === 'buy' || transactionType === 'sell') {
                     const shares = parseFloat(this.elements.modalShares.value), price = parseFloat(this.elements.modalPrice.value);
-                    if (isNaN(shares) || shares <= 0 || isNaN(price) || price < 0) { this.showError('Invalid input. Shares must be positive and Price must be non-negative.'); return; }
-                    
-                    // --- SELL Logic Check for current shares ---
-                    if (transactionType === 'sell') {
-                        // Create a temporary transactions list excluding the transaction we are editing (if editing)
-                        const tempTransactions = isEditing 
-                            ? item.transactions.filter((_, i) => i !== index) 
-                            : item.transactions || [];
-                        
-                        const currentStats = this.calculateTransactionStats(tempTransactions, item.price);
-                        
-                        // Safety check: Cannot sell more than currently owned (after excluding the current transaction being edited/added)
-                        if (shares > currentStats.totalSharesOwned) {
-                            this.showError(`Cannot sell ${this.formatNumber(shares)} shares. You only own ${this.formatNumber(currentStats.totalSharesOwned)} shares of ${symbol}.`);
-                            return;
-                        }
-                    }
-
+                    if (isNaN(shares) || shares <= 0 || isNaN(price) || price < 0) { this.showError('Invalid input.'); return; }
                     if (!item.transactions) item.transactions = [];
-                    const newTransaction = { 
-                        type: transactionType, 
-                        shares, 
-                        price, 
-                        note: this.elements.modalNote.value.trim(), 
-                        date: transactionDateISO // Use date from input
-                    };
-                    
-                    if (isEditing) {
-                        item.transactions[index] = newTransaction;
-                    } else {
-                        item.transactions.push(newTransaction);
-                    }
-
+                    const newTransaction = { type: transactionType, shares, price, note: this.elements.modalNote.value.trim(), date: new Date().toISOString() };
+                    index > -1 ? item.transactions[index] = newTransaction : item.transactions.push(newTransaction);
                 } else if (transactionType === 'dividend') {
                     const shares = parseFloat(this.elements.modalShares.value), amountPerShare = parseFloat(this.elements.modalDividendAmount.value);
                     if (isNaN(shares) || shares <= 0 || isNaN(amountPerShare) || amountPerShare < 0) { this.showError('Invalid input.'); return; }
-                    
                     if (!item.dividends) item.dividends = [];
-                    
-                    const newDividend = { 
-                        shares, 
-                        amountPerShare, 
-                        totalAmount: shares * amountPerShare, 
-                        date: transactionDateISO // Use date from input
-                    };
-
-                    if (isEditing) {
-                        item.dividends[index] = newDividend;
-                    } else {
-                        item.dividends.push(newDividend);
-                    }
+                    item.dividends.push({ shares, amountPerShare, totalAmount: shares * amountPerShare, date: new Date().toISOString() });
                 }
                 
                 await this.saveData();
                 this.renderContent();
                 this.closeTransactionModal();
-                this.showSuccess(`✅ ${isEditing ? 'Updated' : 'Saved'} ${transactionType.toUpperCase()} transaction for ${symbol}!`);
             }
             
             removeTransaction(symbol, index, type) {
@@ -2399,14 +2005,7 @@
                     const list = (type === 'stock') ? this.stocks : this.mutualFunds;
                     const item = list.find(i => i.symbol === symbol);
                     if (item) {
-                        // Assuming the index refers to the transaction array for stocks/funds
-                        if (item.transactions && index >= 0 && index < item.transactions.length) {
-                            item.transactions.splice(index, 1);
-                            this.showSuccess(`🗑️ Deleted transaction for ${symbol}.`);
-                        } else {
-                             this.showError(`Error: Transaction index ${index} not found for ${symbol}.`);
-                        }
-
+                        item.transactions.splice(index, 1);
                         await this.saveData();
                         this.renderContent();
                     }
@@ -2458,8 +2057,6 @@
                         
                         const stats = this.calculateTransactionStats(item.transactions, item.price);
                         const totalPL = stats.unrealizedPL + stats.realizedPL;
-                        // FIX 2: Calculate and format Total P/L % for the item
-                        const totalPLPercent = stats.costOfRemainingShares > 0 ? (totalPL / stats.costOfRemainingShares) * 100 : 0;
                         const totalPLClass = totalPL >= 0 ? 'positive' : 'negative';
                         const totalValue = stats.currentValue;
                         const totalChangeToday = (item.change || 0) * stats.totalSharesOwned;
@@ -2467,25 +2064,14 @@
 
                         summaryText = `Gained <span class="${changeClass}">${this.formatCurrency(item.change)}</span> today, a change of <span class="${changePercentClass}">${(item.changePercent || 0).toFixed(2)}%</span>.`;
                         summaryText += `\nTotal Value: <span class="${totalPL >= 0 ? 'positive' : 'negative'}">${this.formatCurrency(totalValue)}</span>`;
-                        summaryText += `\nTotal P/L: <span class="${totalPLClass}">${this.formatCurrency(totalPL)}</span> (<span class="${totalPLClass}">${this.formatNumber(totalPLPercent, 2)}%</span>)`;
                         summaryText += `\nTotal Change Today: <span class="${totalChangeTodayClass}">${this.formatCurrency(totalChangeToday)}</span>`;
                     }
                 } else {
-                    const totalChangeToday = items.reduce((sum, item) => sum + (item.change || 0) * this.calculateTransactionStats(item.transactions, item.price).totalSharesOwned, 0);
+                    const totalChange = items.reduce((sum, item) => sum + (item.change || 0) * this.calculateTransactionStats(item.transactions, item.price).totalSharesOwned, 0);
                     const totalValue = items.reduce((sum, item) => sum + this.calculateTransactionStats(item.transactions, item.price).currentValue, 0);
-                    
-                    // FIX 2: Calculate Total P/L % for the group
-                    const totalCostBasis = items.reduce((sum, item) => sum + this.calculateTransactionStats(item.transactions, item.price).costOfRemainingShares, 0);
-                    const totalPLUnrealized = items.reduce((sum, item) => sum + this.calculateTransactionStats(item.transactions, item.price).unrealizedPL, 0);
-                    const totalPLPercent = totalCostBasis > 0 ? (totalPLUnrealized / totalCostBasis) * 100 : 0;
-
                     summaryTitle = `Summary of ${items.length} item(s)`;
-                    const totalChangeClass = totalChangeToday >= 0 ? 'positive' : 'negative';
-                    const totalPLClass = totalPLUnrealized >= 0 ? 'positive' : 'negative';
-                    
-                    summaryText = `Total Value: ${this.formatCurrency(totalValue)}\n`;
-                    summaryText += `Total Unrealized P/L: <span class="${totalPLClass}">${this.formatCurrency(totalPLUnrealized)}</span> (<span class="${totalPLClass}">${this.formatNumber(totalPLPercent, 2)}%</span>)\n`;
-                    summaryText += `Total Change Today: <span class="${totalChangeClass}">${this.formatCurrency(totalChangeToday)}</span>`;
+                    const totalChangeClass = totalChange >= 0 ? 'positive' : 'negative';
+                    summaryText = `Total Value: ${this.formatCurrency(totalValue)}\nTotal Change Today: <span class="${totalChangeClass}">${this.formatCurrency(totalChange)}</span>`;
                 }
 
                 return { title: summaryTitle, text: summaryText };
@@ -2537,10 +2123,6 @@
                 itemList.forEach(item => {
                     const card = document.createElement('div');
                     card.className = `${type}-card`;
-                    // Add data attributes to the card for delegation
-                    card.dataset.symbol = item.symbol;
-                    card.dataset.type = type;
-
                     const stats = this.calculateTransactionStats(item.transactions, item.price);
                     
                     const platformHTML = item.platform ? `<div class="info-row"><span class="info-label">Platform:</span><span class="info-value">${item.platform}</span></div>` : '';
@@ -2597,65 +2179,23 @@
                                     <span class="toggle-icon">▼</span>
                                 </div>
                             </div>
-                            <div class="transactions-container">${ (item.transactions || []).map((t, index) => `
-                                <div class="transaction-entry">
-                                    <div class="transaction-info">
-                                        <span><strong class="${t.type}">${t.type.toUpperCase()}</strong>: ${this.formatNumber(t.shares, 3)} @ ${this.formatCurrency(t.price)}</span>
-                                        ${t.note ? `<span>Note: ${t.note}</span>` : ''}
-                                        <span>Date: ${t.date ? new Date(t.date).toLocaleDateString() : 'N/A'}</span>
-                                    </div>
-                                    <div class="transaction-entry-controls">
-                                        <!-- NEW: Edit Transaction Button -->
-                                        <button class="edit-transaction-btn" 
-                                                data-index="${index}" 
-                                                data-type="${t.type}">
-                                            Edit
-                                        </button>
-                                        <!-- NEW: Delete Transaction Button -->
-                                        <button class="delete-transaction-btn" 
-                                                data-index="${index}">
-                                            &times;
-                                        </button>
-                                    </div>
-                                </div>`).join('')}</div>
+                            <div class="transactions-container">${ (item.transactions || []).map((t, index) => `<div class="transaction-entry"><span><strong class="${t.type}">${t.type.toUpperCase()}</strong>: ${this.formatNumber(t.shares, 3)} @ ${this.formatCurrency(t.price)}</span>${t.note ? `<span>Note: ${t.note}</span>` : ''}</div>`).join('')}</div>
                         </div>
                         <div class="card-actions">
-                            <button class="transaction-btn buy-btn">Buy</button>
-                            <button class="transaction-btn sell-btn" style="background: #ff4757;">Sell</button>
-                        </div>
-                        <div class="card-actions card-actions-full">
-                            <button class="add-btn edit-btn" style="background-color: #f7b731; width: 100%;" data-action="edit">Edit Stock Details</button>
+                            <button class="transaction-btn" onclick="window.stockTracker.openTransactionModal('${item.symbol}', '${type}', 'buy')">Buy</button>
+                            <button class="transaction-btn" style="background: #ff4757;" onclick="window.stockTracker.openTransactionModal('${item.symbol}', '${type}', 'sell')">Sell</button>
                         </div>
                         <div class="card-actions" style="grid-template-columns: 1fr;">
-                            <button class="transaction-btn set-alert-btn" style="background: #9b59b6; margin-top: 5px;">🔔 Set Alert</button>
+                            <button class="add-btn" style="background-color: #f7b731;" onclick="window.stockTracker.openEditStockModal('${item.symbol}')">Edit</button>
                         </div>
                         `;
                     } else if (type === 'watchlist') {
-                         transactionDetailsHTML = `<div class="card-actions card-actions-watchlist" style="grid-template-columns: 1fr;">
-                             <button class="add-btn move-to-portfolio-btn" onclick="window.stockTracker.moveToPortfolio('${item.symbol}')">Move to Portfolio</button>
-                             <button class="transaction-btn set-alert-btn" style="background: #9b59b6; margin-top: 5px;">🔔 Set Alert</button>
-                         </div>`;
+                         transactionDetailsHTML = `<div class="card-actions" style="grid-template-columns: 1fr;"><button class="add-btn move-to-portfolio-btn" onclick="window.stockTracker.moveToPortfolio('${item.symbol}')">Move to Portfolio</button></div>`;
                     }
 
                     const todayPL = (item.change || 0) * stats.totalSharesOwned;
+                    card.innerHTML = `<div class="stock-header"><span class="stock-symbol">${item.symbol}</span><button class="remove-btn" onclick="window.stockTracker.removeItem('${item.symbol}', '${type}')">×</button></div><div class="stock-price">${this.formatCurrency(item.price || 0)}</div><div class="stock-change ${item.change >= 0 ? 'positive' : 'negative'}"><span>${item.change >= 0 ? '▲' : '▼'} ${this.formatCurrency(item.change || 0)} (${(item.changePercent || 0).toFixed(2)}%)</span></div><div class="stock-info">${stockInfoHTML}</div>${transactionDetailsHTML}<div class="total-pl ${todayPL >= 0 ? 'positive' : 'negative'}">P/L Today: ${this.formatCurrency(todayPL)}</div>`;
                     
-                    // --- FINAL CARD RENDER ---
-                    card.innerHTML = `
-                        <div class="stock-header">
-                            <span class="stock-symbol">${item.symbol}</span>
-                            <button class="remove-btn" onclick="window.stockTracker.removeItem('${item.symbol}', '${type}')">×</button>
-                        </div>
-                        <div class="stock-price">${this.formatCurrency(item.price || 0)}</div>
-                        <div class="stock-change ${item.change >= 0 ? 'positive' : 'negative'}">
-                            <span>${item.change >= 0 ? '▲' : '▼'} ${this.formatCurrency(item.change || 0)} (${(item.changePercent || 0).toFixed(2)}%)</span>
-                        </div>
-                        <div class="stock-info">${stockInfoHTML}</div>
-                        ${transactionDetailsHTML}
-                        <div class="total-pl ${todayPL >= 0 ? 'positive' : 'negative'}">P/L Today: ${this.formatCurrency(todayPL)}</div>
-                    `;
-                    // --- END FINAL CARD RENDER ---
-                    
-                    // Attach click handler for transaction header toggle
                     const transactionHeader = card.querySelector('.transaction-header');
                     if (transactionHeader) {
                         const toggleTransactions = () => {
@@ -2670,13 +2210,9 @@
                         transactionHeader.addEventListener('click', toggleTransactions);
                         transactionHeader.querySelector('.header-collapse-btn').addEventListener('click', (e) => {
                             e.stopPropagation();
-                            toggleTransactions();
+                            toggleGroup();
                         });
                     }
-
-                    // For the Edit button, since it was working with inline onclick, we rely on the Event Delegation
-                    // we added in setupEventListeners.
-
                     container.appendChild(card);
                 });
             }
@@ -2712,8 +2248,6 @@
             }
 
             async exportData() {
-                this.saveScrollPosition(); // Save scroll position before opening the file dialog
-                
                 const dataStr = JSON.stringify({ stocks: this.stocks, mutualFunds: this.mutualFunds, watchlist: this.watchlist }, null, 2);
                 const blob = new Blob([dataStr], {type: 'application/json'});
                 const a = document.createElement('a');
@@ -2721,17 +2255,11 @@
                 a.download = 'portfolio-data.json';
                 a.click();
                 URL.revokeObjectURL(a.href);
-                
-                // Note: Restoring scroll after file dialog is tricky and browser-dependent, 
-                // but the current implementation handles it on content render, which should be sufficient.
             }
 
             async importData(e) {
                 const file = e.target.files[0];
                 if (!file) return;
-                
-                this.saveScrollPosition(); // Save scroll position before file operation
-                
                 const reader = new FileReader();
                 reader.onload = async (event) => {
                     try {
@@ -2801,35 +2329,13 @@
                 });
             }
 
-            openConfirmModal(text, onConfirmAction, onCancelAction = null) { 
-                this.elements.alertsSummaryModal.style.display = 'none'; // Ensure alerts modal is hidden first
-                this.elements.confirmModal.style.display = 'flex'; 
-                this.elements.confirmModalText.textContent = text; 
-                this.onConfirm = onConfirmAction; 
-                this.onCancel = onCancelAction; // Store the cancel action
-            }
-            
-            // FIX: Updated closeConfirmModal to optionally execute the stored cancel action
-            closeConfirmModal(wasCancelled = false) { 
-                this.elements.confirmModal.style.display = 'none'; 
-                
-                // If the modal was cancelled (by button or explicit call) and a cancel action is defined, execute it.
-                if (wasCancelled && this.onCancel) {
-                    this.onCancel();
-                }
-                this.onConfirm = null;
-                this.onCancel = null;
-            }
-
-            handleConfirmAction() { 
-                if (this.onConfirm) this.onConfirm(); 
-                this.closeConfirmModal(false); // Do NOT execute onCancel when Confirm is clicked
-            }
+            openConfirmModal(text, onConfirmAction) { this.elements.confirmModal.style.display = 'flex'; this.elements.confirmModalText.textContent = text; this.onConfirm = onConfirmAction; }
+            closeConfirmModal() { this.elements.confirmModal.style.display = 'none'; this.onConfirm = null; }
+            handleConfirmAction() { if (this.onConfirm) this.onConfirm(); this.closeConfirmModal(); }
             
             openSettingsModal(){
                 this.elements.modalFinnhubKey.value = localStorage.getItem('finnhubApiKey') || '';
                 this.elements.modalAlphaVantageKey.value = localStorage.getItem('alphaVantageApiKey') || '';
-                this.elements.modalFmpKey.value = localStorage.getItem('fmpApiKey') || '';
                 this.elements.modalRefreshInterval.value = this.config.refreshIntervalMs / 1000;
                 this.elements.settingsModal.style.display = 'flex';
             }
@@ -2839,12 +2345,10 @@
             saveSettings(){
                 const finnhubKey = this.elements.modalFinnhubKey.value.trim();
                 const alphaVantageKey = this.elements.modalAlphaVantageKey.value.trim();
-                const fmpKey = this.elements.modalFmpKey.value.trim();
                 const interval = parseInt(this.elements.modalRefreshInterval.value, 10);
                 
                 localStorage.setItem('finnhubApiKey', finnhubKey);
                 localStorage.setItem('alphaVantageKey', alphaVantageKey);
-                localStorage.setItem('fmpApiKey', fmpKey);
                 if (interval && interval >= 10) {
                     localStorage.setItem('refreshIntervalMs', interval * 1000);
                 }
@@ -2872,8 +2376,15 @@
                 }
             }
 
-            openListAllModal() { this.elements.listAllModal.style.display = 'flex'; this.listAllSymbols(); }
-            closeListAllModal() { this.elements.listAllModal.style.display = 'none'; }
+            openListAllModal() { 
+                this.elements.listAllModal.style.display = 'flex'; 
+                this.listAllSymbols(); 
+            }
+            // FIX: Added function to close the listAllModal
+            closeListAllModal() { 
+                this.elements.listAllModal.style.display = 'none'; 
+            }
+
             listAllSymbols() {
                 const contentDiv = this.elements.listAllContent;
                 contentDiv.innerHTML = '';
@@ -2890,24 +2401,6 @@
             }
             
             openPriceAlertModal(symbol) {
-                // --- FIX: Reset fields before opening ---
-                this.elements.alertPrice.value = '';
-                this.elements.alertCondition.value = 'above';
-                
-                // NEW: Find existing alert and pre-fill fields
-                // Note: We need to find the *first* active alert to pre-fill, as multiple can exist now.
-                const existingAlert = this.priceAlerts.find(a => a.symbol === symbol && !a.triggered);
-
-                if (existingAlert) {
-                    this.elements.alertPrice.value = existingAlert.price;
-                    this.elements.alertCondition.value = existingAlert.condition;
-                    // Change save button text to indicate update/modification
-                    this.elements.saveAlertBtn.textContent = 'Update Alert';
-                } else {
-                    this.elements.saveAlertBtn.textContent = 'Save Alert';
-                }
-                // --- END FIX ---
-
                 this.elements.priceAlertModal.style.display = 'flex';
                 this.elements.alertSymbol.textContent = symbol;
                 this.elements.saveAlertBtn.dataset.symbol = symbol;
@@ -2917,101 +2410,11 @@
                 const { symbol } = this.elements.saveAlertBtn.dataset;
                 const price = parseFloat(this.elements.alertPrice.value);
                 if (!symbol || isNaN(price) || price <= 0) { this.showError("Invalid alert data."); return; }
-                
-                // FIX: Check if an alert with the same symbol AND price/condition exists
-                const existingAlertIndex = this.priceAlerts.findIndex(
-                    a => a.symbol === symbol && 
-                    a.price === price &&
-                    a.condition === this.elements.alertCondition.value &&
-                    !a.triggered
-                );
-
-                if (existingAlertIndex === -1) {
-                    // NEW: Assign a unique ID and date to the new alert instance
-                    const newAlert = { 
-                        id: Date.now().toString() + Math.random().toString(36).substring(2, 9), // Unique ID
-                        symbol, 
-                        condition: this.elements.alertCondition.value, 
-                        price, 
-                        triggered: false,
-                        date: new Date().toISOString()
-                    };
-                    this.priceAlerts.push(newAlert);
-                    this.showSuccess(`Alert set for ${symbol} at $${this.formatNumber(price, 2)}!`);
-                } else {
-                    // If an identical alert exists, just confirm the update.
-                     this.showSuccess(`Alert for ${symbol} was already set and has been updated.`);
-                }
-                
+                this.priceAlerts.push({ symbol, condition: this.elements.alertCondition.value, price, triggered: false });
                 await this.saveData();
                 this.closePriceAlertModal();
+                this.showSuccess(`Alert set for ${symbol}.`);
             }
-
-            // NEW: Function to open the alert summary modal
-            openAlertsSummaryModal() {
-                this.elements.alertsSummaryModal.style.display = 'flex';
-                const contentDiv = this.elements.alertsSummaryContent;
-                contentDiv.innerHTML = '';
-
-                const activeAlerts = this.priceAlerts.filter(a => !a.triggered);
-
-                if (activeAlerts.length === 0) {
-                    contentDiv.innerHTML = `<p style="text-align: center; color: #666; margin-top: 20px;">No active price alerts currently set.</p>`;
-                    return;
-                }
-
-                let html = '<ul style="list-style-type: none; padding: 0;">';
-                activeAlerts.forEach(alert => {
-                    const priceClass = alert.condition === 'above' ? 'positive' : 'negative';
-                    const targetPrice = this.formatCurrency(alert.price);
-                    
-                    const alertDate = new Date(alert.date || new Date());
-                    // Format date and time including hour/minute
-                    const formattedDate = alertDate.toLocaleDateString();
-                    const formattedTime = alertDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-                    // FIX: Add delete button and timestamp (including time)
-                    html += `
-                        <li style="padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
-                            <div>
-                                <strong style="font-size: 1.1rem;">${alert.symbol}</strong><br>
-                                <span style="color: #666;">
-                                    Alert: Price is 
-                                    <span class="${priceClass}">${alert.condition} ${targetPrice}</span>
-                                </span><br>
-                                <span style="font-size: 0.8rem; color: #aaa;">
-                                    Set on: ${formattedDate} at ${formattedTime}
-                                </span>
-                            </div>
-                            <div style="display:flex; gap: 5px;">
-                                <button onclick="window.stockTracker.openPriceAlertModal('${alert.symbol}')" class="edit-transaction-btn" style="background: #667eea; padding: 5px 10px;">Edit</button>
-                                <button onclick="window.stockTracker.removePriceAlertById('${alert.id}')" class="delete-transaction-btn" style="padding: 5px 10px;">Delete</button>
-                            </div>
-                        </li>
-                    `;
-                });
-                html += '</ul>';
-                contentDiv.innerHTML = html;
-            }
-            
-            // NEW: Function to remove an alert directly from the summary modal (using unique ID)
-            removePriceAlertById(alertId) {
-                // Define the action to take upon cancellation: return to the summary list
-                const onCancel = () => this.openAlertsSummaryModal(); 
-                
-                this.openConfirmModal(`Are you sure you want to delete this specific price alert?`, 
-                    async () => {
-                        // Action on Confirm: Delete the alert
-                        this.priceAlerts = this.priceAlerts.filter(a => a.id !== alertId);
-                        await this.saveData();
-                        this.showSuccess(`🗑️ Deleted price alert.`);
-                        // Re-render the summary modal immediately
-                        this.openAlertsSummaryModal(); 
-                    },
-                    onCancel // Pass the function to run if cancelled
-                );
-            }
-
 
             checkPriceAlerts() {
                 if(this.priceAlerts.length === 0) return;
@@ -3020,71 +2423,35 @@
                     if (alert.triggered) return;
                     const item = allItems.find(i => i.symbol === alert.symbol);
                     if (!item) return;
-                    
-                    // --- Price Check Logic ---
-                    const trigger = (alert.condition === 'above' && item.price > alert.price) || 
-                                    (alert.condition === 'below' && item.price < alert.price);
-                    // --- End Price Check Logic ---
-                    
+                    const trigger = (alert.condition === 'above' && item.price > alert.price) || (alert.condition === 'below' && item.price < alert.price);
                     if (trigger) {
                         alert.triggered = true;
-                        // Display the alert
-                        this.showAlertNotification(item, alert); 
+                        this.showPriceAlert(item, alert);
                         this.saveData();
                     }
                 });
             }
-
-            // NEW: Method to display the custom alert UI
-            showAlertNotification(item, alert) {
-                const type = alert.condition === 'above' ? 'positive' : 'negative';
-                const message = `🔔 ALERT: ${item.symbol} reached $${this.formatNumber(item.price)}! It is ${alert.condition} your target of $${this.formatNumber(alert.price)}.`;
-
-                const alertDiv = this.elements.alertNotification;
-                alertDiv.classList.remove('positive', 'negative');
-                alertDiv.classList.add('active', type);
-                alertDiv.innerHTML = `<h4>Price Alert Triggered</h4><p>${message}</p>`;
-
-                setTimeout(() => {
-                    alertDiv.classList.remove('active');
-                }, 10000); // Alert displays for 10 seconds
-            }
             
             async fetchAndRenderNews() {
-                this.saveScrollPosition(); // Save scroll position before fetching news
-                
                 const symbols = [...new Set([...this.stocks.map(s => s.symbol), ...this.watchlist.map(s => s.symbol)])];
-                if (symbols.length === 0) { 
-                    this.elements.newsArticlesContainer.innerHTML = `<div class="loading">No symbols to fetch news for. Add stocks or watchlist items first.</div>`; 
-                    this.restoreScrollPosition(); // Restore even if empty
-                    return; 
-                }
+                if (symbols.length === 0) { this.elements.newsArticlesContainer.innerHTML = `<div class="loading">No symbols to fetch news for.</div>`; return; }
                 const now = Date.now();
-                if (this.newsFeed.length > 0 && now - this.newsFetchTime < 15 * 60 * 1000) { 
-                    this.renderNews(); 
-                    this.restoreScrollPosition(); // Restore after static render
-                    return; 
-                }
-                
+                if (this.newsFeed.length > 0 && now - this.newsFetchTime < 15 * 60 * 1000) { this.renderNews(); return; }
                 this.elements.newsArticlesContainer.innerHTML = '<div class="loading">Fetching news...</div>';
                 const result = await this.apiService.fetchNews(symbols);
-                
                 if (result.success) {
                     this.newsFeed = result.data;
                     this.newsFetchTime = now;
                     this.renderNews();
                 } else {
-                    // FIX: Display the specific reason from the API service
-                    this.elements.newsArticlesContainer.innerHTML = `<div class="error"><p>Failed to fetch news. Reason: ${result.reason}</p></div>`;
+                    this.elements.newsArticlesContainer.innerHTML = `<div class="error"><p>Failed to fetch news. ${result.reason}</p></div>`;
                 }
-                
-                this.restoreScrollPosition(); // Restore scroll position after async operation
             }
 
             renderNews() {
                 const container = this.elements.newsArticlesContainer;
                 container.innerHTML = '';
-                if (this.newsFeed.length === 0) { container.innerHTML = `<div class="loading">No recent news found for your tracked symbols.</div>`; return; }
+                if (this.newsFeed.length === 0) { container.innerHTML = `<div class="loading">No recent news found.</div>`; return; }
                 this.newsFeed.slice(0, 20).forEach(article => { // Limit to 20 articles
                     const card = document.createElement('a');
                     card.href = article.url;
@@ -3099,111 +2466,26 @@
             openEditStockModal(symbol) {
                 const stock = this.stocks.find(s => s.symbol === symbol);
                 if (!stock) return;
-                
-                // --- Prepare data for editing shares/cost/date ---
-                const stats = this.calculateTransactionStats(stock.transactions, stock.price);
-                const firstBuyTransaction = stock.transactions ? stock.transactions.find(t => t.type === 'buy') : null;
-                const initialDate = firstBuyTransaction ? firstBuyTransaction.date.split('T')[0] : '';
-                // ------------------------------------------------
-                
                 this.elements.editStockModal.style.display = 'flex';
-                
-                // Populate display symbol
-                this.elements.editStockSymbolDisplay.textContent = symbol;
-
-                // Populate editable fields (Stock Details)
-                this.elements.editStockSymbol.value = stock.symbol || '';
-                this.elements.editStockName.value = stock.name || '';
+                this.elements.editStockSymbol.textContent = symbol;
                 this.elements.editStockPlatform.value = stock.platform || '';
-                
-                // Populate editable fields (Transaction Details - affecting the first buy to set basis)
-                this.elements.editStockShares.value = stats.totalSharesOwned > 0 ? stats.totalSharesOwned.toFixed(3) : 0;
-                this.elements.editStockCost.value = stats.averageCostBasis > 0 ? stats.averageCostBasis.toFixed(4) : 0;
-                this.elements.editStockDate.value = initialDate;
-                
-                this.elements.saveStockEditBtn.dataset.originalSymbol = symbol;
+                this.elements.saveStockEditBtn.dataset.symbol = symbol;
             }
 
             closeEditStockModal() {
                 this.elements.editStockModal.style.display = 'none';
             }
 
-            async saveStockDetails() { // Renamed function
-                const originalSymbol = this.elements.saveStockEditBtn.dataset.originalSymbol;
-                const newSymbol = this.elements.editStockSymbol.value.trim().toUpperCase();
-                const newName = this.elements.editStockName.value.trim();
-                const newPlatform = this.elements.editStockPlatform.value.trim();
-                
-                const newShares = parseFloat(this.elements.editStockShares.value);
-                const newCost = parseFloat(this.elements.editStockCost.value);
-                const newDateInput = this.elements.editStockDate.value;
-
-                let stock = this.stocks.find(s => s.symbol === originalSymbol);
-
-                if (!stock || !newSymbol || !newName) {
-                    this.showError("Symbol and Name are required.");
-                    return;
+            async saveStockPlatform() {
+                const symbol = this.elements.saveStockEditBtn.dataset.symbol;
+                const stock = this.stocks.find(s => s.symbol === symbol);
+                if (stock) {
+                    stock.platform = this.elements.editStockPlatform.value.trim();
+                    await this.saveData();
+                    this.renderContent();
+                    this.closeEditStockModal();
+                    this.showSuccess(`✅ Updated platform for ${symbol}.`);
                 }
-                
-                // --- Input validation for holding data ---
-                if (isNaN(newShares) || newShares < 0 || isNaN(newCost) || newCost < 0 || !newDateInput) {
-                    this.showError("Shares, Average Cost, and Initial Date must be valid numbers/date.");
-                    return;
-                }
-                // --- End validation ---
-
-                // 1. Check for symbol change/conflict
-                if (newSymbol !== originalSymbol) {
-                    const exists = this.stocks.some(s => s.symbol === newSymbol);
-                    if (exists) {
-                        this.showError(`Error: Symbol ${newSymbol} is already in use.`);
-                        return;
-                    }
-                    // Update the symbol
-                    stock.symbol = newSymbol;
-                }
-
-                // 2. Update stock details
-                stock.name = newName;
-                stock.platform = newPlatform;
-                
-                // 3. Update the *first* buy transaction to match new shares/cost/date
-                // This is a simplification to set the cost basis without recalculating all transactions.
-                if (stock.transactions && stock.transactions.length > 0) {
-                    // Find or create the first buy transaction
-                    let firstBuyIndex = stock.transactions.findIndex(t => t.type === 'buy');
-                    
-                    if (firstBuyIndex !== -1) {
-                        // Update existing first buy transaction
-                        stock.transactions[firstBuyIndex].shares = newShares;
-                        stock.transactions[firstBuyIndex].price = newCost;
-                        stock.transactions[firstBuyIndex].date = new Date(newDateInput).toISOString();
-                    } else {
-                        // If no buy transaction exists (e.g., deleted or only sells exist), create one.
-                        stock.transactions.push({
-                            type: 'buy',
-                            shares: newShares,
-                            price: newCost,
-                            note: 'Initial Basis Adjustment (via Edit Stock Details)',
-                            date: new Date(newDateInput).toISOString()
-                        });
-                    }
-                } else if (newShares > 0) {
-                    // Create the initial transaction if the list was empty and shares > 0
-                     stock.transactions = [{
-                        type: 'buy',
-                        shares: newShares,
-                        price: newCost,
-                        note: 'Initial Basis Set (via Edit Stock Details)',
-                        date: new Date(newDateInput).toISOString()
-                    }];
-                }
-
-                // 4. Save and refresh
-                await this.saveData();
-                this.renderContent();
-                this.closeEditStockModal();
-                this.showSuccess(`✅ Updated details and cost basis for ${newSymbol}!`);
             }
         }
         
