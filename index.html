@@ -2824,7 +2824,7 @@
             async fetchFundamentalData(symbols) {
                 if (!this.config.fmpApiKey || this.config.fmpApiKey === 'YOUR_FMP_API_KEY') {
                     this.elements.fundamentalsSummary.style.display = 'none';
-                    return;
+                    return [];
                 }
                 
                 // Using the simpler ratios-ttm endpoint as it is less prone to key restrictions than other fundamental endpoints
