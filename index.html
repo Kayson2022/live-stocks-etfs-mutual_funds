@@ -2747,10 +2747,9 @@
             }
 
             async importData(e) {
+                this.saveScrollPosition(); // Save scroll position before file operation
                 const file = e.target.files[0];
                 if (!file) return;
-                
-                this.saveScrollPosition(); // Save scroll position before file operation
                 
                 const reader = new FileReader();
                 reader.onload = async (event) => {
@@ -2828,6 +2827,7 @@
                     return;
                 }
                 
+                // Using the simpler ratios-ttm endpoint as it is less prone to key restrictions than other fundamental endpoints
                 const dataUrl = `https://financialmodelingprep.com/api/v3/ratios-ttm/${symbols.join(',')}?apikey=${this.config.fmpApiKey}`;
                 
                 try {
@@ -2875,22 +2875,30 @@
                 valuedStocks.forEach(stock => {
                     const data = fundamentalData.find(f => f.symbol === stock.symbol) || {};
                     
+                    // Note: FMP fields often vary, using common ones:
                     const marketCap = data.marketCap || data.marketCapitalization || null;
                     const peRatio = data.peRatio || data.priceEarningsRatio || null;
                     
-                    const formatValue = (value, isCurrency = false) => {
+                    const formatValue = (value, decimals = 2) => {
                         if (value === null || value === undefined) return 'N/A';
-                        if (isCurrency) return this.formatCurrency(value);
-                        return this.formatNumber(value, 2);
+                        return this.formatNumber(value, decimals);
+                    };
+
+                    const formatMarketCap = (cap) => {
+                        if (cap === null || cap === undefined) return 'N/A';
+                        if (cap > 1e12) return `$${(cap / 1e12).toFixed(2)}T`;
+                        if (cap > 1e9) return `$${(cap / 1e9).toFixed(2)}B`;
+                        if (cap > 1e6) return `$${(cap / 1e6).toFixed(2)}M`;
+                        return this.formatCurrency(cap);
                     };
 
                     statsHtml += `
                         <div class="summary-item" style="border-right: 1px solid #ddd; padding-right: 15px; margin-right: 15px;">
                             <span class="summary-label" style="font-weight: 700; color: #2a2a72;">${stock.symbol}</span>
                             <span class="summary-label">Market Cap</span>
-                            <span class="summary-value">${formatValue(marketCap, true)}</span>
+                            <span class="summary-value">${formatMarketCap(marketCap)}</span>
                             <span class="summary-label" style="margin-top: 10px;">P/E Ratio</span>
-                            <span class="summary-value">${formatValue(peRatio, false)}</span>
+                            <span class="summary-value">${formatValue(peRatio, 2)}</span>
                         </div>
                     `;
                 });
