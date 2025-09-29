@@ -1933,15 +1933,10 @@
                 let items, type;
                 if (this.currentTab === 'stocks') { [items, type] = [this.stocks, 'stock']; this.elements.portfolioSummary.style.display = 'block';} 
                 else if (this.currentTab === 'funds') { [items, type] = [this.mutualFunds, 'fund']; this.elements.fundsPortfolioSummary.style.display = 'block';}
-                else if (this.currentTab === 'watchlist') { 
-                    [items, type] = [this.watchlist, 'watchlist']; 
-                    this.elements.watchlistCount.textContent = this.watchlist.length;
-                } else if (this.currentTab === 'news') {
-                    this.fetchAndRenderNews();
-                    return;
-                }
+                else if (this.currentTab === 'watchlist') { [items, type] = [this.watchlist, 'watchlist']; this.elements.watchlistCount.textContent = this.watchlist.length; } // FIX: Ensure watchlist list is used
 
-                const filterTerm = (this.currentTab === 'stocks' ? this.elements.portfolioFilter.value : '').toLowerCase();
+                // FIX: Apply filter for current tab only
+                const filterTerm = (this.currentTab === 'stocks' || this.currentTab === 'funds') ? this.elements.portfolioFilter.value : '';
                 let filteredItems = items.filter(item => 
                     item.symbol.toLowerCase().includes(filterTerm) || 
                     (item.name && item.name.toLowerCase().includes(filterTerm)) ||
@@ -1967,11 +1962,11 @@
                     } else {
                         this.renderCards(sortedItems, grid, type);
                     }
-                } else if (type ==='fund') {
+                } else if (type ==='fund') { // Funds tab logic
                     this.elements.fundamentalsSummary.style.display = 'none';
                     this.renderFundsPortfolioSummary();
                     this.renderCards(sortedItems, grid, type);
-                } else if (type === 'watchlist') {
+                } else if (type === 'watchlist') { // Watchlist tab logic
                     this.elements.fundamentalsSummary.style.display = 'none';
                     this.renderCards(sortedItems, grid, type);
                 } else {
@@ -2756,7 +2751,7 @@
                     try {
                         const data = JSON.parse(event.target.result);
                         this.stocks = data.stocks || this.stocks;
-                        this.mutualFunds = data.mutualFunds || this.mutualFunds;
+                        this.mutualFunds = data.mutualFunds || data.mutualFunds;
                         this.watchlist = data.watchlist || this.watchlist;
                         await this.saveData();
                         this.renderContent();
