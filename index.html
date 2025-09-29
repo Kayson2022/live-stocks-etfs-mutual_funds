@@ -245,12 +245,6 @@
             position: relative;
         }
         
-        /* FIX 1: Add blue border to stock cards */
-        .stock-card {
-            border-top: 5px solid #667eea; 
-            padding-top: 20px; /* Adjust padding due to border-top */
-        }
-        
         .watchlist-card {
             border-left: 5px solid #f7b731;
         }
@@ -328,6 +322,7 @@
             grid-template-columns: auto 1fr;
             gap: 10px;
             align-items: center;
+            margin-bottom: 8px;
             font-size: 0.9rem;
         }
 
@@ -421,6 +416,7 @@
             text-align: left;
             margin-top: 20px;
             position: relative;
+            border-radius: 10px;
             user-select: none;
             display: flex;
             justify-content: space-between;
@@ -483,6 +479,7 @@
             opacity: 0;
             margin-top: 0;
             padding: 0;
+            border: none;
             pointer-events: none;
             display: none;
         }
@@ -490,6 +487,7 @@
         .group-header .toggle-icon {
             transition: transform 0.3s ease;
             display: inline-block;
+            font-size: 1.2rem;
         }
 
         .group-header.collapsed .toggle-icon {
@@ -1866,7 +1864,7 @@
                 try {
                     let targetList, listName;
                     if (type === 'stock') { [targetList, listName] = [this.stocks, 'portfolio']; } 
-                    else if (type === 'fund') { [targetList, listName] = [this.mutualFunds, 'mutual funds list']; }
+                    else if (type === 'fund') { [targetList, listName] = [this.mutualFunds, 'fund']; }
                     else { [targetList, listName] = [this.watchlist, 'watchlist']; }
 
                     if (targetList.some(item => item.symbol === symbol)) { throw new Error(`${symbol} is already in your ${listName}.`); }
@@ -2210,7 +2208,7 @@
                         transactionHeader.addEventListener('click', toggleTransactions);
                         transactionHeader.querySelector('.header-collapse-btn').addEventListener('click', (e) => {
                             e.stopPropagation();
-                            toggleGroup();
+                            toggleTransactions();
                         });
                     }
                     container.appendChild(card);
