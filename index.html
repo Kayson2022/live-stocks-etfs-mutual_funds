@@ -1585,6 +1585,7 @@
                 this.isDarkMode = false;
                 this.countdownIntervalId = null;
                 this.refreshIntervalId = null;
+                this.groupCollapseState = {};
                 this.init();
             }
 
@@ -1595,6 +1596,13 @@
 
             runInitialization() {
                 this.loadConfig();
+                try {
+                    const storedState = sessionStorage.getItem('groupCollapseState');
+                    this.groupCollapseState = storedState ? JSON.parse(storedState) : {};
+                } catch (e) {
+                    console.error("Could not parse group collapse state from sessionStorage", e);
+                    this.groupCollapseState = {};
+                }
                 this.apiService = new ApiService(this.config);
                 this.cacheDOMElements();
                 this.setupEventListeners();
@@ -2572,6 +2580,9 @@
                     const toggleIcon = header.querySelector('.toggle-icon');
                     toggleIcon.style.transform = isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
                     footer.querySelector('.collapse-group-btn').textContent = isCollapsed ? 'Expand' : 'Collapse';
+                    
+                    this.groupCollapseState[title] = isCollapsed;
+                    sessionStorage.setItem('groupCollapseState', JSON.stringify(this.groupCollapseState));
                 };
 
                 header.addEventListener('click', toggleGroup);
@@ -2581,6 +2592,15 @@
                     toggleGroup();
                     header.scrollIntoView({ behavior: 'smooth' });
                 });
+
+                if (this.groupCollapseState[title] === true) {
+                    header.classList.add('collapsed');
+                    content.classList.add('collapsed');
+                    summaryContainer.classList.remove('collapsed');
+                    const toggleIcon = header.querySelector('.toggle-icon');
+                    toggleIcon.style.transform = 'rotate(-90deg)';
+                    footer.querySelector('.collapse-group-btn').textContent = 'Expand';
+                }
 
                 groupWrapper.append(header, content, summaryContainer, footer);
                 parent.appendChild(groupWrapper);
