@@ -1669,19 +1669,13 @@
             loadConfig() {
                 const userFinnhubKey = localStorage.getItem('finnhubApiKey');
                 const userAlphaVantageKey = localStorage.getItem('alphaVantageApiKey');
-                const userFmpKey = localStorage.getItem('fmpApiKey'); // Load FMP Key
+                const userFmpKey = localStorage.getItem('fmpApiKey');
                 this.config = {
                     refreshIntervalMs: parseInt(localStorage.getItem('refreshIntervalMs')) || 90000,
                     finnhubApiKey: userFinnhubKey || "d316lc1r01qnu2r0opjgd316lc1r01qnu2r0opk0",
                     alphaVantageKey: userAlphaVantageKey || "0ZPH51BZ2N5O9G8Q",
-                    // FIX: Set the provided FMP key as the default, overriding local storage if key is bad
-                    fmpApiKey: "vOqUU3gDIDYWghK8m4ZlsVQwLDnhfYMS", 
+                    fmpApiKey: userFmpKey || "vOqUU3gDIDYWghK8m4ZlsVQwLDnhfYMS"
                 };
-                
-                // If local storage has a key, use it. Otherwise, use the hardcoded one.
-                if (userFmpKey && userFmpKey !== 'YOUR_FMP_API_KEY') {
-                    this.config.fmpApiKey = userFmpKey;
-                }
             }
 
             cacheDOMElements() {
@@ -2891,9 +2885,9 @@
             }
             
             openSettingsModal(){
-                this.elements.modalFinnhubKey.value = localStorage.getItem('finnhubApiKey') || '';
-                this.elements.modalAlphaVantageKey.value = localStorage.getItem('alphaVantageApiKey') || '';
-                this.elements.modalFmpKey.value = localStorage.getItem('fmpApiKey') || '';
+                this.elements.modalFinnhubKey.value = this.config.finnhubApiKey || '';
+                this.elements.modalAlphaVantageKey.value = this.config.alphaVantageKey || '';
+                this.elements.modalFmpKey.value = this.config.fmpApiKey || '';
                 this.elements.modalRefreshInterval.value = this.config.refreshIntervalMs / 1000;
                 this.elements.settingsModal.style.display = 'flex';
             }
