@@ -430,6 +430,8 @@
         }
         .group-wrapper {
             grid-column: 1 / -1;
+            display: flex; /* FIX: Use flexbox to help parent resize correctly */
+            flex-direction: column;
         }
         .group-content {
             display: grid;
