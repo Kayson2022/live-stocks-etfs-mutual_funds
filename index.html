@@ -442,6 +442,7 @@
             opacity: 1;
             overflow: hidden;
             transition: max-height 0.5s ease-in-out, opacity 0.3s ease-in-out;
+            padding-bottom: 16px; /* Add padding here for the bottom button */
         }
         .group-content.collapsed {
             max-height: 0;
@@ -500,6 +501,17 @@
             padding: 8px 18px;
             font-size: 0.9rem;
         }
+        
+        /* NEW: Footer button specific styling */
+        .group-footer-btn-container {
+            grid-column: 1 / -1;
+            text-align: center;
+            margin-top: 8px; /* Space above button when content is expanded */
+        }
+        .group-footer-btn-container.collapsed {
+            display: none; /* Hide button when the content is collapsed */
+        }
+
 
         /* --- Card Actions (Buy/Sell, Transactions) --- */
         .card-actions {
@@ -1994,9 +2006,15 @@
                      `;
                 }
 
+                // 2. Create the Footer Collapse Button Container (Visible when expanded)
+                const footerBtnContainer = document.createElement('div');
+                footerBtnContainer.className = 'group-footer-btn-container';
+                footerBtnContainer.innerHTML = `<button onclick="window.stockTracker.collapseAndScrollToTop(this)" class="add-btn">Collapse & Scroll to Top</button>`;
+
                 const toggleGroup = () => {
                     const isNowCollapsed = header.classList.toggle('collapsed');
                     content.classList.toggle('collapsed');
+                    footerBtnContainer.classList.toggle('collapsed', isNowCollapsed); // Toggle visibility of footer button
                     const toggleIcon = header.querySelector('.toggle-icon');
                     toggleIcon.style.transform = isNowCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
                     
@@ -2021,11 +2039,30 @@
                         if (header) header.click();
                     }
                 }
+                
+                // Add the new scroll/collapse handler to the window object
+                if (!window.stockTracker.collapseAndScrollToTop) {
+                    window.stockTracker.collapseAndScrollToTop = function(button) {
+                        const wrapper = button.closest('.group-wrapper');
+                        const header = wrapper.querySelector('.group-header');
+                        
+                        if (header) {
+                            // 1. Collapse the group if it isn't already (by clicking the header)
+                            if (!header.classList.contains('collapsed')) {
+                                header.click();
+                            }
+                            
+                            // 2. Scroll to the top of the group wrapper
+                            wrapper.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                    }
+                }
 
                 // Initial state setup
                 if (isCollapsed) {
                     header.classList.add('collapsed');
                     content.classList.add('collapsed');
+                    footerBtnContainer.classList.add('collapsed'); // Hide footer button on load if collapsed
                     header.querySelector('.toggle-icon').style.transform = 'rotate(-90deg)';
                     summaryDiv.classList.remove('hidden-summary'); // Ensure summary is shown if loaded collapsed
                     summaryDiv.querySelector('button').textContent = 'Expand';
@@ -2034,7 +2071,7 @@
                      summaryDiv.querySelector('button').textContent = 'Collapse';
                 }
                 
-                groupWrapper.append(header, summaryDiv, content);
+                groupWrapper.append(header, summaryDiv, content, footerBtnContainer); // Append the new footer button container
                 parent.appendChild(groupWrapper);
                 this.renderCards(list, content, type);
             }
