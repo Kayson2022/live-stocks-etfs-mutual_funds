@@ -7,7 +7,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- 
     ==================================================================
-    ==                  NEW, REDESIGNED STYLESHEET                  ==
+    ==              NEW, REDESIGNED STYLESHEET                    ==
     ==================================================================
     This is the new, professional stylesheet for the UI redesign.
     -->
@@ -432,12 +432,13 @@
             grid-column: 1 / -1;
             display: flex; /* FIX: Use flexbox to help parent resize correctly */
             flex-direction: column;
+            margin-bottom: 24px; /* ADDED: Ensure spacing below the group before the next element (like charts) */
         }
         .group-content {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
             gap: 24px;
-            max-height: 5000px;
+            max-height: 10000px; /* INCREASED: Significantly increased max-height to fix clipping issue at the bottom of the content */
             opacity: 1;
             overflow: hidden;
             transition: max-height 0.5s ease-in-out, opacity 0.3s ease-in-out;
@@ -702,13 +703,13 @@
     <div id="app-container" class="container">
         <!-- New Header Structure -->
         <header class="header">
-             <h1>💰 Portfolio Tracker</h1>
-             <div class="header-controls">
+            <h1>💰 Portfolio Tracker</h1>
+            <div class="header-controls">
                 <div id="user-info" style="display: none;">
                     <span id="user-name"></span>
                     <button id="sign-out-btn">Sign Out</button>
                 </div>
-             </div>
+            </div>
         </header>
 
         <div id="header-countdown">Next update in: <span id="countdown">90</span>s</div>
@@ -748,7 +749,7 @@
                         <span class="summary-label">Unrealized P/L</span>
                         <span id="total-pl-unrealized" class="summary-value positive">$0.00</span>
                     </div>
-                     <div class="summary-item">
+                      <div class="summary-item">
                         <span class="summary-label">Realized P/L</span>
                         <span id="total-pl-realized" class="summary-value positive">$0.00</span>
                     </div>
@@ -800,7 +801,7 @@
                         <span class="summary-label">Total P/L Today</span>
                         <span id="funds-total-pl-today" class="summary-value positive">$0.00</span>
                     </div>
-                     <div class="summary-item">
+                      <div class="summary-item">
                         <span class="summary-label">Total P/L % Today</span>
                         <span id="funds-total-pl-percent-today" class="summary-value positive">0.00%</span>
                     </div>
@@ -808,7 +809,7 @@
                         <span class="summary-label">Overall P/L</span>
                         <span id="funds-overall-pl" class="summary-value positive">$0.00</span>
                     </div>
-                     <div class="summary-item">
+                      <div class="summary-item">
                         <span class="summary-label">Overall P/L %</span>
                         <span id="funds-overall-pl-percent" class="summary-value positive">$0.00</span>
                     </div>
@@ -988,7 +989,7 @@
 
     <!-- 
     ==================================================================
-    ==                  YOUR ORIGINAL JAVASCRIPT                    ==
+    ==              YOUR ORIGINAL JAVASCRIPT                      ==
     ==================================================================
     This is your full, unchanged JavaScript block, ensuring all
     functionality is preserved.
@@ -1064,7 +1065,7 @@
                                  summary: `Profile data pulled successfully. Check the company website for the latest official news. (Industry: ${profile.industry})`,
                                  banner_image: profile.image || 'https://placehold.co/100x100/eee/ccc?text=FMP',
                                  source: profile.website ? new URL(profile.website).hostname : 'Google Search',
-                                date: new Date().toISOString(),
+                                 date: new Date().toISOString(),
                             };
                         } else {
                             return {
@@ -1073,7 +1074,7 @@
                                  summary: `FMP profile data unavailable. Clicking this card will perform a real-time Google search for news on ${symbol}.`,
                                  banner_image: 'https://placehold.co/100x100/34a853/ffffff?text=Google',
                                  source: 'Google Search Fallback',
-                                date: new Date().toISOString(),
+                                 date: new Date().toISOString(),
                             };
                         }
                     });
@@ -1838,8 +1839,8 @@
             }
             removeTransaction(symbol, index, type) {
                  this.openConfirmModal('Delete this transaction?', async () => {
-                    const list = (type === 'stock') ? this.stocks : this.mutualFunds;
-                    const item = list.find(i => i.symbol === symbol);
+                     const list = (type === 'stock') ? this.stocks : this.mutualFunds;
+                     const item = list.find(i => i.symbol === symbol);
                     if (item) {
                         if (item.transactions && index >= 0 && index < item.transactions.length) {
                             item.transactions.splice(index, 1);
@@ -1908,8 +1909,8 @@
             }
             renderCards(itemList, container, type) {
                 if (!container.classList.contains('group-content')) {
-                    container.innerHTML = '';
-                 }
+                     container.innerHTML = '';
+                    }
                 itemList.forEach(item => {
                     const card = document.createElement('div');
                     card.className = `${type}-card`;
@@ -1922,38 +1923,38 @@
                     const positiveClass = value => value >= 0 ? 'positive' : 'negative';
                     let stockInfoHTML = '';
                      if (type === 'watchlist' || type === 'fund') {
-                         stockInfoHTML = `<div class="info-row"><span class="info-label">Open:</span><span class="info-value">${this.formatCurrency(item.open || 0)}</span></div><div class="info-row"><span class="info-label">High:</span><span class="info-value">${this.formatCurrency(item.high || 0)}</span></div><div class="info-row"><span class="info-label">Low:</span><span class="info-value">${this.formatCurrency(item.low || 0)}</span></div><div class="info-row"><span class="info-label">Prev. Close:</span><span class="info-value">${this.formatCurrency(item.previousClose || 0)}</span></div>`;
+                          stockInfoHTML = `<div class="info-row"><span class="info-label">Open:</span><span class="info-value">${this.formatCurrency(item.open || 0)}</span></div><div class="info-row"><span class="info-label">High:</span><span class="info-value">${this.formatCurrency(item.high || 0)}</span></div><div class="info-row"><span class="info-label">Low:</span><span class="info-value">${this.formatCurrency(item.low || 0)}</span></div><div class="info-row"><span class="info-label">Prev. Close:</span><span class="info-value">${this.formatCurrency(item.previousClose || 0)}</span></div>`;
                      } else {
                           stockInfoHTML = `
-                         <div class="info-row">
-                             <span class="info-label">Open:</span>
-                             <span class="info-value">${this.formatCurrency(item.open || 0)}</span>
-                         </div>
-                         <div class="info-row">
-                             <span class="info-label">Total Shares:</span>
-                             <span class="info-value">${this.formatNumber(stats.totalSharesOwned, 3)}</span>
-                         </div>
-                         <div class="info-row">
-                             <span class="info-label">Total Value:</span>
-                             <span class="info-value ${positiveClass(totalPL)}">${this.formatCurrency(stats.currentValue)}</span>
-                         </div>
-                         <div class="info-row">
-                             <span class="info-label">Avg. Cost:</span>
-                             <span class="info-value">${this.formatCurrency(stats.averageCostBasis)}</span>
-                         </div>
-                         <div class="info-row">
-                             <span class="info-label">Total P/L:</span>
-                             <span class="info-value ${positiveClass(totalPL)}">${this.formatCurrency(totalPL)}</span>
-                         </div>
-                         <div class="info-row">
-                             <span class="info-label">Total P/L %:</span>
-                             <span class="info-value ${positiveClass(totalPLPercent)}">${this.formatNumber(totalPLPercent, 2)}%</span>
-                         </div>
-                         <div class="info-row">
-                             <span class="info-label">Total Cost Basis:</span>
-                             <span class="info-value">${this.formatCurrency(stats.costOfRemainingShares)}</span>
-                         </div>
-                         ${platformHTML}`;
+                          <div class="info-row">
+                              <span class="info-label">Open:</span>
+                              <span class="info-value">${this.formatCurrency(item.open || 0)}</span>
+                          </div>
+                          <div class="info-row">
+                              <span class="info-label">Total Shares:</span>
+                              <span class="info-value">${this.formatNumber(stats.totalSharesOwned, 3)}</span>
+                          </div>
+                          <div class="info-row">
+                              <span class="info-label">Total Value:</span>
+                              <span class="info-value ${positiveClass(totalPL)}">${this.formatCurrency(stats.currentValue)}</span>
+                          </div>
+                          <div class="info-row">
+                              <span class="info-label">Avg. Cost:</span>
+                              <span class="info-value">${this.formatCurrency(stats.averageCostBasis)}</span>
+                          </div>
+                          <div class="info-row">
+                              <span class="info-label">Total P/L:</span>
+                              <span class="info-value ${positiveClass(totalPL)}">${this.formatCurrency(totalPL)}</span>
+                          </div>
+                          <div class="info-row">
+                              <span class="info-label">Total P/L %:</span>
+                              <span class="info-value ${positiveClass(totalPLPercent)}">${this.formatNumber(totalPLPercent, 2)}%</span>
+                          </div>
+                          <div class="info-row">
+                              <span class="info-label">Total Cost Basis:</span>
+                              <span class="info-value">${this.formatCurrency(stats.costOfRemainingShares)}</span>
+                          </div>
+                          ${platformHTML}`;
                      }
                     let transactionDetailsHTML = '';
                     if (type === 'stock' || type === 'fund') {
@@ -2226,11 +2227,11 @@
                 if (existingAlertIndex === -1) {
                     const newAlert = {
                          id: Date.now().toString() + Math.random().toString(36).substring(2, 9),
-                        symbol,
+                         symbol,
                          condition: this.elements.alertCondition.value,
                          price,
                          triggered: false,
-                        date: new Date().toISOString()
+                         date: new Date().toISOString()
                     };
                     this.priceAlerts.push(newAlert);
                     this.showSuccess(`Alert set for ${symbol} at $${this.formatNumber(price, 2)}!`);
@@ -2282,11 +2283,11 @@
                 const onCancel = () => this.openAlertsSummaryModal();
                  this.openConfirmModal(`Are you sure you want to delete this specific price alert?`,
                      async () => {
-                        this.priceAlerts = this.priceAlerts.filter(a => a.id !== alertId);
-                        await this.saveData();
-                        this.showSuccess(`🗑️ Deleted price alert.`);
-                        this.openAlertsSummaryModal();
-                     },
+                         this.priceAlerts = this.priceAlerts.filter(a => a.id !== alertId);
+                         await this.saveData();
+                         this.showSuccess(`🗑️ Deleted price alert.`);
+                         this.openAlertsSummaryModal();
+                      },
                     onCancel
                 );
             }
@@ -2298,7 +2299,7 @@
                     const item = allItems.find(i => i.symbol === alert.symbol);
                     if (!item) return;
                     const trigger = (alert.condition === 'above' && item.price > alert.price) ||
-                                     (alert.condition === 'below' && item.price < alert.price);
+                                           (alert.condition === 'below' && item.price < alert.price);
                     if (trigger) {
                         alert.triggered = true;
                         this.showAlertNotification(item, alert);
@@ -2436,4 +2437,3 @@
     </script>
 </body>
 </html>
-
