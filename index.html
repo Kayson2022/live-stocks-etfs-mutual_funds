@@ -341,6 +341,27 @@
             box-shadow: var(--shadow-md);
             border-color: color-mix(in srgb, var(--border-color) 70%, black);
         }
+        /* ADDED: Colored top border for grouped cards */
+        .gains-header-content .stock-card,
+        .biggest-gain-header-content .stock-card {
+            border-top-width: 4px;
+            border-top-color: var(--color-positive);
+        }
+        .losses-header-content .stock-card {
+            border-top-width: 4px;
+            border-top-color: var(--color-negative);
+        }
+
+        /* ADDED: Ambient hover effect for grouped cards */
+        .gains-header-content .stock-card:hover,
+        .biggest-gain-header-content .stock-card:hover {
+            border-color: var(--color-positive);
+            box-shadow: var(--shadow-md), 0 0 20px color-mix(in srgb, var(--color-positive) 30%, transparent);
+        }
+        .losses-header-content .stock-card:hover {
+            border-color: var(--color-negative);
+            box-shadow: var(--shadow-md), 0 0 20px color-mix(in srgb, var(--color-negative) 30%, transparent);
+        }
         .stock-header {
             display: flex;
             justify-content: space-between;
@@ -424,10 +445,13 @@
         .group-content.collapsed {
             max-height: 0;
             opacity: 0;
-            margin: 0;
-            padding: 0;
+            margin-top: 0;
+            margin-bottom: 0;
+            padding-top: 0;
+            padding-bottom: 0;
+            gap: 0;
             pointer-events: none;
-            display: none;
+            /* display: none is removed to allow for smooth animation and prevent layout bugs */
         }
         .group-header .toggle-icon { transition: transform 0.3s ease; }
         .group-header.collapsed .toggle-icon { transform: rotate(-90deg); }
@@ -1860,7 +1884,7 @@
                 header.className = `group-header ${headerClass}`;
                 header.innerHTML = `<span>${title} (${list.length})</span><span class="toggle-icon">▼</span>`;
                 const content = document.createElement('div');
-                content.className = 'group-content';
+                content.className = `group-content ${headerClass}-content`;
 
                 const toggleGroup = () => {
                     const isCollapsed = header.classList.toggle('collapsed');
@@ -2412,3 +2436,4 @@
     </script>
 </body>
 </html>
+
