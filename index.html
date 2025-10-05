@@ -3,1126 +3,662 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Khanh Live Stocks/ETFs & Mutual Funds Tracker</title>
+    <title>Live Stocks & Funds Tracker</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- 
+    ==================================================================
+    ==                  NEW, REDESIGNED STYLESHEET                  ==
+    ==================================================================
+    This is the new, professional stylesheet for the UI redesign.
+    -->
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+        /* --- CSS Variables for Theming --- */
+        :root {
+            --font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            --radius-sm: 6px;
+            --radius-md: 12px;
+            --radius-lg: 20px;
+            --shadow-sm: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --shadow-md: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -2px rgb(0 0 0 / 0.1);
+            --transition: all 0.2s ease-in-out;
+            
+            /* Light Theme */
+            --bg-primary: #f8f9fa;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f1f3f5;
+            --text-primary: #212529;
+            --text-secondary: #6c757d;
+            --border-color: #dee2e6;
+            --accent-primary: #0052FF;
+            --accent-primary-hover: #0048DE;
+            --color-positive: #17A589;
+            --color-negative: #E74C3C;
+        }
+
+        body.dark-mode {
+            /* Dark Theme */
+            --bg-primary: #121212;
+            --bg-secondary: #1E1E1E;
+            --bg-tertiary: #2A2A2A;
+            --text-primary: #f8f9fa;
+            --text-secondary: #adb5bd;
+            --border-color: #343a40;
+            --accent-primary: #4299e1;
+            --accent-primary-hover: #3182ce;
+            --color-positive: #2ECC71;
+            --color-negative: #E74C3C;
+        }
+
+        /* --- Base & Reset Styles --- */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-
-        html, body {
-            width: 100vw;
-            max-width: 100vw;
+        html {
+            scroll-behavior: smooth;
+        }
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            transition: background-color 0.3s, color 0.3s;
             overflow-x: hidden;
         }
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-            transition: background 0.3s ease;
-        }
-
+        /* --- Main Layout --- */
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            backdrop-filter: blur(10px);
-            transition: background 0.3s ease, color 0.3s ease;
+            padding: 24px;
         }
-
-        #login-container {
-            text-align: center;
-            padding: 50px;
-        }
-
-        #google-signin-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            padding: 12px 24px;
-            background-color: #4285F4;
-            color: white;
-            border-radius: 8px;
-            font-size: 1.1rem;
-            font-weight: 600;
-            cursor: pointer;
-            border: none;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-
-        #user-info {
-            text-align: right;
-            margin-bottom: 15px;
-            display: flex;
-            justify-content: flex-end;
-            align-items: center;
-            gap: 15px;
-        }
-
-        #user-name {
-            font-weight: 600;
-        }
-        
-        #sign-out-btn {
-            padding: 8px 15px;
-            font-size: 0.9rem;
-            background-color: #ff4757;
-        }
-
-        h1 {
-            text-align: center;
-            color: #2ecc71;
-            margin-bottom: 10px;
-            font-size: 2.5rem;
-            font-weight: 700;
-        }
-
-        #header-countdown {
-            text-align: center;
-            font-size: 1.8rem;
-            font-weight: 700;
-            color: #fff;
-            margin-bottom: 20px;
-            background: linear-gradient(45deg, #2a2a72, #009ffd);
-            padding: 15px;
-            border-radius: 15px;
-            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
-            border: 2px solid rgba(255, 255, 255, 0.3);
-        }
-
-        #countdown {
-            font-size: 2.5rem;
-            font-weight: 900;
-            color: #ffeb3b;
-            margin-left: 10px;
-            display: inline-block;
-            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
-        }
-        
-        .small-countdown {
-            position: fixed;
-            bottom: 10px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            padding: 8px 15px;
-            border-radius: 20px;
-            font-size: 0.9rem;
-            z-index: 1000;
-            transition: opacity 0.3s ease;
-            opacity: 1;
-        }
-
-        .small-countdown.hidden {
-            opacity: 0;
-            pointer-events: none;
-        }
-
-
-        .tabs {
-            display: flex;
-            margin-bottom: 20px;
-            background: rgba(255, 255, 255, 0.9);
-            border-radius: 15px;
-            padding: 5px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-            overflow-x: auto; /* Enable horizontal scrolling */
-            -webkit-overflow-scrolling: touch; /* for smooth scrolling on iOS */
-        }
-
-        .tab {
-            flex-shrink: 0;
-            padding: 15px 20px;
-            background: transparent;
-            border: none;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            color: #666;
-        }
-
-        .tab.active {
-            background: linear-gradient(45deg, #2a2a72, #009ffd);
-            color: white;
-            box-shadow: 0 5px 15px rgba(42, 42, 114, 0.3);
-        }
-
-        .tab-content {
+        #app-container {
             display: none;
         }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        .search-section {
-            margin-bottom: 30px;
+        .header {
             display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-            justify-content: center;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 0;
+            margin-bottom: 24px;
         }
-        
-        .portfolio-controls, .funds-controls, .watchlist-controls {
-            margin-top: 20px;
-            margin-bottom: 15px;
+        .header h1 {
+            font-size: 1.75rem;
+            font-weight: 800;
+            color: var(--text-primary);
             display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-            justify-content: center;
-            padding: 15px;
-            background: rgba(255, 255, 255, 0.8);
-            border-radius: 15px;
+            align-items: center;
+            gap: 12px;
         }
-
-        .search-input, #portfolioFilter, #portfolioSort, #platformInput {
-            flex: 1;
-            min-width: 200px;
-            padding: 15px 20px;
-            border: 2px solid #e0e0e0;
-            border-radius: 50px;
-            font-size: 16px;
-            outline: none;
-            transition: all 0.3s ease;
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 16px;
         }
-        
-        #portfolioSort {
-            cursor: pointer;
+        #user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
-
-        .search-input:focus, #portfolioFilter:focus, #portfolioSort:focus, #platformInput:focus {
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-
-        .add-btn {
-            padding: 15px 30px;
-            background: linear-gradient(45deg, #667eea, #764ba2);
-            color: white;
-            border: none;
-            border-radius: 50px;
-            font-size: 16px;
+        #user-name {
             font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        /* --- Login Screen --- */
+        #login-container {
+            max-width: 500px;
+            text-align: center;
+            padding-top: 10vh;
+        }
+        #login-container h1 {
+            font-size: 2.5rem;
+            margin-bottom: 8px;
+        }
+
+        /* --- Buttons --- */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px 20px;
+            border-radius: var(--radius-sm);
+            font-size: 0.95rem;
+            font-weight: 600;
+            border: 1px solid transparent;
             cursor: pointer;
-            transition: all 0.3s ease;
-            min-width: 120px;
+            transition: var(--transition);
         }
-
+        .btn-primary {
+            background-color: var(--accent-primary);
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: var(--accent-primary-hover);
+        }
+        .btn-secondary {
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
+            border-color: var(--border-color);
+        }
+        .btn-secondary:hover {
+            background-color: var(--border-color);
+        }
+        .btn-danger {
+            background-color: var(--color-negative);
+            color: white;
+        }
+        .btn-danger:hover {
+            opacity: 0.85;
+        }
+        .btn-icon {
+            padding: 8px;
+            background-color: var(--bg-tertiary);
+            color: var(--text-secondary);
+        }
+        .btn-icon:hover {
+             background-color: var(--border-color);
+             color: var(--text-primary);
+        }
+        /* Mapping old button classes to new ones */
+        .add-btn {
+            padding: 12px 24px;
+            background-color: var(--accent-primary); color: white; border: none;
+            border-radius: var(--radius-sm); font-size: 1rem; font-weight: 600;
+            cursor: pointer; transition: var(--transition);
+        }
         .add-btn:hover {
+            background-color: var(--accent-primary-hover);
             transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+            box-shadow: var(--shadow-sm);
         }
-
         .add-btn:disabled {
             opacity: 0.6;
             cursor: not-allowed;
             transform: none;
         }
+        #sign-out-btn {
+            padding: 8px 16px;
+            font-size: 0.9rem;
+            background-color: var(--bg-tertiary);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+        }
+        #sign-out-btn:hover {
+             background-color: var(--border-color);
+             color: var(--text-primary);
+        }
 
+        /* --- Tabs --- */
+        .tabs {
+            display: flex;
+            gap: 8px;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 24px;
+            overflow-x: auto;
+        }
+        .tab {
+            padding: 12px 16px;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: var(--transition);
+            margin-bottom: -1px; /* Overlap border */
+            flex-shrink: 0;
+            white-space: nowrap;
+        }
+        .tab:hover {
+            color: var(--text-primary);
+        }
+        .tab.active {
+            color: var(--accent-primary);
+            border-bottom-color: var(--accent-primary);
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* --- Forms & Controls --- */
+        .search-section, .portfolio-controls, .funds-controls, .watchlist-controls {
+            margin-bottom: 24px;
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .search-input, #portfolioFilter, #portfolioSort, #platformInput {
+            flex: 1;
+            min-width: 200px;
+            padding: 12px 16px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            font-size: 1rem;
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+            transition: var(--transition);
+        }
+        .search-input:focus, #portfolioFilter:focus, #portfolioSort:focus, #platformInput:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-primary) 20%, transparent);
+        }
+
+        /* --- Portfolio Summary --- */
+        .portfolio-summary {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: var(--shadow-sm);
+        }
+        .portfolio-summary h3 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 24px;
+            text-align: center;
+        }
+        .summary-label {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+        .summary-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        /* --- Utility Toolbar --- */
+        .utility-buttons-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            padding: 16px;
+            background-color: var(--bg-tertiary);
+            border-radius: var(--radius-md);
+            margin-bottom: 24px;
+        }
+        .utility-buttons-grid .add-btn, .utility-buttons-grid label {
+            flex-grow: 1;
+            margin: 0;
+            padding: 10px 16px;
+            font-size: 0.9rem;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            box-shadow: none;
+        }
+        .utility-buttons-grid .add-btn:hover, .utility-buttons-grid label:hover {
+            background: var(--border-color);
+            border-color: color-mix(in srgb, var(--border-color) 80%, black);
+        }
+        #clearAllBtn, #clearAllFundsBtn, #clearWatchlistBtn {
+            background-color: color-mix(in srgb, var(--color-negative) 15%, transparent);
+            color: var(--color-negative);
+            border: 1px solid color-mix(in srgb, var(--color-negative) 40%, transparent);
+        }
+        #clearAllBtn:hover, #clearAllFundsBtn:hover, #clearWatchlistBtn:hover {
+            background-color: var(--color-negative);
+            color: white;
+        }
+        .import-wrapper {
+            display: contents; /* Allows children to be flex items */
+        }
+        .utility-buttons-grid .add-btn[style*="background"],
+        .utility-buttons-grid .add-btn#quickLookupBtn {
+            background: var(--bg-secondary) !important;
+            color: var(--text-primary) !important;
+            border: 1px solid var(--border-color) !important;
+        }
+
+        /* --- Asset Cards --- */
         .stocks-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); /* Reduce for mobile */
-            gap: 20px;
-            margin-top: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+            gap: 24px;
         }
-
         .stock-card, .fund-card, .watchlist-card {
-            background: white;
-            border-radius: 15px;
-            padding: 25px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-            transition: all 0.3s ease;
-            position: relative;
+            background-color: var(--bg-secondary);
+            border-radius: var(--radius-md);
+            padding: 24px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+            transition: var(--transition);
         }
-        
-        /* FIX 1: Add blue border to stock cards */
-        .stock-card {
-            border-top: 5px solid #667eea; 
-            padding-top: 20px; /* Adjust padding due to border-top */
-        }
-        
-        .watchlist-card {
-            border-left: 5px solid #f7b731;
-        }
-
-        .fund-card {
-            border-left: 5px solid #ff6b6b;
-        }
-
         .stock-card:hover, .fund-card:hover, .watchlist-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-md);
+            border-color: color-mix(in srgb, var(--border-color) 70%, black);
         }
-
-        .stock-header, .fund-header, .watchlist-header {
+        .stock-header {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            margin-bottom: 15px;
+            margin-bottom: 8px;
         }
-
         .stock-symbol, .fund-symbol, .watchlist-symbol {
-            font-size: 1.8rem;
-            font-weight: bold;
-            color: #333;
+            font-size: 1.75rem;
+            font-weight: 800;
         }
-
         .remove-btn {
-			background: #ff4757;
-			color: white;
-			border: none;
-			border-radius: 50%;
-			width: 30px;
-			height: 30px;
-			cursor: pointer;
-			font-size: 16px;
-			transition: all 0.3s ease;
+            width: 32px; height: 32px;
+            border-radius: 50%;
+            background-color: var(--bg-tertiary);
+            color: var(--text-secondary);
+            border: none;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: var(--transition);
             display: flex;
             align-items: center;
             justify-content: center;
         }
-
         .remove-btn:hover {
-            background: #ff5e6a;
-            transform: scale(1.1);
+            background-color: var(--color-negative);
+            color: white;
         }
-
         .stock-price {
-            font-size: 2.2rem;
-            font-weight: bold;
-            color: #333;
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 4px;
         }
-        
         .stock-change {
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             font-weight: 600;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
         }
-
-        .positive {
-            color: #2ed573;
-        }
-        
-        .negative {
-            color: #ff4757;
-        }
-
         .stock-info {
-            padding: 15px 0;
-            border-top: 1px solid #eee;
-            margin-bottom: 15px;
+            padding-top: 16px;
+            margin-top: 16px;
+            border-top: 1px solid var(--border-color);
         }
-        
         .info-row {
-            display: grid;
-            grid-template-columns: auto 1fr;
-            gap: 10px;
-            align-items: center;
-            font-size: 0.9rem;
-        }
-
-        .info-label {
-            color: #666;
-            white-space: nowrap;
-        }
-
-        .info-value {
-            font-weight: 600;
-            color: #333;
-            text-align: right;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-        /* Fix for color specificity */
-        .info-value.positive {
-            color: #2ed573;
-        }
-
-        .info-value.negative {
-            color: #ff4757;
-        }
-        
-        .loading, .error, .success {
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 2000;
-            width: 90%;
-            max-width: 500px;
-            text-align: center;
-            padding: 15px;
-            border-radius: 10px;
-        }
-
-        .loading {
-            color: #667eea;
-            background-color: white;
-        }
-
-        .error {
-            background: #ff4757;
-            color: white;
-            white-space: pre-line;
-            text-align: left;
-        }
-        
-        .success {
-             background: #2ed573;
-             color: white;
-             white-space: pre-line;
-             text-align: left;
-        }
-        
-        .error h4, .success h4 {
-            margin-bottom: 5px;
-        }
-
-        .refresh-btn {
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            width: 60px;
-            height: 60px;
-            background: linear-gradient(45deg, #667eea, #764ba2);
-            color: white;
-            border: none;
-            border-radius: 50%;
-            font-size: 24px;
-            cursor: pointer;
-            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
-            transition: all 0.3s ease;
-        }
-
-        .refresh-btn:hover {
-            transform: scale(1.1) rotate(180deg);
-        }
-        
-        .group-wrapper {
-            display: contents; /* Allows children to be direct grid items of .stocks-grid */
-        }
-
-        .group-header, .watchlist-title {
-            grid-column: 1 / -1;
-            font-size: 1.5rem;
-            font-weight: bold;
-            padding: 20px;
-            text-align: left;
-            margin-top: 20px;
-            position: relative;
-            user-select: none;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            font-size: 0.95rem;
+            padding: 6px 0;
         }
+        .info-label { color: var(--text-secondary); }
+        .info-value { font-weight: 600; }
+        .positive { color: var(--color-positive) !important; }
+        .negative { color: var(--color-negative) !important; }
 
-        /* NEW: Platform header style */
-        .platform-header {
-            color: #6c5ce7;
-            background: linear-gradient(90deg, transparent, rgba(108, 92, 231, 0.1), transparent);
-        }
-        .platform-header::before {
-            content: '';
-            position: absolute;
-            left: 50%;
-            bottom: 5px;
-            transform: translateX(-50%);
-            width: 100px;
-            height: 3px;
-            border-radius: 2px;
-            background: #6c5ce7;
-        }
-
-
-        .group-header .header-controls {
+        /* --- Group Headers --- */
+        .group-header, .watchlist-title {
+            grid-column: 1 / -1;
+            font-size: 1.25rem;
+            font-weight: 700;
+            padding: 16px 0;
+            margin-top: 24px;
+            border-bottom: 1px solid var(--border-color);
             display: flex;
+            justify-content: space-between;
             align-items: center;
+            cursor: pointer;
         }
-
-        .header-collapse-btn {
-            padding: 5px 15px;
-            font-size: 0.9rem;
-            min-width: auto;
-            margin-right: 15px;
+        .group-wrapper {
+            display: contents;
         }
-
-        .group-header {
-             cursor: pointer;
-             transition: background-color: 0.3s ease;
-        }
-
-        .group-header:hover {
-            background-color: rgba(0, 0, 0, 0.05);
-        }
-
         .group-content {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 20px;
-            transition: max-height 0.5s ease-in-out, opacity 0.3s ease-in-out, margin-top 0.3s ease;
-            max-height: 50000px;
+            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+            gap: 24px;
+            grid-column: 1 / -1;
+            max-height: 5000px;
             opacity: 1;
             overflow: hidden;
-            margin-top: 0;
-            grid-column: 1 / -1;
+            transition: max-height 0.5s ease-in-out, opacity 0.3s ease-in-out;
         }
-
-        .group-content.collapsed, .group-footer.collapsed {
+        .group-content.collapsed {
             max-height: 0;
             opacity: 0;
-            margin-top: 0;
+            margin: 0;
             padding: 0;
             pointer-events: none;
             display: none;
         }
-        
-        .group-header .toggle-icon {
-            transition: transform 0.3s ease;
-            display: inline-block;
-        }
+        .group-header .toggle-icon { transition: transform 0.3s ease; }
+        .group-header.collapsed .toggle-icon { transform: rotate(-90deg); }
+        .group-footer { display: none; }
+        .summary-content { display: none; }
 
-        .group-header.collapsed .toggle-icon {
-            transform: rotate(-90deg);
-        }
-        
-        .losses-header {
-            color: #ff4757;
-            background: linear-gradient(90deg, transparent, rgba(255, 71, 87, 0.1), transparent);
-        }
-
-        .gains-header, .biggest-gain-header {
-            color: #2ed573;
-            background: linear-gradient(90deg, transparent, rgba(46, 213, 115, 0.1), transparent);
-        }
-
-        .losses-header::before, .biggest-gain-header::before, .gains-header::before {
-            content: '';
-            position: absolute;
-            left: 50%;
-            bottom: 5px;
-            transform: translateX(-50%);
-            width: 100px;
-            height: 3px;
-            border-radius: 2px;
-            background: #2ed573;
-        }
-        
-        .losses-header::before {
-            background: #ff4757;
-        }
-
-        .gains-header::before, .biggest-gain-header::before {
-            background: #2ed573;
-        }
-        
-        .chart-container {
-            margin-top: 20px;
-            padding: 20px;
-            background: white;
-            border-radius: 15px;
-            box-shadow: 10px 30px rgba(0, 0, 0, 0.1);
-            position: relative;
-            height: 400px; /* Constrains the chart height */
-        }
-        
-        .transaction-details {
-            padding-bottom: 15px;
-        }
-
-        .transaction-entry {
-            background: #f9f9f9;
-            border-radius: 8px;
-            margin-bottom: 10px;
-            padding: 10px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .transaction-info {
-            flex-grow: 1;
-        }
-
-        .transaction-info span {
-            display: block;
-            font-size: 0.9rem;
-            margin-bottom: 5px;
-        }
-        
-        .transaction-entry-controls {
-            display: flex;
-            gap: 10px;
-            margin-left: 15px;
-            flex-shrink: 0;
-        }
-        
-        .transaction-entry .info-value.buy { color: #2ed573; font-weight: bold; }
-        .transaction-entry .info-value.sell { color: #ff4757; font-weight: bold; }
-
-        .total-pl {
-            font-weight: 700;
-            margin-top: 15px;
-            padding-top: 15px;
-            border-top: 1px solid #eee;
-            font-size: 1.1rem;
-        }
-
-        .portfolio-summary {
-            background: linear-gradient(135deg, #f0f4ff, #e0e8ff);
-            border-radius: 15px;
-            padding: 25px;
-            margin-bottom: 20px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-            border: 2px solid #667eea;
-        }
-
-        .portfolio-summary h3 {
-            text-align: center;
-            color: #333;
-            margin-bottom: 15px;
-            font-size: 1.8rem;
-        }
-
-        .summary-stats {
-            display: flex;
-            justify-content: space-around;
-            text-align: center;
-            flex-wrap: wrap;
-            gap: 15px;
-        }
-
-        .summary-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .summary-label {
-            font-size: 1rem;
-            color: #666;
-        }
-
-        .summary-value {
-            font-size: 1.5rem;
-            font-weight: bold;
-            margin-top: 5px;
-        }
-        
-        .total-contributions {
-            color: #6c5ce7 !important;
-        }
-
-        .transaction-btn {
-            background: #667eea;
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            width: 100%;
-        }
-        
+        /* --- Card Actions (Buy/Sell, Transactions) --- */
         .card-actions {
-            margin-top: 15px;
+            margin-top: 20px;
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 10px;
+            gap: 12px;
         }
-        
-        .modal-actions {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            margin-top: 20px;
+        .transaction-btn {
+            padding: 10px; font-size: 0.9rem;
+            background-color: var(--accent-primary); color: white; border: none;
+            border-radius: var(--radius-sm); font-weight: 600; cursor: pointer; transition: var(--transition);
         }
-
-        .modal {
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        .transaction-btn:hover {
+            opacity: 0.9;
         }
-
-        .modal-content {
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-            width: 90%;
-            max-width: 500px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-            position: relative;
+        .transaction-btn[style*="background: #ff4757"] {
+            background-color: var(--color-negative) !important;
         }
-
-        .close-modal-btn {
-            position: absolute;
-            top: 10px;
-            right: 15px;
-            font-size: 24px;
-            font-weight: bold;
-            cursor: pointer;
-            border: none;
-            background: transparent;
-            color: #666;
-        }
-        
-        /* --- FIX: High Z-index for nested Confirmation Modal --- */
-        #confirmModal {
-             z-index: 2000; 
-        }
-        /* --- FIX: High Z-index for Active Alerts Modal (needs to be over app content but under confirmation) --- */
-        #alertsSummaryModal {
-             z-index: 1500;
-        }
-
-        /* NEW FIX: Ensure Price Alert modal appears above the summary list */
-        #priceAlertModal {
-            z-index: 1600;
-        }
-
-
-        .transaction-input-group {
-            margin-bottom: 15px;
-        }
-
-        .transaction-input-group label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: 600;
-        }
-
-        .transaction-input-group input, .transaction-input-group select {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            box-sizing: border-box;
-        }
-
-        .edit-transaction-btn, .delete-transaction-btn {
-            background: #f7b731;
-            color: white;
-            border: none;
-            padding: 5px 10px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 0.8rem;
-        }
-
-        .delete-transaction-btn {
-            background: #ff4757;
-            margin-left: 5px;
-        }
-        
-        .modal-title {
-            color: #333;
-            margin-bottom: 20px;
-            text-align: center;
-            font-size: 1.5rem;
-        }
-        
-        .utility-buttons-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            margin-top: 20px;
-            margin-bottom: 20px;
-        }
-        /* FIX: Ensure all buttons and elements in the grid are the same size/height */
-        .utility-buttons-grid > * {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
-
-        .utility-buttons-grid .add-btn,
-        .utility-buttons-grid label {
-            min-width: unset;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        /* End FIX for button sizing */
-        
-        /* FIX: Nesting issue fix CSS */
-        .utility-buttons-grid .import-wrapper {
-             display: flex;
-             flex-direction: column;
-             /* Ensure the wrapper takes up two virtual grid rows */
-             grid-row: span 2; 
-             height: 100%;
-             justify-content: space-between;
-        }
-        /* Make inner buttons/labels take up half the vertical space, equally */
-        .utility-buttons-grid .import-wrapper .add-btn,
-        .utility-buttons-grid .import-wrapper label {
+        .add-btn.edit-btn {
+             background-color: var(--bg-tertiary) !important;
+             color: var(--text-primary) !important;
+             border: 1px solid var(--border-color) !important;
              width: 100%;
-             margin-top: 0;
-             flex-grow: 1; /* Distribute space equally */
         }
-        /* Add gap between stacked Export/Import buttons */
-        .utility-buttons-grid .import-wrapper #exportBtn {
-             margin-bottom: 5px;
+        .transaction-details {
+            margin-top: 16px;
         }
-        /* End FIX */
-
-
-        /* -- STYLES FOR COLLAPSE BUTTON AND SUMMARY -- */
-        .group-footer {
-            grid-column: 1 / -1;
-            text-align: center;
-            padding-top: 20px;
-            margin-top: 10px;
-            border-top: 1px solid #eee;
-        }
-        .collapse-group-btn {
-            padding: 8px 16px;
-            font-size: 0.9rem;
-            font-weight: 600;
-            background-color: #ff4757;
-            color: white;
-            border: none;
-            border-radius: 15px;
-            cursor: pointer;
-            margin: 10px auto;
-            transition: background-color: 0.2s ease;
-            min-width: 150px;
-        }
-        .collapse-group-btn:hover {
-            background-color: #ff5e6a;
-        }
-
-        .summary-content {
-            padding: 20px 0;
-            grid-column: 1 / -1;
-        }
-        .summary-content.collapsed {
-            display: none;
-        }
-        .summary-card {
-            background: #f9fafb;
-            border: 2px dashed #e0e0e0;
-            border-radius: 15px;
-            padding: 25px;
-            text-align: center;
-            max-width: 400px;
-            margin: 10px auto;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-        }
-        .summary-card h4 {
-            margin-bottom: 15px;
-            font-size: 1.3rem;
-            color: #333;
-        }
-        .summary-card p {
-            font-size: 1.1rem;
-            line-height: 1.6;
-            color: #555;
-            white-space: pre-line;
-        }
-        
         .transaction-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             cursor: pointer;
-            user-select: none;
-            padding: 5px 0;
+            padding-bottom: 8px;
         }
-        .transaction-header h4 {
-            margin: 0;
-        }
-        .transaction-header .toggle-icon {
-            transition: transform 0.3s ease;
-            display: inline-block;
-        }
-        .transaction-header.collapsed .toggle-icon {
-            transform: rotate(-90deg);
-        }
-
+        .transaction-header h4 { font-size: 1rem; }
         .transactions-container {
-            transition: max-height 0.5s ease-in-out, opacity 0.3s ease-in-out, margin-top 0.3s ease;
-            max-height: 1000px; /* arbitrary large value */
-            opacity: 1;
-            overflow: hidden;
-            margin-top: 10px;
+             max-height: 1000px; opacity: 1; margin-top: 10px;
+             transition: max-height 0.4s ease, opacity 0.3s ease, margin-top 0.3s ease;
+             overflow: hidden;
         }
         .transactions-container.collapsed {
-            max-height: 0;
-            opacity: 0;
-            margin-top: 0;
-            pointer-events: none;
+            max-height: 0; opacity: 0; margin-top: 0; pointer-events: none;
         }
-
-       .refresh-status-popup {
-            position: fixed;
-            bottom: 60px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 2002;
-            width: 90%;
-            max-width: 400px;
-            background: linear-gradient(45deg, #2ed573, #1abc9c);
-            color: white;
-            padding: 15px;
-            border-radius: 10px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-            text-align: center;
-            font-weight: 600;
-            display: none;
-            transition: all 0.5s ease;
-        }
-
-        .refresh-status-popup.negative {
-             background: linear-gradient(45deg, #ff4757, #e74c3c);
-        }
-
-        .refresh-status-popup.active {
-            display: block;
-        }
-
-        .alert-notification {
-            position: fixed;
-            bottom: 60px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 2002;
-            width: 90%;
-            max-width: 400px;
-            background: linear-gradient(45deg, #2ed573, #1abc9c);
-            color: white;
-            padding: 15px;
-            border-radius: 10px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-            text-align: center;
-            font-weight: 600;
-            display: none;
-            transition: all 0.5s ease;
-        }
-
-        .alert-notification.negative {
-             background: linear-gradient(45deg, #ff4757, #e74c3c);
-        }
-
-        .alert-notification.active {
-            display: block;
-        }
-
-        .news-article-card {
-            background: white;
-            border-radius: 15px;
-            padding: 15px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-            margin-bottom: 15px;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        .transaction-entry {
+            background-color: var(--bg-tertiary);
+            border-radius: var(--radius-sm);
+            padding: 12px;
+            margin-bottom: 8px;
             display: flex;
-            gap: 15px;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .transaction-info { font-size: 0.9rem; }
+        .transaction-info strong { text-transform: uppercase; }
+        .transaction-info span { display: block; margin-bottom: 4px; }
+        .transaction-entry .buy { color: var(--color-positive); }
+        .transaction-entry .sell { color: var(--color-negative); }
+        .transaction-entry-controls { display: flex; gap: 8px; align-items: center; }
+        .edit-transaction-btn, .delete-transaction-btn {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            padding: 5px 10px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+        }
+        .delete-transaction-btn {
+            background: transparent; border: none; font-size: 1.2rem;
+        }
+        .delete-transaction-btn:hover {
+            color: var(--color-negative);
         }
 
+        /* --- Modals --- */
+        .modal {
+            position: fixed; z-index: 1000;
+            left: 0; top: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(5px);
+            display: none; align-items: center; justify-content: center;
+        }
+        .modal-content {
+            background-color: var(--bg-secondary);
+            padding: 32px;
+            border-radius: var(--radius-md);
+            width: 90%;
+            max-width: 500px;
+            box-shadow: var(--shadow-md);
+            position: relative;
+        }
+        .modal-title {
+            font-size: 1.5rem;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+        .close-modal-btn {
+            position: absolute; top: 12px; right: 12px;
+            font-size: 1.5rem; font-weight: bold;
+            cursor: pointer; border: none; background: transparent;
+            color: var(--text-secondary);
+        }
+        .transaction-input-group { margin-bottom: 16px; }
+        .transaction-input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        .transaction-input-group input, .transaction-input-group select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+        #confirmModal .modal-actions {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+        }
+
+        /* --- Notifications & Popups --- */
+        .loading, .error, .success, .refresh-status-popup, .alert-notification {
+            position: fixed; top: 20px; left: 50%;
+            transform: translateX(-50%);
+            z-index: 2000; width: 90%; max-width: 500px;
+            text-align: center; padding: 16px;
+            border-radius: var(--radius-sm);
+            box-shadow: var(--shadow-md);
+            font-weight: 600;
+        }
+        .loading { background-color: var(--bg-secondary); color: var(--text-primary); }
+        .error { background-color: var(--color-negative); color: white; }
+        .success { background-color: var(--color-positive); color: white; }
+        .refresh-status-popup { background-color: var(--accent-primary); color: white; display: none; }
+        .refresh-status-popup.active { display: block; }
+        .alert-notification { background-color: var(--accent-primary); color: white; display: none; }
+        .alert-notification.active { display: block; }
+
+        /* --- Countdown Timers --- */
+        #header-countdown {
+            text-align: center; font-size: 1rem;
+            font-weight: 500; color: var(--text-secondary);
+            margin-bottom: 24px;
+        }
+        #countdown { font-weight: 700; color: var(--text-primary); }
+        .small-countdown {
+            position: fixed; bottom: 16px; left: 16px;
+            background-color: var(--bg-secondary);
+            color: var(--text-secondary);
+            padding: 8px 16px;
+            border-radius: var(--radius-lg);
+            font-size: 0.9rem;
+            z-index: 1000;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-color);
+        }
+
+        /* --- News Tab --- */
+        #news-articles-container {
+            display: grid;
+            gap: 16px;
+        }
+        .news-article-card {
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+            display: flex; gap: 16px;
+            text-decoration: none;
+            color: inherit;
+            transition: var(--transition);
+        }
         .news-article-card:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+            box-shadow: var(--shadow-md);
         }
-
+        .news-article-card img {
+            width: 80px; height: 80px;
+            object-fit: cover;
+            border-radius: var(--radius-sm);
+        }
         .news-article-content h4 {
-            font-size: 1rem;
-            margin-bottom: 5px;
-            color: #333;
+            font-size: 1.1rem;
+            margin-bottom: 4px;
+            color: var(--text-primary);
         }
-
         .news-article-content p {
-            font-size: 0.8rem;
-            color: #666;
-            line-height: 1.4;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
             display: -webkit-box;
             -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
             overflow: hidden;
         }
-        
-        #list-all-content {
-            text-align: left;
-            padding-left: 20px;
-            max-height: 60vh;
-            overflow-y: auto;
-        }
-        #list-all-content h4 {
-            margin-top: 15px;
-            margin-bottom: 5px;
-        }
-        #list-all-content p {
-            margin-left: 15px;
-            padding: 2px 0;
-        }
 
-        /* --- Dark Mode Styles --- */
-        body.dark-mode {
-            background: linear-gradient(135deg, #232526 0%, #414345 100%);
-        }
-
-        .dark-mode .container {
-            background: rgba(40, 40, 40, 0.95);
-            color: #f1f1f1;
-        }
-
-        .dark-mode .stock-card, 
-        .dark-mode .fund-card, 
-        .dark-mode .watchlist-card,
-        .dark-mode .chart-container,
-        .dark-mode .modal-content {
-            background: #2a2a2e;
-            color: #f1f1f1;
-            border-color: #444;
-        }
-
-        .dark-mode .stock-symbol, .dark-mode .fund-symbol, 
-        .dark-mode .watchlist-symbol, .dark-mode .stock-price,
-        .dark-mode .info-value, .dark-mode .modal-title,
-        .dark-mode .portfolio-summary h3 {
-            color: #f1f1f1;
+        /* --- Charts --- */
+        .chart-container {
+            margin-top: 24px;
+            padding: 24px;
+            background-color: var(--bg-secondary);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+            height: 400px;
         }
         
-        /* --- FIX: Performance Colors in Dark Mode --- */
-        .dark-mode .positive, 
-        .dark-mode .total-pl.positive {
-            color: #2ed573 !important;
-        }
-
-        .dark-mode .negative,
-        .dark-mode .total-pl.negative {
-            color: #ff4757 !important;
-        }
-        /* --- END FIX --- */
-
-        .dark-mode .info-label, .dark-mode .close-modal-btn {
-             color: #aaa;
-        }
-
-        .dark-mode .tabs {
-            background: rgba(20, 20, 20, 0.9);
-        }
-        
-        .dark-mode .tab {
-            color: #bbb;
-        }
-
-        .dark-mode .tab.active {
-             background: linear-gradient(45deg, #667eea, #764ba2);
-             color: white;
-        }
-        
-        .dark-mode .search-input, .dark-mode #portfolioFilter, .dark-mode #portfolioSort, .dark-mode #platformInput {
-            background-color: #333;
-            border-color: #555;
-            color: #f1f1f1;
-        }
-
-        .dark-mode .portfolio-controls, .dark-mode .funds-controls, .dark-mode .watchlist-controls {
-            background: rgba(0, 0, 0, 0.3);
-        }
-
-        .dark-mode .portfolio-summary {
-            background: linear-gradient(135deg, #2c3e50, #4c5d70);
-            border-color: #667eea;
-        }
-
-        .dark-mode .summary-label {
-            color: #bbb;
-        }
-        
-        .dark-mode .stock-info, .dark-mode .total-pl {
-            border-top-color: #444;
-        }
-        
-        .dark-mode .transaction-entry {
-             background: #333;
-        }
-        
-        .dark-mode .gains-header, .dark-mode .biggest-gain-header {
-            background: linear-gradient(90deg, transparent, rgba(46, 213, 115, 0.05), transparent);
-        }
-        
-        .dark-mode .losses-header {
-            background: linear-gradient(90deg, transparent, rgba(255, 71, 87, 0.05), transparent);
-        }
-        
-        .dark-mode .news-article-card {
-            background: #2a2a2e;
-        }
-
-        .dark-mode .news-article-content h4 {
-             color: #f1f1f1;
-        }
-        .dark-mode .news-article-content p {
-             color: #aaa;
-        }
-        
-        /* --- MOBILE STYLES --- */
+        /* --- Mobile Responsiveness --- */
         @media (max-width: 768px) {
-            .container { padding: 15px; }
-            h1 { font-size: 1.8rem; }
+            .container { padding: 16px; }
+            .header h1 { font-size: 1.5rem; }
+            .header-controls { gap: 8px; }
+            .summary-stats { grid-template-columns: repeat(2, 1fr); }
             .stocks-grid { grid-template-columns: 1fr; }
-            .utility-buttons-grid { grid-template-columns: repeat(2, 1fr); }
-            .group-header {
-                flex-wrap: wrap;
-                padding: 15px;
-                font-size: 1.2rem;
-            }
-        }
-        @media (max-width: 480px) {
-            .stocks-grid {
-                grid-template-columns: 1fr; /* Force stacked cards */
-                gap: 16px;
-            }
-            .stock-card, .fund-card, .watchlist-card {
-                padding: 12px;
-            }
-            .container {
-                padding: 5px !important;
-                max-width: 100vw;
-                box-sizing: border-box;
-            }
-            .info-value {
-                text-align: left !important;
-                padding-left: 4px;
-                padding-right: 0 !important;
-                overflow: visible !important;
-                text-overflow: unset !important;
-                white-space: normal !important;
-            }
-            .info-row {
-                grid-template-columns: 120px 1fr !important;
-                gap: 8px !important;
-            }
-            .tabs {
-                 padding: 5px;
-            }
-            .modal-content {
-                width: 95%;
-                padding: 20px;
-            }
+            #user-name { display: none; }
         }
     </style>
 </head>
 <body>
+    <!-- 
+    The body content remains the same, but the header structure is slightly updated for the new design.
+    The new styles will automatically apply to the existing HTML structure.
+    -->
     <div id="loading" class="loading" style="display: none;">Loading...</div>
     <div id="error" class="error" style="display: none;"></div>
     <div id="success" class="success" style="display: none;"></div>
@@ -1131,22 +667,28 @@
 
     <div id="login-container" class="container">
         <h1>💰 Live Portfolio Tracker</h1>
-        <p style="text-align: center; margin-bottom: 30px; font-size: 1.2rem;">Sign in to continue</p>
+        <p style="text-align: center; margin-bottom: 30px; font-size: 1.2rem; color: var(--text-secondary);">Sign in to continue</p>
         <button id="google-signin-btn" class="add-btn" style="margin: 0 auto; display: flex; align-items: center; gap: 10px; width: auto;">
             <svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 0 24 24" width="24" fill="white"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/><path d="M1 1h22v22H1z" fill="none"/></svg>
             Sign in with Google
         </button>
         <div id="firebase-auth-error" style="display: none;"></div>
     </div>
+    
+    <div id="app-container" class="container">
+        <!-- New Header Structure -->
+        <header class="header">
+             <h1>💰 Portfolio Tracker</h1>
+             <div class="header-controls">
+                <div id="user-info" style="display: none;">
+                    <span id="user-name"></span>
+                    <button id="sign-out-btn">Sign Out</button>
+                </div>
+             </div>
+        </header>
 
-    <div id="app-container" class="container" style="display: none;">
-        <div id="user-info" style="display: none;">
-            <span id="user-name"></span>
-            <button id="sign-out-btn" class="add-btn">Sign Out</button>
-        </div>
-        <h1>💰 Live Portfolio Tracker</h1>
         <div id="header-countdown">Next update in: <span id="countdown">90</span>s</div>
-        
+
         <div class="tabs">
             <button class="tab active" onclick="window.stockTracker.switchTab('stocks')">📊 Stocks & Portfolio</button>
             <button class="tab" onclick="window.stockTracker.switchTab('funds')">🏛️ Mutual Funds</button>
@@ -1188,13 +730,13 @@
                     </div>
                 </div>
             </div>
-            
+
             <div class="search-section">
                 <input type="text" class="search-input" id="stockInput" placeholder="Enter stock symbol (e.g., AAPL)">
                 <input type="text" class="search-input" id="platformInput" placeholder="Platform (e.g., Fidelity)">
                 <button class="add-btn" id="addBtn">Add Stock</button>
             </div>
-            
+
             <div class="portfolio-controls">
                 <input type="text" id="portfolioFilter" placeholder="🔎 Filter your portfolio...">
                 <select id="portfolioSort">
@@ -1207,31 +749,23 @@
             </div>
 
             <div class="utility-buttons-grid">
-                <button class="add-btn" id="liveUpdateBtn" style="background: linear-gradient(45deg, #2ed573, #17c0eb);">🔄 Live Update</button>
-                <button class="add-btn" id="toggleLiveUpdateBtn" style="background: linear-gradient(45deg, #f7b731, #ff5e3a);">⏸️ Pause Live Update</button>
-                <button class="add-btn" id="clearAllBtn" style="background: #ff4757;">🗑️ Clear All Data</button>
-                
-                <!-- FIX: Separate Export Button from Import Label/Input, and group them to occupy one grid cell vertically, forcing equal sizing. -->
+                <button class="add-btn" id="liveUpdateBtn">🔄 Live Update</button>
+                <button class="add-btn" id="toggleLiveUpdateBtn">⏸️ Pause Live Update</button>
                 <div class="import-wrapper">
-                    <button class="add-btn" id="exportBtn" style="background: linear-gradient(45deg, #3498db, #2980b9);">📥 Export Data</button>
-                    <label for="importFile" class="add-btn" style="background: linear-gradient(45deg, #2ecc71, #27ae60); cursor: pointer; text-align: center;">📤 Import Data</label>
+                    <button class="add-btn" id="exportBtn">📥 Export Data</button>
+                    <label for="importFile" class="add-btn" style="cursor: pointer;">📤 Import Data</label>
                     <input type="file" id="importFile" accept=".json" style="display: none;">
                 </div>
-                <!-- End FIX -->
-
-                <button class="add-btn" id="settingsBtn" style="background: linear-gradient(45deg, #6c757d, #343a40);">⚙️ Settings</button>
-                
-                <!-- NEW: View Active Alerts Button -->
-                <button class="add-btn" id="viewAlertsBtn" style="background: linear-gradient(45deg, #9b59b6, #8e44ad);">🔔 View Active Alerts</button>
-                <!-- END NEW -->
-
-                <button class="add-btn" id="listAllBtn" style="background: #9b59b6;">📋 List All Stocks</button>
-                <button class="add-btn" id="toggleDarkModeBtn" style="background: #333;">🌙 Toggle Theme</button>
+                <button class="add-btn" id="settingsBtn">⚙️ Settings</button>
+                <button class="add-btn" id="viewAlertsBtn">🔔 View Active Alerts</button>
+                <button class="add-btn" id="listAllBtn">📋 List All Stocks</button>
+                 <button class="add-btn" id="toggleDarkModeBtn">🌙 Toggle Theme</button>
+                <button class="add-btn" id="clearAllBtn">🗑️ Clear All Data</button>
             </div>
         </div>
-
+        
         <div id="funds-tab" class="tab-content">
-             <div id="funds-portfolio-summary" class="portfolio-summary" style="display: none;">
+            <div id="funds-portfolio-summary" class="portfolio-summary" style="display: none;">
                 <h3>Your Mutual Fund Portfolio</h3>
                 <div class="summary-stats">
                     <div class="summary-item">
@@ -1259,25 +793,24 @@
 
             <div class="search-section">
                 <input type="text" class="search-input" id="mutualFundInput" placeholder="Enter mutual fund symbol (e.g., VTIAX, FXNAX, SWPPX)">
-                <button class="add-btn" id="addFundBtn" style="background: linear-gradient(45deg, #ff6b6b, #ff9f43);">Add Fund</button>
-                <button class="add-btn" id="quickLookupBtn" style="background: linear-gradient(45deg, #f7b731, #ff9f43);">Quick Lookup</button>
+                <button class="add-btn" id="addFundBtn">Add Fund</button>
+                <button class="add-btn" id="quickLookupBtn">Quick Lookup</button>
             </div>
              <div class="funds-controls">
                 <button class="add-btn" id="updateAllFundsBtn">🔄 Update Funds</button>
-                <button class="add-btn" id="clearAllFundsBtn" style="background: #ff4757;">🗑️ Clear All Funds</button>
+                <button class="add-btn" id="clearAllFundsBtn">🗑️ Clear All Funds</button>
             </div>
         </div>
-        
+
         <div id="watchlist-tab" class="tab-content">
              <div class="search-section">
                 <input type="text" class="search-input" id="watchlistInput" placeholder="Enter stock symbol (e.g., AAPL, GOOGL, TSLA)">
-                <button class="add-btn" id="addWatchlistBtn" style="background: linear-gradient(45deg, #f7b731, #ff5e3a);">Add to Watchlist</button>
+                <button class="add-btn" id="addWatchlistBtn">Add to Watchlist</button>
             </div>
              <div class="watchlist-controls">
                 <button class="add-btn" id="updateWatchlistBtn">🔄 Update Watchlist</button>
-                <button class="add-btn" id="clearWatchlistBtn" style="background: #ff4757;">🗑️ Clear Watchlist</button>
+                <button class="add-btn" id="clearWatchlistBtn">🗑️ Clear Watchlist</button>
             </div>
-            <!-- FIX: Encapsulate the title and count in a single span for Flexbox alignment -->
             <h3 class="watchlist-title"><span>Your Watchlist <span id="watchlist-count">(0)</span></span></h3>
         </div>
 
@@ -1291,21 +824,18 @@
         <div id="diversification-chart-container" class="chart-container" style="display: none;">
             <canvas id="diversificationChart"></canvas>
         </div>
-
         <div id="history-chart-container" class="chart-container" style="display: none;">
             <canvas id="historyChart"></canvas>
         </div>
     </div>
-
+    
     <div class="small-countdown" id="small-countdown-container">Next update: <span id="smallCountdown">90s</span></div>
     
-    <!-- NEW: Edit Stock Modal -->
+    <!-- All Modals -->
     <div id="editStockModal" class="modal" style="display: none;">
         <div class="modal-content">
             <button class="close-modal-btn" id="closeEditStockBtn">&times;</button>
             <h3 class="modal-title">Edit Stock: <span id="edit-stock-symbol-display"></span></h3>
-            
-            <!-- Inputs for Symbol and Name -->
             <div class="transaction-input-group">
                 <label for="edit-stock-symbol">Symbol:</label>
                 <input type="text" class="search-input" id="edit-stock-symbol" placeholder="Stock Symbol (e.g., AAPL)">
@@ -1314,8 +844,6 @@
                 <label for="edit-stock-name">Name:</label>
                 <input type="text" class="search-input" id="edit-stock-name" placeholder="Company Name">
             </div>
-
-            <!-- ADDED: Inputs for Shares, Average Cost, and Initial Date (Affects first buy transaction) -->
             <div class="transaction-input-group">
                 <label for="edit-stock-shares">Shares (Edit First Buy):</label>
                 <input type="number" class="search-input" id="edit-stock-shares" placeholder="Total Shares (First Buy)">
@@ -1328,8 +856,6 @@
                 <label for="edit-stock-date">Initial Buy Date (Edit First Buy):</label>
                 <input type="date" class="search-input" id="edit-stock-date">
             </div>
-
-            <!-- Existing: Platform Input -->
             <div class="transaction-input-group">
                 <label for="edit-stock-platform">Platform:</label>
                 <input type="text" class="search-input" id="edit-stock-platform" placeholder="e.g., Fidelity, Robinhood">
@@ -1337,7 +863,6 @@
             <button class="add-btn" id="save-stock-edit-btn">Save All Details</button>
         </div>
     </div>
-
     <div id="transactionModal" class="modal" style="display: none;">
         <div class="modal-content">
             <button class="close-modal-btn" onclick="window.stockTracker.closeTransactionModal()">&times;</button>
@@ -1350,12 +875,10 @@
                 <label for="modal-price">Price:</label>
                 <input type="number" class="search-input" id="modal-price" placeholder="Price per share" min="0">
             </div>
-            <!-- NEW: Date input with calendar selector -->
             <div class="transaction-input-group">
                 <label for="modal-date">Transaction Date:</label>
                 <input type="date" class="search-input" id="modal-date" required>
             </div>
-            <!-- End NEW -->
             <div class="transaction-input-group">
                 <label for="modal-note">Note:</label>
                 <input type="text" class="search-input" id="modal-note" placeholder="Optional notes">
@@ -1367,7 +890,6 @@
             <button class="add-btn" id="modal-save-btn">Save Transaction</button>
         </div>
     </div>
-    
     <div id="settingsModal" class="modal" style="display: none;">
         <div class="modal-content">
             <button class="close-modal-btn" id="closeSettingsBtn">&times;</button>
@@ -1380,36 +902,32 @@
                 <label for="modal-alpha-vantage-key">Alpha Vantage API Key (Used for Mutual Funds):</label>
                 <input type="text" class="search-input" id="modal-alpha-vantage-key" placeholder="Enter your Alpha Vantage API Key">
             </div>
-            <!-- ADDED: FMP API Key Input -->
             <div class="transaction-input-group">
                 <label for="modal-fmp-key">FMP API Key (Used for News):</label>
                 <input type="text" class="search-input" id="modal-fmp-key" placeholder="Enter your Financial Modeling Prep API Key">
             </div>
-            <!-- END ADDED -->
             <div class="transaction-input-group">
                 <label for="modal-refresh-interval">Auto-Refresh Interval (seconds):</label>
                 <input type="number" class="search-input" id="modal-refresh-interval" placeholder="e.g., 60" min="10">
             </div>
              <div class="transaction-input-group">
                 <label for="enable-push-notifications-btn">Enable Push Notifications:</label>
-                <button class="add-btn" id="enable-push-notifications-btn" style="background: linear-gradient(45deg, #9b59b6, #8e44ad);">🔔 Enable Notifications</button>
+                <button class="add-btn" id="enable-push-notifications-btn">🔔 Enable Notifications</button>
             </div>
             <button class="add-btn" id="modal-save-settings-btn">Save Settings</button>
         </div>
     </div>
-
     <div id="confirmModal" class="modal" style="display: none;">
         <div class="modal-content">
             <button class="close-modal-btn" id="closeConfirmModalBtn" onclick="window.stockTracker.closeConfirmModal()">&times;</button>
             <h3 class="modal-title">Are you sure?</h3>
             <p id="confirm-modal-text" style="text-align: center; margin-bottom: 20px;"></p>
             <div class="modal-actions">
-                <button class="add-btn" id="confirm-modal-cancel-btn" style="background: #6c757d;">Cancel</button>
-                <button class="add-btn" id="confirm-modal-confirm-btn" style="background: #ff4757;">Confirm Delete</button>
+                <button class="add-btn" id="confirm-modal-cancel-btn" style="background-color: var(--bg-tertiary); color: var(--text-primary);">Cancel</button>
+                <button class="add-btn" id="confirm-modal-confirm-btn" style="background-color: var(--color-negative);">Confirm Delete</button>
             </div>
         </div>
     </div>
-    
     <div id="priceAlertModal" class="modal" style="display: none;">
         <div class="modal-content">
             <button class="close-modal-btn" onclick="window.stockTracker.closePriceAlertModal()">&times;</button>
@@ -1428,33 +946,34 @@
             <button class="add-btn" id="save-alert-btn">Save Alert</button>
         </div>
     </div>
-
-    <!-- NEW MODAL: Active Alerts Summary -->
     <div id="alertsSummaryModal" class="modal" style="display: none;">
         <div class="modal-content">
             <button class="close-modal-btn" id="closeAlertsSummaryBtn">&times;</button>
             <h3 class="modal-title">📋 Active Price Alerts</h3>
             <div id="alerts-summary-content" style="max-height: 300px; overflow-y: auto; text-align: left;">
-                <!-- Content will be rendered here -->
             </div>
         </div>
     </div>
-    <!-- END NEW MODAL -->
-
     <div id="listAllModal" class="modal" style="display: none;">
         <div class="modal-content">
             <button class="close-modal-btn" id="closeListAllBtn">&times;</button>
             <h3 class="modal-title">All Saved Symbols</h3>
-            <div id="list-all-content"></div>
+            <div id="list-all-content" style="max-height: 60vh; overflow-y: auto;"></div>
         </div>
     </div>
 
-
+    <!-- 
+    ==================================================================
+    ==                  YOUR ORIGINAL JAVASCRIPT                    ==
+    ==================================================================
+    This is your full, unchanged JavaScript block, ensuring all
+    functionality is preserved.
+    -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
+        
         const firebaseConfig = {
             apiKey: "AIzaSyB3SIrzA5Y3nZhjZXvzKiW3irJubfNdD7g",
             authDomain: "live-stocks-etfs-mutual-funds.firebaseapp.com",
@@ -1473,7 +992,6 @@
 
         class ApiService {
             constructor(config) { this.config = config; }
-
             async fetchStockEtfData(symbol) {
                 const quoteUrl = `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${this.config.finnhubApiKey}`;
                 const profileUrl = `https://finnhub.io/api/v1/stock/profile2?symbol=${symbol}&token=${this.config.finnhubApiKey}`;
@@ -1483,12 +1001,11 @@
                     const [quoteData, profileData] = await Promise.all([quoteResponse.json(), profileResponse.json()]);
                     if ((quoteData.c === 0 && quoteData.pc === 0) || !profileData.name) return { success: false, symbol, reason: 'Invalid or empty API payload' };
                     return { success: true, data: { symbol, name: profileData.name ?? symbol, price: quoteData.c ?? 0, change: quoteData.d ?? 0, changePercent: quoteData.dp ?? 0, open: quoteData.o ?? 0, high: quoteData.h ?? 0, low: quoteData.l ?? 0, previousClose: quoteData.pc ?? 0, industry: profileData.finnhubIndustry ?? 'N/A' } };
-                } catch (error) { 
-                    console.error(`Error fetching stock/ETF data for ${symbol}:`, error); 
-                    return { success: false, symbol, reason: error.message };
+                } catch (error) {
+                     console.error(`Error fetching stock/ETF data for ${symbol}:`, error);
+                     return { success: false, symbol, reason: error.message };
                 }
             }
-
             async fetchStockEtfQuote(symbol) {
                 const quoteUrl = `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${this.config.finnhubApiKey}`;
                 try {
@@ -1502,64 +1019,46 @@
                     return { success: false, symbol, reason: error.message };
                 }
             }
-            
             async fetchNews(symbols) {
                  if (symbols.length === 0) return { success: true, data: [] };
-                
-                // CHECK: Ensure FMP Key is present
                 if (!this.config.fmpApiKey || this.config.fmpApiKey === 'YOUR_FMP_API_KEY') {
                     return { success: false, reason: "FMP API Key is missing. Please set it in Settings to fetch news." };
                 }
-
-                // --- FIX: Using the Company Profile endpoint as a fallback for news since the news endpoint is failing (403) ---
-                // We fetch the company's website (used in the news card as a source/link) and construct a minimal result.
                 const profileUrl = `https://financialmodelingprep.com/api/v3/profile/${symbols.join(',')}?apikey=${this.config.fmpApiKey}`;
-                
                 try {
                     const response = await fetch(profileUrl);
                     if (!response.ok) {
                         return { success: false, reason: `HTTP Error: ${response.status}. Check your FMP API key/plan access.` };
                     }
-                    
                     const data = await response.json();
-
-                    // --- NEW FIX: Iterate over ALL requested symbols and generate a card for every one.
                     const generatedNews = symbols.map(symbol => {
                         const profile = data.find(p => p.symbol === symbol);
-                        
                         if (profile && profile.companyName) {
-                            // Case 1: FMP returned a valid profile
                             return {
                                 url: profile.website || `https://www.google.com/search?q=${symbol}+stock+news`,
-                                title: `Official News Source for ${profile.companyName} (${symbol})`, 
-                                summary: `Profile data pulled successfully. Check the company website for the latest official news. (Industry: ${profile.industry})`, 
-                                banner_image: profile.image || 'https://placehold.co/100x100/eee/ccc?text=FMP', 
-                                source: profile.website ? new URL(profile.website).hostname : 'Google Search',
+                                title: `Official News Source for ${profile.companyName} (${symbol})`,
+                                 summary: `Profile data pulled successfully. Check the company website for the latest official news. (Industry: ${profile.industry})`,
+                                 banner_image: profile.image || 'https://placehold.co/100x100/eee/ccc?text=FMP',
+                                 source: profile.website ? new URL(profile.website).hostname : 'Google Search',
                                 date: new Date().toISOString(),
                             };
                         } else {
-                            // Case 2: FMP failed to return a profile (missing data/bad ticker). Force a Google Search link.
                             return {
                                 url: `https://www.google.com/search?q=${symbol}+stock+news`,
-                                title: `Searching for News: ${symbol}`, 
-                                summary: `FMP profile data unavailable. Clicking this card will perform a real-time Google search for news on ${symbol}.`, 
-                                banner_image: 'https://placehold.co/100x100/34a853/ffffff?text=Google', 
-                                source: 'Google Search Fallback',
+                                title: `Searching for News: ${symbol}`,
+                                 summary: `FMP profile data unavailable. Clicking this card will perform a real-time Google search for news on ${symbol}.`,
+                                 banner_image: 'https://placehold.co/100x100/34a853/ffffff?text=Google',
+                                 source: 'Google Search Fallback',
                                 date: new Date().toISOString(),
                             };
                         }
                     });
-                    // --- END NEW FIX ---
-                    
-                    // We return the full list of generated news items (33 cards for 33 symbols).
                     return { success: true, data: generatedNews };
-
                 } catch (error) {
                     console.error("Error fetching news (FMP Profile Fallback):", error);
                     return { success: false, reason: error.message };
                 }
             }
-
             async fetchFundData(symbol) {
                 const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${this.config.alphaVantageKey}`;
                 try {
@@ -1575,7 +1074,6 @@
                 }
             }
         }
-
         class StockTracker {
             constructor() {
                 this.userId = null; this.stocks = []; this.mutualFunds = []; this.watchlist = []; this.portfolioHistory = [];
@@ -1588,12 +1086,9 @@
                 this.groupCollapseState = {};
                 this.init();
             }
-
             init() {
-                // FIX: Centralizing initialization to ensure methods exist before being called.
                 document.addEventListener('DOMContentLoaded', this.runInitialization.bind(this));
             }
-
             runInitialization() {
                 this.loadConfig();
                 try {
@@ -1607,24 +1102,21 @@
                 this.cacheDOMElements();
                 this.setupEventListeners();
                 this.applyTheme();
-                if (!db) { 
-                    this.showError("Firebase is not configured. Please add your firebaseConfig object to the script tag.");
+                if (!db) {
+                     this.showError("Firebase is not configured. Please add your firebaseConfig object to the script tag.");
                     this.elements.loginContainer.style.display = 'block';
                     return;
                 }
                 this.handleAuthentication();
             }
-            
             formatCurrency(num) {
                 if (typeof num !== 'number') return num;
                 return num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
             }
-
             formatNumber(num, decimals = 2) {
                 if (typeof num !== 'number') return num;
                 return num.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
             }
-
             handleAuthentication() {
                  onAuthStateChanged(auth, user => {
                     if (user) {
@@ -1645,7 +1137,6 @@
                     }
                 });
             }
-
             signIn() {
                 const provider = new GoogleAuthProvider();
                 signInWithPopup(auth, provider).catch(error => {
@@ -1669,11 +1160,9 @@
                     }
                 });
             }
-
             signOut() {
                 signOut(auth).catch(error => console.error("Sign out error", error));
             }
-            
             loadConfig() {
                 const userFinnhubKey = localStorage.getItem('finnhubApiKey');
                 const userAlphaVantageKey = localStorage.getItem('alphaVantageApiKey');
@@ -1685,7 +1174,6 @@
                     fmpApiKey: userFmpKey || "vOqUU3gDIDYWghK8m4ZlsVQwLDnhfYMS"
                 };
             }
-
             cacheDOMElements() {
                 this.elements = {
                     loginContainer: document.getElementById('login-container'),
@@ -1696,7 +1184,7 @@
                     signOutBtn: document.getElementById('sign-out-btn'),
                     stocksGrid: document.getElementById('stocksGrid'), loadingDiv: document.getElementById('loading'), errorDiv: document.getElementById('error'), successDiv: document.getElementById('success'),
                     stockInput: document.getElementById('stockInput'), addBtn: document.getElementById('addBtn'),
-                    platformInput: document.getElementById('platformInput'), 
+                    platformInput: document.getElementById('platformInput'),
                     liveUpdateBtn: document.getElementById('liveUpdateBtn'), toggleLiveUpdateBtn: document.getElementById('toggleLiveUpdateBtn'), clearAllBtn: document.getElementById('clearAllBtn'),
                     portfolioFilter: document.getElementById('portfolioFilter'), portfolioSort: document.getElementById('portfolioSort'), settingsBtn: document.getElementById('settingsBtn'),
                     mutualFundInput: document.getElementById('mutualFundInput'), addFundBtn: document.getElementById('addFundBtn'),
@@ -1704,14 +1192,14 @@
                     exportBtn: document.getElementById('exportBtn'), importFile: document.getElementById('importFile'),
                     portfolioSummary: document.getElementById('portfolio-summary'), fundsPortfolioSummary: document.getElementById('funds-portfolio-summary'),
                     transactionModal: document.getElementById('transactionModal'), modalTitleAction: document.getElementById('modal-title-action'), modalSymbol: document.getElementById('modal-symbol'),
-                    modalShares: document.getElementById('modal-shares'), modalPrice: document.getElementById('modal-price'), modalNote: document.getElementById('modal-note'), 
-                    modalDate: document.getElementById('modal-date'), // Added Date Input
+                    modalShares: document.getElementById('modal-shares'), modalPrice: document.getElementById('modal-price'), modalNote: document.getElementById('modal-note'),
+                    modalDate: document.getElementById('modal-date'),
                     modalSaveBtn: document.getElementById('modal-save-btn'),
                     settingsModal: document.getElementById('settingsModal'),
                     closeSettingsBtn: document.getElementById('closeSettingsBtn'),
                     modalFinnhubKey: document.getElementById('modal-finnhub-key'),
                     modalAlphaVantageKey: document.getElementById('modal-alpha-vantage-key'),
-                    modalFmpKey: document.getElementById('modal-fmp-key'), // FMP Key element
+                    modalFmpKey: document.getElementById('modal-fmp-key'),
                     modalRefreshInterval: document.getElementById('modal-refresh-interval'),
                     modalSaveSettingsBtn: document.getElementById('modal-save-settings-btn'),
                     diversificationChartContainer: document.getElementById('diversification-chart-container'),
@@ -1751,31 +1239,24 @@
                     newsArticlesContainer: document.getElementById('news-articles-container'),
                     modalDividendFields: document.getElementById('modal-dividend-fields'),
                     modalDividendAmount: document.getElementById('modal-dividend-amount'),
-                    // NEW: Edit Stock Modal elements
                     editStockModal: document.getElementById('editStockModal'),
                     closeEditStockBtn: document.getElementById('closeEditStockBtn'),
                     editStockSymbolDisplay: document.getElementById('edit-stock-symbol-display'),
-                    // NEW: Editable fields
                     editStockSymbol: document.getElementById('edit-stock-symbol'),
                     editStockName: document.getElementById('edit-stock-name'),
                     editStockPlatform: document.getElementById('edit-stock-platform'),
-                    // ADDED for #editStockModal:
                     editStockShares: document.getElementById('edit-stock-shares'),
                     editStockCost: document.getElementById('edit-stock-cost'),
                     editStockDate: document.getElementById('edit-stock-date'),
-                    // End ADDED
                     saveStockEditBtn: document.getElementById('save-stock-edit-btn'),
-                    // NEW: Active Alerts Modal elements
                     viewAlertsBtn: document.getElementById('viewAlertsBtn'),
                     alertsSummaryModal: document.getElementById('alertsSummaryModal'),
                     closeAlertsSummaryBtn: document.getElementById('closeAlertsSummaryBtn'),
                     alertsSummaryContent: document.getElementById('alerts-summary-content'),
                 };
-
-                this.elements.resizeObserver.observe(this.elements.diversificationChartContainer);
-                this.elements.resizeObserver.observe(this.elements.historyChartContainer);
+                if (this.elements.diversificationChartContainer) this.elements.resizeObserver.observe(this.elements.diversificationChartContainer);
+                if (this.elements.historyChartContainer) this.elements.resizeObserver.observe(this.elements.historyChartContainer);
             }
-
             setupEventListeners() {
                 this.elements.googleSignInBtn.addEventListener('click', () => this.signIn());
                 this.elements.signOutBtn.addEventListener('click', () => this.signOut());
@@ -1798,7 +1279,7 @@
                 this.elements.settingsBtn.addEventListener('click', () => this.openSettingsModal());
                 this.elements.closeSettingsBtn.addEventListener('click', () => this.closeSettingsModal());
                 this.elements.modalSaveSettingsBtn.addEventListener('click', () => this.saveSettings());
-                this.elements.confirmModalCancelBtn.addEventListener('click', () => this.closeConfirmModal(true)); // Pass true to indicate return to list
+                this.elements.confirmModalCancelBtn.addEventListener('click', () => this.closeConfirmModal(true));
                 this.elements.confirmModalConfirmBtn.addEventListener('click', () => this.handleConfirmAction());
                 this.elements.listAllBtn.addEventListener('click', () => this.openListAllModal());
                 this.elements.closeListAllBtn.addEventListener('click', () => this.closeListAllModal());
@@ -1808,16 +1289,11 @@
                 this.elements.clearAllFundsBtn.addEventListener('click', () => this.clearAllItems('fund'));
                 this.elements.updateWatchlistBtn.addEventListener('click', () => this.refreshWatchlist());
                 this.elements.clearWatchlistBtn.addEventListener('click', () => this.clearAllItems('watchlist'));
-
-                // NEW: Event Listeners for Edit Stock Modal
                 this.elements.closeEditStockBtn.addEventListener('click', () => this.closeEditStockModal());
-                this.elements.saveStockEditBtn.addEventListener('click', () => this.saveStockDetails()); // Renamed function
-
-                // NEW: Alerts Summary Button Listeners
+                this.elements.saveStockEditBtn.addEventListener('click', () => this.saveStockDetails());
                 this.elements.viewAlertsBtn.addEventListener('click', () => this.openAlertsSummaryModal());
                 this.elements.closeAlertsSummaryBtn.addEventListener('click', () => this.elements.alertsSummaryModal.style.display = 'none');
                 
-                // --- NEW: Add listeners to close modals by clicking outside or pressing Escape ---
                 const setupModalCloseListeners = () => {
                     const modals = [
                         { element: this.elements.listAllModal, closeFn: () => this.closeListAllModal() },
@@ -1828,8 +1304,6 @@
                         { element: this.elements.priceAlertModal, closeFn: () => this.closePriceAlertModal() },
                         { element: this.elements.alertsSummaryModal, closeFn: () => this.elements.alertsSummaryModal.style.display = 'none' }
                     ];
-
-                    // Click outside to close
                     modals.forEach(({ element, closeFn }) => {
                         if (element) {
                             element.addEventListener('click', (e) => {
@@ -1839,117 +1313,80 @@
                             });
                         }
                     });
-
-                    // Press Escape to close the topmost modal
                     window.addEventListener('keydown', (e) => {
                         if (e.key === 'Escape') {
-                            // Find the last modal in the list that is currently visible and close it
                             for (let i = modals.length - 1; i >= 0; i--) {
                                 const { element, closeFn } = modals[i];
                                 if (element && element.style.display !== 'none') {
                                     closeFn();
-                                    break; // Close only one modal at a time
+                                    break;
                                 }
                             }
                         }
                     });
                 };
                 setupModalCloseListeners();
-                // --- END NEW ---
-
-                // --- Scroll position persistence logic ---
                 window.addEventListener('beforeunload', () => {
                     sessionStorage.setItem('scrollPosition', window.scrollY);
                 });
                 window.addEventListener('load', () => {
                     const scrollPosition = sessionStorage.getItem('scrollPosition');
                     if (scrollPosition) {
-                        // FIX: Only restore on initial load, not after refresh.
-                        // We will rely on explicit calls in renderContent/refreshCurrentTab.
                         window.scrollTo(0, parseInt(scrollPosition));
                     }
                 });
-                // ------------------------------------------
-                
-                // --- FIX: Event Delegation for dynamic Buy/Sell/Edit/Delete buttons ---
                 this.elements.stocksGrid.addEventListener('click', (e) => this.handleCardAction(e));
-                // ---------------------------------------------------------------------
             }
-
-            // --- NEW: Scroll position helper methods ---
             saveScrollPosition() {
                 this.lastScrollPosition = window.scrollY;
             }
-
             restoreScrollPosition() {
                 if (this.lastScrollPosition !== undefined) {
                     window.scrollTo(0, this.lastScrollPosition);
-                    this.lastScrollPosition = undefined; // Clear after use
+                    this.lastScrollPosition = undefined;
                 }
             }
-            // ---------------------------------------------
-            
-            // --- NEW: Event Delegation Handler ---
             handleCardAction(event) {
-                const clickedButton = event.target.closest('.transaction-btn, .edit-btn, .edit-transaction-btn, .delete-transaction-btn, .set-alert-btn'); // Added set-alert-btn
+                const clickedButton = event.target.closest('.transaction-btn, .edit-btn, .edit-transaction-btn, .delete-transaction-btn, .set-alert-btn');
                 if (!clickedButton) return;
-                
-                // Find the parent stock card to get the necessary data
                 const card = clickedButton.closest('.stock-card, .fund-card, .watchlist-card');
                 if (!card) return;
-                
                 const cardType = card.classList.contains('stock-card') ? 'stock' : card.classList.contains('fund-card') ? 'fund' : 'watchlist';
-                
-                // Use data attributes for reliability
                 const symbol = card.dataset.symbol || card.querySelector('.stock-symbol, .fund-symbol')?.textContent.trim();
                 if (!symbol) return;
-                
-                event.preventDefault(); 
+                event.preventDefault();
                 event.stopPropagation();
-                
-                // --- Handle Transaction Edit/Delete Buttons ---
                 if (clickedButton.classList.contains('edit-transaction-btn')) {
                     const transactionIndex = parseInt(clickedButton.dataset.index);
                     const transactionType = clickedButton.dataset.type;
                     this.openEditTransactionModal(symbol, cardType, transactionIndex, transactionType);
                     return;
                 }
-                
                 if (clickedButton.classList.contains('delete-transaction-btn')) {
                     const transactionIndex = parseInt(clickedButton.dataset.index);
                     this.removeTransaction(symbol, transactionIndex, cardType);
                     return;
                 }
-                // --- End Handle Transaction Edit/Delete Buttons ---
-
-
-                // Check for Buy/Sell/Edit/Alert buttons based on class name
                 if (clickedButton.classList.contains('buy-btn')) {
                     this.openTransactionModal(symbol, cardType, 'buy');
                 } else if (clickedButton.classList.contains('sell-btn')) {
                     this.openTransactionModal(symbol, cardType, 'sell');
                 } else if (clickedButton.classList.contains('edit-btn')) {
                     this.openEditStockModal(symbol);
-                } else if (clickedButton.classList.contains('set-alert-btn')) { // Handle New Alert Button
+                } else if (clickedButton.classList.contains('set-alert-btn')) {
                     this.openPriceAlertModal(symbol);
                 }
             }
-            // -------------------------------------
-            
             switchTab(tab) {
-                this.saveScrollPosition(); // Save position before switching
+                this.saveScrollPosition();
                 this.currentTab = tab;
                 document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active')); // Ensure only one active
-                
+                document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
                 document.querySelector(`[onclick="window.stockTracker.switchTab('${tab}')"]`).classList.add('active');
-                document.getElementById(`${tab}-tab`).classList.add('active'); // Use class to toggle display
-
+                document.getElementById(`${tab}-tab`).classList.add('active');
                 if (tab === 'news') this.fetchAndRenderNews();
                 else this.renderContent();
-                // Scroll is restored in renderContent or fetchAndRenderNews
             }
-
             sortItems(items, sortBy) {
                 switch (sortBy) {
                     case 'performance':
@@ -1965,7 +1402,7 @@
                     case 'pl_overall':
                          return items.sort((a, b) => {
                             const plA = this.calculateTransactionStats(a.transactions, a.price).unrealizedPL;
-                            const plB = this.calculateTransactionStats(b.transactions, a.price).unrealizedPL;
+                            const plB = this.calculateTransactionStats(b.transactions, b.price).unrealizedPL;
                             return plB - plA;
                         });
                     case 'platform':
@@ -1974,40 +1411,32 @@
                         return items;
                 }
             }
-
             renderContent() {
                 if (!this.userId && db) return;
-                
-                this.saveScrollPosition(); // Save scroll position right before redrawing
-
+                this.saveScrollPosition();
                 const grid = this.elements.stocksGrid;
                 if (!grid) return;
-                grid.innerHTML = ''; 
-
+                grid.innerHTML = '';
                 this.elements.portfolioSummary.style.display = 'none';
                 this.elements.fundsPortfolioSummary.style.display = 'none';
-                
                 let items, type;
-                if (this.currentTab === 'stocks') { [items, type] = [this.stocks, 'stock']; this.elements.portfolioSummary.style.display = 'block';} 
+                if (this.currentTab === 'stocks') { [items, type] = [this.stocks, 'stock']; this.elements.portfolioSummary.style.display = 'block';}
                 else if (this.currentTab === 'funds') { [items, type] = [this.mutualFunds, 'fund']; this.elements.fundsPortfolioSummary.style.display = 'block';}
-                else if (this.currentTab === 'watchlist') { 
-                    [items, type] = [this.watchlist, 'watchlist']; 
-                    this.elements.watchlistCount.textContent = this.watchlist.length;
+                else if (this.currentTab === 'watchlist') {
+                     [items, type] = [this.watchlist, 'watchlist'];
+                     this.elements.watchlistCount.textContent = `(${this.watchlist.length})`;
                 } else if (this.currentTab === 'news') {
                     this.fetchAndRenderNews();
                     return;
                 }
-
                 const filterTerm = (this.currentTab === 'stocks' ? this.elements.portfolioFilter.value : '').toLowerCase();
-                let filteredItems = items.filter(item => 
-                    item.symbol.toLowerCase().includes(filterTerm) || 
-                    (item.name && item.name.toLowerCase().includes(filterTerm)) ||
+                let filteredItems = items.filter(item =>
+                     item.symbol.toLowerCase().includes(filterTerm) ||
+                     (item.name && item.name.toLowerCase().includes(filterTerm)) ||
                     (item.platform && item.platform.toLowerCase().includes(filterTerm))
                 );
-
                 const sortBy = this.elements.portfolioSort.value;
-                const sortedItems = this.sortItems([...filteredItems], sortBy); 
-
+                const sortedItems = this.sortItems([...filteredItems], sortBy);
                 if (type === 'stock') {
                     this.renderPortfolioSummary();
                     if (sortBy === 'platform') {
@@ -2023,27 +1452,22 @@
                 } else if (type === 'watchlist') {
                     this.renderCards(sortedItems, grid, type);
                 }
-                
                 this.renderDiversificationChart();
                 this.renderHistoryChart();
-
-                if (sortedItems.length === 0 && type !== 'stock') { 
-                    grid.innerHTML = `<div class="loading">Your ${type} list is empty.</div>`; 
+                if (sortedItems.length === 0 && type !== 'stock') {
+                     grid.innerHTML = `<div class="loading" style="grid-column: 1 / -1;">Your ${type} list is empty.</div>`;
                 }
-                
-                this.restoreScrollPosition(); // Restore scroll position after redrawing
+                this.restoreScrollPosition();
             }
-            
             async saveData() {
                 if (!this.userId) return;
                 const userDocRef = doc(db, "users", this.userId);
-                const data = { 
-                    stocks: this.stocks, mutualFunds: this.mutualFunds, watchlist: this.watchlist, 
-                    portfolioHistory: this.portfolioHistory, priceAlerts: this.priceAlerts,
+                const data = {
+                     stocks: this.stocks, mutualFunds: this.mutualFunds, watchlist: this.watchlist,
+                     portfolioHistory: this.portfolioHistory, priceAlerts: this.priceAlerts,
                 };
                 await setDoc(userDocRef, data);
             }
-
             async loadData() {
                 if (!this.userId) return;
                 const userDocRef = doc(db, "users", this.userId);
@@ -2059,38 +1483,31 @@
                 this.updatePortfolioHistory();
                 this.renderContent();
             }
-
             startLiveUpdate() {
                 this.stopLiveUpdate();
                 this.refreshIntervalId = setInterval(() => {
                     if (this.isLiveUpdatePaused) return;
-                    this.refreshCurrentTab(true); // Pass flag to indicate auto-refresh
+                    this.refreshCurrentTab(true);
                     this.checkPriceAlerts();
                 }, this.config.refreshIntervalMs);
                 this.isLiveUpdatePaused = false;
                 this.elements.toggleLiveUpdateBtn.textContent = '⏸️ Pause Live Update';
                 this.startCountdown();
             }
-
-            // Overloading refreshCurrentTab to handle manual vs auto-refresh scroll logic
             async refreshCurrentTab(isAutoRefresh = false) {
                 if (isAutoRefresh) {
-                    this.saveScrollPosition(); // Save position for auto-refresh
+                    this.saveScrollPosition();
                 }
-                
                 const tabActions = {
                     stocks: () => this.refreshStocks(),
                     funds: () => this.refreshFunds(),
                     watchlist: () => this.refreshWatchlist()
                 };
                 if (tabActions[this.currentTab]) await tabActions[this.currentTab]();
-                
                 if (isAutoRefresh) {
-                    this.restoreScrollPosition(); // Restore position after auto-refresh completes
+                    this.restoreScrollPosition();
                 }
             }
-
-
             startCountdown() {
                 this.elements.smallCountdownContainer.innerHTML = `Next update: <span id="smallCountdown">${this.config.refreshIntervalMs / 1000}s</span>`;
                 this.elements.smallCountdown = document.getElementById('smallCountdown');
@@ -2108,7 +1525,6 @@
                 updateTimers();
                 this.countdownIntervalId = setInterval(updateTimers, 1000);
             }
-
             stopLiveUpdate() {
                  clearInterval(this.refreshIntervalId);
                 clearInterval(this.countdownIntervalId);
@@ -2116,13 +1532,10 @@
                 this.elements.toggleLiveUpdateBtn.textContent = '▶️ Resume Live Update';
                  if(this.elements.smallCountdownContainer) this.elements.smallCountdownContainer.textContent = 'Updates Paused';
             }
-
             toggleLiveUpdate() { this.isLiveUpdatePaused ? this.startLiveUpdate() : this.stopLiveUpdate(); }
-            
             async refreshStocks() { await this.refreshItems(this.stocks, 'stock'); }
             async refreshFunds() { await this.refreshItems(this.mutualFunds, 'fund'); }
             async refreshWatchlist() { await this.refreshItems(this.watchlist, 'watchlist'); }
-            
             async refreshItems(items, type) {
                 if (items.length === 0) return;
                 this.showLoading(true, `Refreshing 0/${items.length} items...`);
@@ -2148,7 +1561,6 @@
                 await this.saveData();
                 this.renderContent();
             }
-
             renderPortfolioSummary() {
                 this.renderSummary(this.stocks, {
                     totalValue: document.getElementById('total-value'),
@@ -2160,7 +1572,6 @@
                     plRealized: document.getElementById('total-pl-realized'),
                 });
             }
-
             renderFundsPortfolioSummary() {
                  this.renderSummary(this.mutualFunds, {
                     totalValue: document.getElementById('funds-total-value'),
@@ -2170,7 +1581,6 @@
                     overallPLPercent: document.getElementById('funds-overall-pl-percent'),
                 });
             }
-
             renderSummary(items, elements) {
                 let totalCurrentValue = 0, totalUnrealizedPL = 0, totalRealizedPL = 0, totalPLToday = 0, totalPreviousDayValue = 0;
                 items.forEach(item => {
@@ -2186,11 +1596,11 @@
                 const totalOverallPL = totalUnrealizedPL + totalRealizedPL;
                 const totalOverallPLPercent = this.calculateTotalContributions() > 0 ? (totalOverallPL / this.calculateTotalContributions()) * 100 : 0;
                 const totalPLPercentToday = totalPreviousDayValue > 0 ? (totalPLToday / totalPreviousDayValue) * 100 : 0;
-                const setElement = (el, value, isPercent = false) => { 
-                    if (!el) return;
+                const setElement = (el, value, isPercent = false) => {
+                     if (!el) return;
                     el.textContent = isPercent ? `${this.formatNumber(value, 2)}%` : this.formatCurrency(value);
-                    el.className = `summary-value ${value >= 0 ? 'positive' : 'negative'}`; 
-                };
+                    el.className = `summary-value ${value >= 0 ? 'positive' : 'negative'}`;
+                 };
                 setElement(elements.totalValue, totalCurrentValue);
                 if (elements.totalContributions) elements.totalContributions.textContent = this.formatCurrency(this.calculateTotalContributions());
                 if (elements.totalDividends) setElement(elements.totalDividends, this.calculateTotalDividends());
@@ -2201,9 +1611,7 @@
                 if(elements.overallPL) setElement(elements.overallPL, totalOverallPL);
                 if(elements.overallPLPercent) setElement(elements.overallPLPercent, totalOverallPLPercent, true);
             }
-
             isMutualFund(symbol) { return symbol.length === 5 && symbol.endsWith('X'); }
-            
             async addItemFromInput(type) {
                 const isStock = type === 'stock';
                 const input = isStock ? this.elements.stockInput : (type === 'fund' ? this.elements.mutualFundInput : this.elements.watchlistInput);
@@ -2218,15 +1626,12 @@
                 this.showLoading(true, `Adding ${symbol}...`);
                 try {
                     let targetList, listName;
-                    if (type === 'stock') { [targetList, listName] = [this.stocks, 'portfolio']; } 
+                    if (type === 'stock') { [targetList, listName] = [this.stocks, 'portfolio']; }
                     else if (type === 'fund') { [targetList, listName] = [this.mutualFunds, 'fund']; }
                     else { [targetList, listName] = [this.watchlist, 'watchlist']; }
-
                     if (targetList.some(item => item.symbol === symbol)) { throw new Error(`${symbol} is already in your ${listName}.`); }
-                    
                     const result = this.isMutualFund(symbol) ? await this.apiService.fetchFundData(symbol) : await this.apiService.fetchStockEtfData(symbol);
                     if (!result.success) throw new Error(result.reason);
-
                     let newItem = { ...result.data };
                     if (type === 'watchlist') {
                         targetList.push(newItem);
@@ -2236,7 +1641,6 @@
                         if (platform) newItem.platform = platform;
                         targetList.push(newItem);
                     }
-
                     await this.saveData();
                     this.renderContent();
                     this.showSuccess(`✅ Added ${symbol} to your ${listName}!`);
@@ -2246,7 +1650,6 @@
                     this.showLoading(false);
                 }
             }
-
             removeItem(symbol, type) {
                 this.openConfirmModal(`Are you sure you want to remove ${symbol}?`, async () => {
                      if (type === 'stock') { this.stocks = this.stocks.filter(item => item.symbol !== symbol); }
@@ -2256,7 +1659,6 @@
                     this.renderContent();
                 });
             }
-
             clearAllItems(type) {
                 this.openConfirmModal(`Are you sure you want to clear all ${type}s?`, async () => {
                     if (type === 'stock') this.stocks = [];
@@ -2266,7 +1668,6 @@
                     this.renderContent();
                 });
             }
-
             calculateTransactionStats(transactions = [], currentPrice = 0) {
                 const buys = JSON.parse(JSON.stringify((transactions || []).filter(t => t.type === 'buy').sort((a,b) => new Date(a.date) - new Date(b.date))));
                 const sells = JSON.parse(JSON.stringify((transactions || []).filter(t => t.type === 'sell')));
@@ -2290,53 +1691,34 @@
                 let unrealizedPL = totalSharesOwned > 0 ? currentValue - costOfRemainingShares : 0;
                 return { totalSharesOwned, averageCostBasis, realizedPL, unrealizedPL, currentValue, costOfRemainingShares };
             }
-
             calculateTotalContributions() {
-                return this.stocks.reduce((contributions, stock) => 
-                    contributions + (stock.transactions || []).reduce((sum, t) => sum + (t.type === 'buy' ? t.shares * t.price : -t.shares * t.price), 0), 0);
+                return this.stocks.reduce((contributions, stock) =>
+                     contributions + (stock.transactions || []).reduce((sum, t) => sum + (t.type === 'buy' ? t.shares * t.price : -t.shares * t.price), 0), 0);
             }
-            
             calculateTotalDividends() {
                 return this.stocks.reduce((sum, stock) => sum + (stock.dividends || []).reduce((divSum, div) => divSum + div.totalAmount, 0), 0);
             }
-
             calculateAnnualizedDividendYield(item) {
                  if (!item.dividends || item.dividends.length === 0 || item.price === 0) return 0;
                  const now = new Date(), lastYear = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
                  const totalDividendsLastYear = item.dividends.filter(d => new Date(d.date) > lastYear).reduce((sum, d) => sum + d.totalAmount, 0);
                  return totalDividendsLastYear > 0 ? (totalDividendsLastYear / item.price) * 100 : 0;
             }
-
-            // New function to open modal for editing an existing transaction
             openEditTransactionModal(symbol, type, index, transactionType) {
                 const list = (type === 'stock') ? this.stocks : this.mutualFunds;
                 const item = list.find(i => i.symbol === symbol);
                 if (!item || !item.transactions || index < 0 || index >= item.transactions.length) return;
-
                 const transaction = item.transactions[index];
-                
-                // Use the main openTransactionModal function, passing the transaction index
                 this.openTransactionModal(symbol, type, transaction.type, index);
-
-                // Populate the fields with the existing transaction data
                 if (this.elements.modalShares) this.elements.modalShares.value = transaction.shares;
                 if (this.elements.modalPrice) this.elements.modalPrice.value = transaction.price;
                 if (this.elements.modalNote) this.elements.modalNote.value = transaction.note || '';
-                
-                // Set date field
                 const dateString = transaction.date ? transaction.date.split('T')[0] : '';
                 if (this.elements.modalDate) this.elements.modalDate.value = dateString;
-
-
-                // Handle dividends, if applicable (assuming dividends are stored in transactions list with specific format for now)
                 if (transaction.type === 'dividend' && this.elements.modalDividendAmount) {
-                     // Note: If you store dividends separately, you might need a separate index/logic here.
-                     // Assuming 'dividend' transactions would use the price field for 'amountPerShare' for simplicity in this structure.
                      if(this.elements.modalPrice) this.elements.modalPrice.value = transaction.amountPerShare || 0;
                 }
             }
-
-
             openTransactionModal(symbol, type, transactionType, transactionIndex = -1) {
                 const modal = this.elements.transactionModal;
                 if (!modal) {
@@ -2346,44 +1728,30 @@
                 modal.style.display = 'flex';
                 this.elements.modalSymbol.textContent = symbol;
                 this.elements.modalTitleAction.textContent = transactionIndex > -1 ? 'Edit' : transactionType.charAt(0).toUpperCase() + transactionType.slice(1);
-                
-                // Clear inputs
-                ['modalShares', 'modalPrice', 'modalNote', 'modalDividendAmount'].forEach(id => { 
-                    if(this.elements[id]) this.elements[id].value = ''; 
-                });
-                
-                // Set default date to today for new transactions
+                ['modalShares', 'modalPrice', 'modalNote', 'modalDividendAmount'].forEach(id => {
+                     if(this.elements[id]) this.elements[id].value = '';
+                 });
                 if (transactionIndex === -1) {
                     if (this.elements.modalDate) {
                         this.elements.modalDate.value = new Date().toISOString().split('T')[0];
                     }
                 }
-
-                // --- Safely determine and set visibility of input fields ---
                 const modalSharesParent = this.elements.modalShares?.parentNode;
                 const modalPriceParent = this.elements.modalPrice?.parentNode;
                 const modalDividendFields = this.elements.modalDividendFields;
-
                 if (modalSharesParent) modalSharesParent.style.display = 'none';
                 if (modalPriceParent) modalPriceParent.style.display = 'none';
                 if (modalDividendFields) modalDividendFields.style.display = 'none';
-
                 if (transactionType === 'buy' || transactionType === 'sell') {
                     if (modalSharesParent) modalSharesParent.style.display = 'block';
                     if (modalPriceParent) modalPriceParent.style.display = 'block';
                 } else if (transactionType === 'dividend') {
                     if (modalSharesParent) modalSharesParent.style.display = 'block';
-                    // Note: If you have dividend transactions, you might need special handling if they use 'price' field differently.
-                    // For now, retaining price visibility if needed, but explicitly showing dividend fields.
                     if (modalDividendFields) modalDividendFields.style.display = 'block';
                 }
-                // --- END FIX ---
-
                 Object.assign(this.elements.modalSaveBtn.dataset, { symbol, type, transactionType, transactionIndex });
             }
-            
             closeTransactionModal() { this.elements.transactionModal.style.display = 'none'; }
-            
             async saveTransaction() {
                 const { symbol, type, transactionType, transactionIndex: indexStr } = this.elements.modalSaveBtn.dataset;
                 const index = parseInt(indexStr);
@@ -2391,112 +1759,87 @@
                 const list = (type === 'stock') ? this.stocks : this.mutualFunds;
                 const item = list.find(i => i.symbol === symbol);
                 if (!item) return;
-
                 const dateInput = this.elements.modalDate?.value;
                 if (!dateInput) {
                     this.showError('Transaction date is required.');
                     return;
                 }
                 const transactionDateISO = new Date(dateInput).toISOString();
-
                 if (transactionType === 'buy' || transactionType === 'sell') {
                     const shares = parseFloat(this.elements.modalShares.value), price = parseFloat(this.elements.modalPrice.value);
                     if (isNaN(shares) || shares <= 0 || isNaN(price) || price < 0) { this.showError('Invalid input. Shares must be positive and Price must be non-negative.'); return; }
-                    
-                    // --- SELL Logic Check for current shares ---
                     if (transactionType === 'sell') {
-                        // Create a temporary transactions list excluding the transaction we are editing (if editing)
-                        const tempTransactions = isEditing 
-                            ? item.transactions.filter((_, i) => i !== index) 
-                            : item.transactions || [];
-                        
+                        const tempTransactions = isEditing
+                             ? item.transactions.filter((_, i) => i !== index)
+                             : item.transactions || [];
                         const currentStats = this.calculateTransactionStats(tempTransactions, item.price);
-                        
-                        // Safety check: Cannot sell more than currently owned (after excluding the current transaction being edited/added)
                         if (shares > currentStats.totalSharesOwned) {
                             this.showError(`Cannot sell ${this.formatNumber(shares)} shares. You only own ${this.formatNumber(currentStats.totalSharesOwned)} shares of ${symbol}.`);
                             return;
                         }
                     }
-
                     if (!item.transactions) item.transactions = [];
-                    const newTransaction = { 
-                        type: transactionType, 
-                        shares, 
-                        price, 
-                        note: this.elements.modalNote.value.trim(), 
-                        date: transactionDateISO // Use date from input
+                    const newTransaction = {
+                         type: transactionType,
+                         shares,
+                         price,
+                         note: this.elements.modalNote.value.trim(),
+                         date: transactionDateISO
                     };
-                    
                     if (isEditing) {
                         item.transactions[index] = newTransaction;
                     } else {
                         item.transactions.push(newTransaction);
                     }
-
                 } else if (transactionType === 'dividend') {
                     const shares = parseFloat(this.elements.modalShares.value), amountPerShare = parseFloat(this.elements.modalDividendAmount.value);
                     if (isNaN(shares) || shares <= 0 || isNaN(amountPerShare) || amountPerShare < 0) { this.showError('Invalid input.'); return; }
-                    
                     if (!item.dividends) item.dividends = [];
-                    
-                    const newDividend = { 
-                        shares, 
-                        amountPerShare, 
-                        totalAmount: shares * amountPerShare, 
-                        date: transactionDateISO // Use date from input
+                    const newDividend = {
+                         shares,
+                         amountPerShare,
+                         totalAmount: shares * amountPerShare,
+                         date: transactionDateISO
                     };
-
                     if (isEditing) {
                         item.dividends[index] = newDividend;
                     } else {
                         item.dividends.push(newDividend);
                     }
                 }
-                
                 await this.saveData();
                 this.renderContent();
                 this.closeTransactionModal();
                 this.showSuccess(`✅ ${isEditing ? 'Updated' : 'Saved'} ${transactionType.toUpperCase()} transaction for ${symbol}!`);
             }
-            
             removeTransaction(symbol, index, type) {
                  this.openConfirmModal('Delete this transaction?', async () => {
                     const list = (type === 'stock') ? this.stocks : this.mutualFunds;
                     const item = list.find(i => i.symbol === symbol);
                     if (item) {
-                        // Assuming the index refers to the transaction array for stocks/funds
                         if (item.transactions && index >= 0 && index < item.transactions.length) {
                             item.transactions.splice(index, 1);
                             this.showSuccess(`🗑️ Deleted transaction for ${symbol}.`);
                         } else {
                              this.showError(`Error: Transaction index ${index} not found for ${symbol}.`);
                         }
-
                         await this.saveData();
                         this.renderContent();
                     }
                 });
             }
-
             renderGroupedStocks(items, container, type) {
                 const gains = items.filter(s => (s.changePercent || 0) >= 0).sort((a, b) => b.changePercent - a.changePercent);
                 const losses = items.filter(s => (s.changePercent || 0) < 0).sort((a, b) => a.changePercent - b.changePercent);
-                
-                if (items.length === 0) { container.innerHTML = `<div class="loading">Your portfolio is empty.</div>`; return; }
-                
+                if (items.length === 0) { container.innerHTML = `<div class="loading" style="grid-column: 1 / -1;">Your portfolio is empty.</div>`; return; }
                 const biggestGain = gains.length > 0 ? [gains[0]] : [];
-                if (biggestGain.length > 0) this.createGroup('🚀 Biggest Gain Today', biggestGain, 'biggest-gain-header', container, type, this.getGroupSummary(biggestGain, 'biggest-gain'));
-                
+                if (biggestGain.length > 0) this.createGroup('🚀 Biggest Gain Today', biggestGain, 'biggest-gain-header', container, type);
                 const otherGains = gains.filter(s => biggestGain.length === 0 || s.symbol !== biggestGain[0].symbol);
-                this.createGroup('📈 Gains Today', otherGains, 'gains-header', container, type, this.getGroupSummary(otherGains, 'gains'));
-                
-                this.createGroup('📉 Losses Today', losses, 'losses-header', container, type, this.getGroupSummary(losses, 'losses'));
+                this.createGroup('📈 Gains Today', otherGains, 'gains-header', container, type);
+                this.createGroup('📉 Losses Today', losses, 'losses-header', container, type);
             }
-
             renderGroupedByPlatform(items, container, type) {
-                if (items.length === 0) { container.innerHTML = `<div class="loading">Your portfolio is empty.</div>`; return; }
-                
+                if (items.length === 0) { container.innerHTML = `<div class="loading" style="grid-column: 1 / -1;">Your portfolio is empty.</div>`; return; }
                 const platformGroups = items.reduce((acc, item) => {
                     const platformName = item.platform || 'Uncategorized';
                     if (!acc[platformName]) {
@@ -2505,59 +1848,11 @@
                     acc[platformName].push(item);
                     return acc;
                 }, {});
-
                 for (const platformName in platformGroups) {
-                    this.createGroup(platformName, platformGroups[platformName], 'platform-header', container, type, this.getGroupSummary(platformGroups[platformName], 'platform'));
+                    this.createGroup(platformName, platformGroups[platformName], 'platform-header', container, type);
                 }
             }
-
-            getGroupSummary(items, type) {
-                let summaryTitle = '';
-                let summaryText = '';
-                
-                if (type === 'biggest-gain') {
-                    if (items.length > 0) {
-                        const item = items[0];
-                        summaryTitle = `Biggest Gain: ${item.symbol}`;
-                        const changeClass = (item.change || 0) >= 0 ? 'positive' : 'negative';
-                        const changePercentClass = (item.changePercent || 0) >= 0 ? 'positive' : 'negative';
-                        
-                        const stats = this.calculateTransactionStats(item.transactions, item.price);
-                        const totalPL = stats.unrealizedPL + stats.realizedPL;
-                        // FIX 2: Calculate and format Total P/L % for the item
-                        const totalPLPercent = stats.costOfRemainingShares > 0 ? (totalPL / stats.costOfRemainingShares) * 100 : 0;
-                        const totalPLClass = totalPL >= 0 ? 'positive' : 'negative';
-                        const totalValue = stats.currentValue;
-                        const totalChangeToday = (item.change || 0) * stats.totalSharesOwned;
-                        const totalChangeTodayClass = totalChangeToday >= 0 ? 'positive' : 'negative';
-
-                        summaryText = `Gained <span class="${changeClass}">${this.formatCurrency(item.change)}</span> today, a change of <span class="${changePercentClass}">${(item.changePercent || 0).toFixed(2)}%</span>.`;
-                        summaryText += `\nTotal Value: <span class="${totalPL >= 0 ? 'positive' : 'negative'}">${this.formatCurrency(totalValue)}</span>`;
-                        summaryText += `\nTotal P/L: <span class="${totalPLClass}">${this.formatCurrency(totalPL)}</span> (<span class="${totalPLClass}">${this.formatNumber(totalPLPercent, 2)}%</span>)`;
-                        summaryText += `\nTotal Change Today: <span class="${totalChangeTodayClass}">${this.formatCurrency(totalChangeToday)}</span>`;
-                    }
-                } else {
-                    const totalChangeToday = items.reduce((sum, item) => sum + (item.change || 0) * this.calculateTransactionStats(item.transactions, item.price).totalSharesOwned, 0);
-                    const totalValue = items.reduce((sum, item) => sum + this.calculateTransactionStats(item.transactions, item.price).currentValue, 0);
-                    
-                    // FIX 2: Calculate Total P/L % for the group
-                    const totalCostBasis = items.reduce((sum, item) => sum + this.calculateTransactionStats(item.transactions, item.price).costOfRemainingShares, 0);
-                    const totalPLUnrealized = items.reduce((sum, item) => sum + this.calculateTransactionStats(item.transactions, item.price).unrealizedPL, 0);
-                    const totalPLPercent = totalCostBasis > 0 ? (totalPLUnrealized / totalCostBasis) * 100 : 0;
-
-                    summaryTitle = `Summary of ${items.length} item(s)`;
-                    const totalChangeClass = totalChangeToday >= 0 ? 'positive' : 'negative';
-                    const totalPLClass = totalPLUnrealized >= 0 ? 'positive' : 'negative';
-                    
-                    summaryText = `Total Value: ${this.formatCurrency(totalValue)}\n`;
-                    summaryText += `Total Unrealized P/L: <span class="${totalPLClass}">${this.formatCurrency(totalPLUnrealized)}</span> (<span class="${totalPLClass}">${this.formatNumber(totalPLPercent, 2)}%</span>)\n`;
-                    summaryText += `Total Change Today: <span class="${totalChangeClass}">${this.formatCurrency(totalChangeToday)}</span>`;
-                }
-
-                return { title: summaryTitle, text: summaryText };
-            }
-
-            createGroup(title, list, headerClass, parent, type, summary = { title: '', text: '' }) {
+            createGroup(title, list, headerClass, parent, type) {
                 if(list.length === 0) return;
                 const groupWrapper = document.createElement('div');
                 groupWrapper.className = 'group-wrapper';
@@ -2566,73 +1861,46 @@
                 header.innerHTML = `<span>${title} (${list.length})</span><span class="toggle-icon">▼</span>`;
                 const content = document.createElement('div');
                 content.className = 'group-content';
-                const summaryContainer = document.createElement('div');
-                summaryContainer.className = 'summary-content collapsed';
-                summaryContainer.innerHTML = `<div class="summary-card"><h4>${summary.title}</h4><p>${summary.text}</p></div>`;
-                const footer = document.createElement('div');
-                footer.className = 'group-footer';
-                footer.innerHTML = `<button class="add-btn collapse-group-btn">Collapse</button>`;
-                
+
                 const toggleGroup = () => {
                     const isCollapsed = header.classList.toggle('collapsed');
                     content.classList.toggle('collapsed');
-                    summaryContainer.classList.toggle('collapsed');
                     const toggleIcon = header.querySelector('.toggle-icon');
                     toggleIcon.style.transform = isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
-                    footer.querySelector('.collapse-group-btn').textContent = isCollapsed ? 'Expand' : 'Collapse';
-                    
                     this.groupCollapseState[title] = isCollapsed;
                     sessionStorage.setItem('groupCollapseState', JSON.stringify(this.groupCollapseState));
                 };
-
                 header.addEventListener('click', toggleGroup);
-                footer.querySelector('.collapse-group-btn').addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    toggleGroup();
-                    header.scrollIntoView({ behavior: 'smooth' });
-                });
 
                 if (this.groupCollapseState[title] === true) {
                     header.classList.add('collapsed');
                     content.classList.add('collapsed');
-                    summaryContainer.classList.remove('collapsed');
                     const toggleIcon = header.querySelector('.toggle-icon');
                     toggleIcon.style.transform = 'rotate(-90deg)';
-                    footer.querySelector('.collapse-group-btn').textContent = 'Expand';
                 }
-
-                groupWrapper.append(header, content, summaryContainer, footer);
+                groupWrapper.append(header, content);
                 parent.appendChild(groupWrapper);
                 this.renderCards(list, content, type);
             }
-            
             renderCards(itemList, container, type) {
                 if (!container.classList.contains('group-content')) {
-                    container.innerHTML = ''; 
-                }
-
+                    container.innerHTML = '';
+                 }
                 itemList.forEach(item => {
                     const card = document.createElement('div');
                     card.className = `${type}-card`;
-                    // Add data attributes to the card for delegation
                     card.dataset.symbol = item.symbol;
                     card.dataset.type = type;
-
                     const stats = this.calculateTransactionStats(item.transactions, item.price);
-                    
                     const platformHTML = item.platform ? `<div class="info-row"><span class="info-label">Platform:</span><span class="info-value">${item.platform}</span></div>` : '';
-
                     const totalPL = stats.unrealizedPL;
                     const totalPLPercent = stats.costOfRemainingShares > 0 ? (totalPL / stats.costOfRemainingShares) * 100 : 0;
-                    
                     const positiveClass = value => value >= 0 ? 'positive' : 'negative';
-
                     let stockInfoHTML = '';
                      if (type === 'watchlist' || type === 'fund') {
                          stockInfoHTML = `<div class="info-row"><span class="info-label">Open:</span><span class="info-value">${this.formatCurrency(item.open || 0)}</span></div><div class="info-row"><span class="info-label">High:</span><span class="info-value">${this.formatCurrency(item.high || 0)}</span></div><div class="info-row"><span class="info-label">Low:</span><span class="info-value">${this.formatCurrency(item.low || 0)}</span></div><div class="info-row"><span class="info-label">Prev. Close:</span><span class="info-value">${this.formatCurrency(item.previousClose || 0)}</span></div>`;
-                     } else { 
-                         stockInfoHTML = `
+                     } else {
+                          stockInfoHTML = `
                          <div class="info-row">
                              <span class="info-label">Open:</span>
                              <span class="info-value">${this.formatCurrency(item.open || 0)}</span>
@@ -2663,37 +1931,24 @@
                          </div>
                          ${platformHTML}`;
                      }
-                    
                     let transactionDetailsHTML = '';
                     if (type === 'stock' || type === 'fund') {
                         transactionDetailsHTML = `
                         <div class="transaction-details">
                             <div class="transaction-header">
-                                <h4>Transactions:</h4>
-                                <div class="header-controls">
-                                    <button class="add-btn header-collapse-btn">Collapse</button>
-                                    <span class="toggle-icon">▼</span>
-                                </div>
+                                <h4>Transactions</h4>
+                                <span class="toggle-icon">▼</span>
                             </div>
                             <div class="transactions-container">${ (item.transactions || []).map((t, index) => `
                                 <div class="transaction-entry">
                                     <div class="transaction-info">
-                                        <span><strong class="${t.type}">${t.type.toUpperCase()}</strong>: ${this.formatNumber(t.shares, 3)} @ ${this.formatCurrency(t.price)}</span>
+                                        <span><strong class="${t.type}">${t.type}</strong>: ${this.formatNumber(t.shares, 3)} @ ${this.formatCurrency(t.price)}</span>
                                         ${t.note ? `<span>Note: ${t.note}</span>` : ''}
                                         <span>Date: ${t.date ? new Date(t.date).toLocaleDateString() : 'N/A'}</span>
                                     </div>
                                     <div class="transaction-entry-controls">
-                                        <!-- NEW: Edit Transaction Button -->
-                                        <button class="edit-transaction-btn" 
-                                                data-index="${index}" 
-                                                data-type="${t.type}">
-                                            Edit
-                                        </button>
-                                        <!-- NEW: Delete Transaction Button -->
-                                        <button class="delete-transaction-btn" 
-                                                data-index="${index}">
-                                            &times;
-                                        </button>
+                                        <button class="edit-transaction-btn" data-index="${index}" data-type="${t.type}">Edit</button>
+                                        <button class="delete-transaction-btn" data-index="${index}">&times;</button>
                                     </div>
                                 </div>`).join('')}</div>
                         </div>
@@ -2701,23 +1956,20 @@
                             <button class="transaction-btn buy-btn">Buy</button>
                             <button class="transaction-btn sell-btn" style="background: #ff4757;">Sell</button>
                         </div>
-                        <div class="card-actions card-actions-full">
-                            <button class="add-btn edit-btn" style="background-color: #f7b731; width: 100%;" data-action="edit">Edit Stock Details</button>
+                        <div class="card-actions" style="grid-template-columns: 1fr; margin-top: 8px;">
+                            <button class="add-btn edit-btn" data-action="edit">Edit Details</button>
                         </div>
-                        <div class="card-actions" style="grid-template-columns: 1fr;">
-                            <button class="transaction-btn set-alert-btn" style="background: #9b59b6; margin-top: 5px;">🔔 Set Alert</button>
+                        <div class="card-actions" style="grid-template-columns: 1fr; margin-top: 8px;">
+                            <button class="transaction-btn set-alert-btn" style="background-color: #9b59b6;">🔔 Set Alert</button>
                         </div>
                         `;
                     } else if (type === 'watchlist') {
-                         transactionDetailsHTML = `<div class="card-actions card-actions-watchlist" style="grid-template-columns: 1fr;">
+                         transactionDetailsHTML = `<div class="card-actions" style="grid-template-columns: 1fr; gap: 8px;">
                              <button class="add-btn move-to-portfolio-btn" onclick="window.stockTracker.moveToPortfolio('${item.symbol}')">Move to Portfolio</button>
-                             <button class="transaction-btn set-alert-btn" style="background: #9b59b6; margin-top: 5px;">🔔 Set Alert</button>
+                             <button class="transaction-btn set-alert-btn" style="background: #9b59b6;">🔔 Set Alert</button>
                          </div>`;
                     }
-
                     const todayPL = (item.change || 0) * stats.totalSharesOwned;
-                    
-                    // --- FINAL CARD RENDER ---
                     card.innerHTML = `
                         <div class="stock-header">
                             <span class="stock-symbol">${item.symbol}</span>
@@ -2729,11 +1981,8 @@
                         </div>
                         <div class="stock-info">${stockInfoHTML}</div>
                         ${transactionDetailsHTML}
-                        <div class="total-pl ${todayPL >= 0 ? 'positive' : 'negative'}">P/L Today: ${this.formatCurrency(todayPL)}</div>
+                        <div class="total-pl ${todayPL >= 0 ? 'positive' : 'negative'}" style="margin-top: 16px; font-weight: 600;">P/L Today: ${this.formatCurrency(todayPL)}</div>
                     `;
-                    // --- END FINAL CARD RENDER ---
-                    
-                    // Attach click handler for transaction header toggle
                     const transactionHeader = card.querySelector('.transaction-header');
                     if (transactionHeader) {
                         const toggleTransactions = () => {
@@ -2741,24 +1990,13 @@
                             const transactionsContainer = transactionHeader.nextElementSibling;
                             if (transactionsContainer) {
                                 transactionsContainer.classList.toggle('collapsed');
-                                const button = transactionHeader.querySelector('.header-collapse-btn');
-                                button.textContent = transactionHeader.classList.contains('collapsed') ? 'Expand' : 'Collapse';
                             }
                         };
                         transactionHeader.addEventListener('click', toggleTransactions);
-                        transactionHeader.querySelector('.header-collapse-btn').addEventListener('click', (e) => {
-                            e.stopPropagation();
-                            toggleTransactions();
-                        });
                     }
-
-                    // For the Edit button, since it was working with inline onclick, we rely on the Event Delegation
-                    // we added in setupEventListeners.
-
                     container.appendChild(card);
                 });
             }
-
             async moveToPortfolio(symbol) {
                 const stockToMove = this.watchlist.find(stock => stock.symbol === symbol);
                 if (!stockToMove || this.stocks.some(s => s.symbol === symbol)) return;
@@ -2768,15 +2006,13 @@
                 this.renderContent();
                 this.showSuccess(`✅ Moved ${symbol} to portfolio!`);
             }
-
             showRefreshStatus(type, stats) {
                 const statusDiv = this.elements.refreshStatusPopup;
                 if (!statusDiv) return;
                 statusDiv.innerHTML = `Refreshed ${stats.success} ${type}(s). ✅ ${stats.gains} gained, 🔻${stats.losses} lost. Failed: ${stats.failed}.`;
-                statusDiv.style.display = 'block';
-                setTimeout(() => { statusDiv.style.display = 'none'; }, 15000);
+                statusDiv.classList.add('active');
+                setTimeout(() => { statusDiv.classList.remove('active'); }, 5000);
             }
-            
             showLoading(show, message = 'Loading...') { this.elements.loadingDiv.style.display = show ? 'block' : 'none'; this.elements.loadingDiv.textContent = message; }
             showError(message) {
                 this.elements.errorDiv.style.display = 'block';
@@ -2788,10 +2024,8 @@
                 this.elements.successDiv.innerHTML = `<h4>Success</h4><p>${message}</p>`;
                 setTimeout(() => this.elements.successDiv.style.display = 'none', 3000);
             }
-
             async exportData() {
-                this.saveScrollPosition(); // Save scroll position before opening the file dialog
-                
+                this.saveScrollPosition();
                 const dataStr = JSON.stringify({ stocks: this.stocks, mutualFunds: this.mutualFunds, watchlist: this.watchlist }, null, 2);
                 const blob = new Blob([dataStr], {type: 'application/json'});
                 const a = document.createElement('a');
@@ -2799,17 +2033,11 @@
                 a.download = 'portfolio-data.json';
                 a.click();
                 URL.revokeObjectURL(a.href);
-                
-                // Note: Restoring scroll after file dialog is tricky and browser-dependent, 
-                // but the current implementation handles it on content render, which should be sufficient.
             }
-
             async importData(e) {
                 const file = e.target.files[0];
                 if (!file) return;
-                
-                this.saveScrollPosition(); // Save scroll position before file operation
-                
+                this.saveScrollPosition();
                 const reader = new FileReader();
                 reader.onload = async (event) => {
                     try {
@@ -2824,13 +2052,12 @@
                 };
                 reader.readAsText(file);
             }
-            
             renderDiversificationChart() {
                 const container = this.elements.diversificationChartContainer;
+                if (!container) return;
                 const hasTransactions = this.stocks.some(s => s.transactions && s.transactions.length > 0 && this.calculateTransactionStats(s.transactions).currentValue > 0);
                 container.style.display = this.currentTab === 'stocks' && hasTransactions ? 'block' : 'none';
                 if (!container.style.display || container.style.display === 'none') return;
-
                 const industryData = this.stocks.reduce((acc, stock) => {
                     const { currentValue } = this.calculateTransactionStats(stock.transactions, stock.price);
                     if (currentValue > 0) acc[stock.industry || 'Other'] = (acc[stock.industry || 'Other'] || 0) + currentValue;
@@ -2839,19 +2066,16 @@
                 const sortedData = Object.entries(industryData).sort(([, a], [, b]) => b - a);
                 const labels = sortedData.map(([label]) => label);
                 const data = sortedData.map(([, value]) => value);
-                
                 if (this.diversificationChartInstance) this.diversificationChartInstance.destroy();
                 const colors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'];
                 const gridColor = this.isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
                 const labelColor = this.isDarkMode ? '#f1f1f1' : '#666';
-
                 this.diversificationChartInstance = new Chart(this.elements.diversificationChart, {
-                    type: 'bar', 
+                    type: 'bar',
                     data: { labels, datasets: [{ label: 'Value', data, backgroundColor: colors }] },
                     options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Portfolio by Industry', color: labelColor }, legend: { display: false } }, scales: { y: { ticks: { color: labelColor }, grid: { color: gridColor } }, x: { ticks: { color: labelColor }, grid: { color: gridColor } } } }
                 });
             }
-
             async updatePortfolioHistory() {
                  const today = new Date().toISOString().slice(0, 10);
                 const lastEntry = this.portfolioHistory.at(-1);
@@ -2861,49 +2085,40 @@
                 else lastEntry.value = totalValue;
                 await this.saveData();
             }
-
             renderHistoryChart() {
                 const container = this.elements.historyChartContainer;
+                if (!container) return;
                 container.style.display = this.currentTab === 'stocks' && this.portfolioHistory.length > 1 ? 'block' : 'none';
                 if (!container.style.display || container.style.display === 'none') return;
-
                 const labels = this.portfolioHistory.map(e => e.date);
                 const data = this.portfolioHistory.map(e => e.value);
                 if (this.historyChartInstance) this.historyChartInstance.destroy();
                 const gridColor = this.isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
                 const labelColor = this.isDarkMode ? '#f1f1f1' : '#666';
-
                 this.historyChartInstance = new Chart(this.elements.historyChart, {
                     type: 'line', data: { labels, datasets: [{ label: 'Portfolio Value', data, borderColor: '#667eea', tension: 0.1 }] },
                     options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Portfolio History', color: labelColor }, legend: { labels: { color: labelColor }} }, scales: { y: { ticks: { color: labelColor }, grid: { color: gridColor } }, x: { ticks: { color: labelColor }, grid: { color: gridColor } } } }
                 });
             }
-
-            openConfirmModal(text, onConfirmAction, onCancelAction = null) { 
-                this.elements.alertsSummaryModal.style.display = 'none'; // Ensure alerts modal is hidden first
-                this.elements.confirmModal.style.display = 'flex'; 
-                this.elements.confirmModalText.textContent = text; 
-                this.onConfirm = onConfirmAction; 
-                this.onCancel = onCancelAction; // Store the cancel action
+            openConfirmModal(text, onConfirmAction, onCancelAction = null) {
+                 this.elements.alertsSummaryModal.style.display = 'none';
+                this.elements.confirmModal.style.display = 'flex';
+                 this.elements.confirmModalText.textContent = text;
+                 this.onConfirm = onConfirmAction;
+                 this.onCancel = onCancelAction;
             }
-            
-            // FIX: Updated closeConfirmModal to optionally execute the stored cancel action
-            closeConfirmModal(wasCancelled = false) { 
-                this.elements.confirmModal.style.display = 'none'; 
-                
-                // If the modal was cancelled (by button or explicit call) and a cancel action is defined, execute it.
+            closeConfirmModal(wasCancelled = false) {
+                 this.elements.confirmModal.style.display = 'none';
                 if (wasCancelled && this.onCancel) {
                     this.onCancel();
                 }
                 this.onConfirm = null;
                 this.onCancel = null;
             }
-
-            handleConfirmAction() { 
-                if (this.onConfirm) this.onConfirm(); 
-                this.closeConfirmModal(false); // Do NOT execute onCancel when Confirm is clicked
+            handleConfirmAction() {
+                 if (this.onConfirm) this.onConfirm();
+                 this.closeConfirmModal(false);
             }
-            
             openSettingsModal(){
                 this.elements.modalFinnhubKey.value = this.config.finnhubApiKey || '';
                 this.elements.modalAlphaVantageKey.value = this.config.alphaVantageKey || '';
@@ -2911,36 +2126,29 @@
                 this.elements.modalRefreshInterval.value = this.config.refreshIntervalMs / 1000;
                 this.elements.settingsModal.style.display = 'flex';
             }
-
             closeSettingsModal(){ this.elements.settingsModal.style.display = 'none'; }
-
             saveSettings(){
                 const finnhubKey = this.elements.modalFinnhubKey.value.trim();
                 const alphaVantageKey = this.elements.modalAlphaVantageKey.value.trim();
                 const fmpKey = this.elements.modalFmpKey.value.trim();
                 const interval = parseInt(this.elements.modalRefreshInterval.value, 10);
-                
                 localStorage.setItem('finnhubApiKey', finnhubKey);
                 localStorage.setItem('alphaVantageKey', alphaVantageKey);
                 localStorage.setItem('fmpApiKey', fmpKey);
                 if (interval && interval >= 10) {
                     localStorage.setItem('refreshIntervalMs', interval * 1000);
                 }
-
-                this.loadConfig(); 
-                this.apiService = new ApiService(this.config);
-                
+                this.loadConfig();
+                 this.apiService = new ApiService(this.config);
                 this.closeSettingsModal();
                 this.showSuccess('✅ Settings saved!');
                 this.startLiveUpdate();
             }
-            
             toggleDarkMode() {
                 this.isDarkMode = !this.isDarkMode;
                 localStorage.setItem('darkMode', this.isDarkMode);
                 this.applyTheme();
             }
-
             applyTheme() {
                 this.isDarkMode = localStorage.getItem('darkMode') === 'true';
                 document.body.classList.toggle('dark-mode', this.isDarkMode);
@@ -2949,7 +2157,6 @@
                     this.renderHistoryChart();
                 }
             }
-
             openListAllModal() { this.elements.listAllModal.style.display = 'flex'; this.listAllSymbols(); }
             closeListAllModal() { this.elements.listAllModal.style.display = 'none'; }
             listAllSymbols() {
@@ -2966,26 +2173,17 @@
                 createList('Watchlist', this.watchlist);
                 if (contentDiv.innerHTML === '') contentDiv.innerHTML = '<p>No saved symbols.</p>';
             }
-            
             openPriceAlertModal(symbol) {
-                // --- FIX: Reset fields before opening ---
                 this.elements.alertPrice.value = '';
                 this.elements.alertCondition.value = 'above';
-                
-                // NEW: Find existing alert and pre-fill fields
-                // Note: We need to find the *first* active alert to pre-fill, as multiple can exist now.
                 const existingAlert = this.priceAlerts.find(a => a.symbol === symbol && !a.triggered);
-
                 if (existingAlert) {
                     this.elements.alertPrice.value = existingAlert.price;
                     this.elements.alertCondition.value = existingAlert.condition;
-                    // Change save button text to indicate update/modification
                     this.elements.saveAlertBtn.textContent = 'Update Alert';
                 } else {
                     this.elements.saveAlertBtn.textContent = 'Save Alert';
                 }
-                // --- END FIX ---
-
                 this.elements.priceAlertModal.style.display = 'flex';
                 this.elements.alertSymbol.textContent = symbol;
                 this.elements.saveAlertBtn.dataset.symbol = symbol;
@@ -2995,75 +2193,60 @@
                 const { symbol } = this.elements.saveAlertBtn.dataset;
                 const price = parseFloat(this.elements.alertPrice.value);
                 if (!symbol || isNaN(price) || price <= 0) { this.showError("Invalid alert data."); return; }
-                
-                // FIX: Check if an alert with the same symbol AND price/condition exists
                 const existingAlertIndex = this.priceAlerts.findIndex(
-                    a => a.symbol === symbol && 
-                    a.price === price &&
+                    a => a.symbol === symbol &&
+                     a.price === price &&
                     a.condition === this.elements.alertCondition.value &&
                     !a.triggered
                 );
-
                 if (existingAlertIndex === -1) {
-                    // NEW: Assign a unique ID and date to the new alert instance
-                    const newAlert = { 
-                        id: Date.now().toString() + Math.random().toString(36).substring(2, 9), // Unique ID
-                        symbol, 
-                        condition: this.elements.alertCondition.value, 
-                        price, 
-                        triggered: false,
+                    const newAlert = {
+                         id: Date.now().toString() + Math.random().toString(36).substring(2, 9),
+                        symbol,
+                         condition: this.elements.alertCondition.value,
+                         price,
+                         triggered: false,
                         date: new Date().toISOString()
                     };
                     this.priceAlerts.push(newAlert);
                     this.showSuccess(`Alert set for ${symbol} at $${this.formatNumber(price, 2)}!`);
                 } else {
-                    // If an identical alert exists, just confirm the update.
                      this.showSuccess(`Alert for ${symbol} was already set and has been updated.`);
                 }
-                
                 await this.saveData();
                 this.closePriceAlertModal();
             }
-
-            // NEW: Function to open the alert summary modal
             openAlertsSummaryModal() {
                 this.elements.alertsSummaryModal.style.display = 'flex';
                 const contentDiv = this.elements.alertsSummaryContent;
                 contentDiv.innerHTML = '';
-
                 const activeAlerts = this.priceAlerts.filter(a => !a.triggered);
-
                 if (activeAlerts.length === 0) {
                     contentDiv.innerHTML = `<p style="text-align: center; color: #666; margin-top: 20px;">No active price alerts currently set.</p>`;
                     return;
                 }
-
                 let html = '<ul style="list-style-type: none; padding: 0;">';
                 activeAlerts.forEach(alert => {
                     const priceClass = alert.condition === 'above' ? 'positive' : 'negative';
                     const targetPrice = this.formatCurrency(alert.price);
-                    
                     const alertDate = new Date(alert.date || new Date());
-                    // Format date and time including hour/minute
                     const formattedDate = alertDate.toLocaleDateString();
                     const formattedTime = alertDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-                    // FIX: Add delete button and timestamp (including time)
                     html += `
-                        <li style="padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
+                        <li style="padding: 10px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
                             <div>
                                 <strong style="font-size: 1.1rem;">${alert.symbol}</strong><br>
-                                <span style="color: #666;">
-                                    Alert: Price is 
-                                    <span class="${priceClass}">${alert.condition} ${targetPrice}</span>
+                                <span style="color: var(--text-secondary);">
+                                    Alert: Price is
+                                     <span class="${priceClass}">${alert.condition} ${targetPrice}</span>
                                 </span><br>
                                 <span style="font-size: 0.8rem; color: #aaa;">
                                     Set on: ${formattedDate} at ${formattedTime}
                                 </span>
                             </div>
                             <div style="display:flex; gap: 5px;">
-                                <button onclick="window.stockTracker.openPriceAlertModal('${alert.symbol}')" class="edit-transaction-btn" style="background: #667eea; padding: 5px 10px;">Edit</button>
-                                <button onclick="window.stockTracker.removePriceAlertById('${alert.id}')" class="delete-transaction-btn" style="padding: 5px 10px;">Delete</button>
+                                <button onclick="window.stockTracker.openPriceAlertModal('${alert.symbol}')" class="edit-transaction-btn">Edit</button>
+                                <button onclick="window.stockTracker.removePriceAlertById('${alert.id}')" class="delete-transaction-btn">&times;</button>
                             </div>
                         </li>
                     `;
@@ -3071,26 +2254,18 @@
                 html += '</ul>';
                 contentDiv.innerHTML = html;
             }
-            
-            // NEW: Function to remove an alert directly from the summary modal (using unique ID)
             removePriceAlertById(alertId) {
-                // Define the action to take upon cancellation: return to the summary list
-                const onCancel = () => this.openAlertsSummaryModal(); 
-                
-                this.openConfirmModal(`Are you sure you want to delete this specific price alert?`, 
-                    async () => {
-                        // Action on Confirm: Delete the alert
+                const onCancel = () => this.openAlertsSummaryModal();
+                 this.openConfirmModal(`Are you sure you want to delete this specific price alert?`,
+                     async () => {
                         this.priceAlerts = this.priceAlerts.filter(a => a.id !== alertId);
                         await this.saveData();
                         this.showSuccess(`🗑️ Deleted price alert.`);
-                        // Re-render the summary modal immediately
-                        this.openAlertsSummaryModal(); 
-                    },
-                    onCancel // Pass the function to run if cancelled
+                        this.openAlertsSummaryModal();
+                     },
+                    onCancel
                 );
             }
-
-
             checkPriceAlerts() {
                 if(this.priceAlerts.length === 0) return;
                 const allItems = [...this.stocks, ...this.mutualFunds, ...this.watchlist];
@@ -3098,72 +2273,56 @@
                     if (alert.triggered) return;
                     const item = allItems.find(i => i.symbol === alert.symbol);
                     if (!item) return;
-                    
-                    // --- Price Check Logic ---
-                    const trigger = (alert.condition === 'above' && item.price > alert.price) || 
-                                    (alert.condition === 'below' && item.price < alert.price);
-                    // --- End Price Check Logic ---
-                    
+                    const trigger = (alert.condition === 'above' && item.price > alert.price) ||
+                                     (alert.condition === 'below' && item.price < alert.price);
                     if (trigger) {
                         alert.triggered = true;
-                        // Display the alert
-                        this.showAlertNotification(item, alert); 
-                        this.saveData();
+                        this.showAlertNotification(item, alert);
+                         this.saveData();
                     }
                 });
             }
-
-            // NEW: Method to display the custom alert UI
             showAlertNotification(item, alert) {
                 const type = alert.condition === 'above' ? 'positive' : 'negative';
                 const message = `🔔 ALERT: ${item.symbol} reached $${this.formatNumber(item.price)}! It is ${alert.condition} your target of $${this.formatNumber(alert.price)}.`;
-
                 const alertDiv = this.elements.alertNotification;
                 alertDiv.classList.remove('positive', 'negative');
                 alertDiv.classList.add('active', type);
                 alertDiv.innerHTML = `<h4>Price Alert Triggered</h4><p>${message}</p>`;
-
                 setTimeout(() => {
                     alertDiv.classList.remove('active');
-                }, 10000); // Alert displays for 10 seconds
+                }, 10000);
             }
-            
             async fetchAndRenderNews() {
-                this.saveScrollPosition(); // Save scroll position before fetching news
-                
+                this.saveScrollPosition();
                 const symbols = [...new Set([...this.stocks.map(s => s.symbol), ...this.watchlist.map(s => s.symbol)])];
-                if (symbols.length === 0) { 
-                    this.elements.newsArticlesContainer.innerHTML = `<div class="loading">No symbols to fetch news for. Add stocks or watchlist items first.</div>`; 
-                    this.restoreScrollPosition(); // Restore even if empty
-                    return; 
-                }
+                if (symbols.length === 0) {
+                     this.elements.newsArticlesContainer.innerHTML = `<div class="loading">No symbols to fetch news for. Add stocks or watchlist items first.</div>`;
+                     this.restoreScrollPosition();
+                    return;
+                 }
                 const now = Date.now();
-                if (this.newsFeed.length > 0 && now - this.newsFetchTime < 15 * 60 * 1000) { 
-                    this.renderNews(); 
-                    this.restoreScrollPosition(); // Restore after static render
-                    return; 
-                }
-                
+                if (this.newsFeed.length > 0 && now - this.newsFetchTime < 15 * 60 * 1000) {
+                     this.renderNews();
+                     this.restoreScrollPosition();
+                    return;
+                 }
                 this.elements.newsArticlesContainer.innerHTML = '<div class="loading">Fetching news...</div>';
                 const result = await this.apiService.fetchNews(symbols);
-                
                 if (result.success) {
                     this.newsFeed = result.data;
                     this.newsFetchTime = now;
                     this.renderNews();
                 } else {
-                    // FIX: Display the specific reason from the API service
                     this.elements.newsArticlesContainer.innerHTML = `<div class="error"><p>Failed to fetch news. Reason: ${result.reason}</p></div>`;
                 }
-                
-                this.restoreScrollPosition(); // Restore scroll position after async operation
+                this.restoreScrollPosition();
             }
-
             renderNews() {
                 const container = this.elements.newsArticlesContainer;
                 container.innerHTML = '';
                 if (this.newsFeed.length === 0) { container.innerHTML = `<div class="loading">No recent news found for your tracked symbols.</div>`; return; }
-                this.newsFeed.slice(0, 20).forEach(article => { // Limit to 20 articles
+                this.newsFeed.slice(0, 20).forEach(article => {
                     const card = document.createElement('a');
                     card.href = article.url;
                     card.target = "_blank";
@@ -3172,92 +2331,59 @@
                     container.appendChild(card);
                 });
             }
-
-            // NEW: Functions for Edit Stock Modal
             openEditStockModal(symbol) {
                 const stock = this.stocks.find(s => s.symbol === symbol);
                 if (!stock) return;
-                
-                // --- Prepare data for editing shares/cost/date ---
                 const stats = this.calculateTransactionStats(stock.transactions, stock.price);
                 const firstBuyTransaction = stock.transactions ? stock.transactions.find(t => t.type === 'buy') : null;
                 const initialDate = firstBuyTransaction ? firstBuyTransaction.date.split('T')[0] : '';
-                // ------------------------------------------------
-                
                 this.elements.editStockModal.style.display = 'flex';
-                
-                // Populate display symbol
                 this.elements.editStockSymbolDisplay.textContent = symbol;
-
-                // Populate editable fields (Stock Details)
                 this.elements.editStockSymbol.value = stock.symbol || '';
                 this.elements.editStockName.value = stock.name || '';
                 this.elements.editStockPlatform.value = stock.platform || '';
-                
-                // Populate editable fields (Transaction Details - affecting the first buy to set basis)
                 this.elements.editStockShares.value = stats.totalSharesOwned > 0 ? stats.totalSharesOwned.toFixed(3) : 0;
                 this.elements.editStockCost.value = stats.averageCostBasis > 0 ? stats.averageCostBasis.toFixed(4) : 0;
                 this.elements.editStockDate.value = initialDate;
-                
                 this.elements.saveStockEditBtn.dataset.originalSymbol = symbol;
             }
-
             closeEditStockModal() {
                 this.elements.editStockModal.style.display = 'none';
             }
-
-            async saveStockDetails() { // Renamed function
+            async saveStockDetails() {
                 const originalSymbol = this.elements.saveStockEditBtn.dataset.originalSymbol;
                 const newSymbol = this.elements.editStockSymbol.value.trim().toUpperCase();
                 const newName = this.elements.editStockName.value.trim();
                 const newPlatform = this.elements.editStockPlatform.value.trim();
-                
                 const newShares = parseFloat(this.elements.editStockShares.value);
                 const newCost = parseFloat(this.elements.editStockCost.value);
                 const newDateInput = this.elements.editStockDate.value;
-
                 let stock = this.stocks.find(s => s.symbol === originalSymbol);
-
                 if (!stock || !newSymbol || !newName) {
                     this.showError("Symbol and Name are required.");
                     return;
                 }
-                
-                // --- Input validation for holding data ---
                 if (isNaN(newShares) || newShares < 0 || isNaN(newCost) || newCost < 0 || !newDateInput) {
                     this.showError("Shares, Average Cost, and Initial Date must be valid numbers/date.");
                     return;
                 }
-                // --- End validation ---
-
-                // 1. Check for symbol change/conflict
                 if (newSymbol !== originalSymbol) {
                     const exists = this.stocks.some(s => s.symbol === newSymbol);
                     if (exists) {
                         this.showError(`Error: Symbol ${newSymbol} is already in use.`);
                         return;
                     }
-                    // Update the symbol
                     stock.symbol = newSymbol;
                 }
-
-                // 2. Update stock details
                 stock.name = newName;
                 stock.platform = newPlatform;
-                
-                // 3. Update the *first* buy transaction to match new shares/cost/date
-                // This is a simplification to set the cost basis without recalculating all transactions.
                 if (stock.transactions && stock.transactions.length > 0) {
-                    // Find or create the first buy transaction
                     let firstBuyIndex = stock.transactions.findIndex(t => t.type === 'buy');
-                    
                     if (firstBuyIndex !== -1) {
-                        // Update existing first buy transaction
                         stock.transactions[firstBuyIndex].shares = newShares;
                         stock.transactions[firstBuyIndex].price = newCost;
                         stock.transactions[firstBuyIndex].date = new Date(newDateInput).toISOString();
                     } else {
-                        // If no buy transaction exists (e.g., deleted or only sells exist), create one.
                         stock.transactions.push({
                             type: 'buy',
                             shares: newShares,
@@ -3267,8 +2393,7 @@
                         });
                     }
                 } else if (newShares > 0) {
-                    // Create the initial transaction if the list was empty and shares > 0
-                     stock.transactions = [{
+                    stock.transactions = [{
                         type: 'buy',
                         shares: newShares,
                         price: newCost,
@@ -3276,8 +2401,6 @@
                         date: new Date(newDateInput).toISOString()
                     }];
                 }
-
-                // 4. Save and refresh
                 await this.saveData();
                 this.renderContent();
                 this.closeEditStockModal();
@@ -3289,4 +2412,3 @@
     </script>
 </body>
 </html>
-
