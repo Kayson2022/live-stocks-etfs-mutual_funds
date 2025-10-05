@@ -438,7 +438,8 @@
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
             gap: 24px;
-            max-height: 10000px; 
+            /* Increased max-height considerably to prevent clipping */
+            max-height: 20000px; 
             opacity: 1;
             overflow: hidden;
             transition: max-height 0.5s ease-in-out, opacity 0.3s ease-in-out;
@@ -506,7 +507,8 @@
         .group-footer-btn-container {
             grid-column: 1 / -1;
             text-align: center;
-            margin-top: 8px; /* Space above button when content is expanded */
+            margin-top: -16px; /* Pull up to sit flush with the bottom padding of group-content */
+            margin-bottom: 16px; /* Extra space below button */
         }
         .group-footer-btn-container.collapsed {
             display: none; /* Hide button when the content is collapsed */
@@ -742,7 +744,7 @@
     <div id="error" class="error" style="display: none;"></div>
     <div id="success" class="success" style="display: none;"></div>
     <div id="refresh-status-popup" class="refresh-status-popup"></div>
-    <div id="alert-notification" class="alert-notification" style="display: none;"></div>
+    <div id="alert-notification" style="display: none;"></div>
 
     <div id="login-container" class="container">
         <h1>💰 Live Portfolio Tracker</h1>
