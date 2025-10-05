@@ -418,7 +418,6 @@
 
         /* --- Group Headers --- */
         .group-header, .watchlist-title {
-            grid-column: 1 / -1;
             font-size: 1.25rem;
             font-weight: 700;
             padding: 16px 0;
@@ -430,13 +429,12 @@
             cursor: pointer;
         }
         .group-wrapper {
-            display: contents;
+            grid-column: 1 / -1;
         }
         .group-content {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
             gap: 24px;
-            grid-column: 1 / -1;
             max-height: 5000px;
             opacity: 1;
             overflow: hidden;
