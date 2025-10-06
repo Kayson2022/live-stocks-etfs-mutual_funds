@@ -2285,14 +2285,40 @@
                 if (!container) return;
                 container.style.display = this.currentTab === 'stocks' && this.portfolioHistory.length > 1 ? 'block' : 'none';
                 if (!container.style.display || container.style.display === 'none') return;
+                
                 const labels = this.portfolioHistory.map(e => e.date);
                 const data = this.portfolioHistory.map(e => e.value);
+                
+                // --- FIX: Dynamically adjust Y-Axis Max ---
+                const maxValue = Math.max(...data, 0);
+                // Add a 10% buffer to the max value for better chart scaling
+                const chartMax = maxValue > 0 ? maxValue * 1.1 : undefined; 
+                // --- END FIX ---
+                
                 if (this.historyChartInstance) this.historyChartInstance.destroy();
                 const gridColor = this.isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
                 const labelColor = this.isDarkMode ? '#f1f1f1' : '#666';
                 this.historyChartInstance = new Chart(this.elements.historyChart, {
                     type: 'line', data: { labels, datasets: [{ label: 'Portfolio Value', data, borderColor: '#667eea', tension: 0.1 }] },
-                    options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Portfolio History', color: labelColor }, legend: { labels: { color: labelColor }} }, scales: { y: { ticks: { color: labelColor }, grid: { color: gridColor } }, x: { ticks: { color: labelColor }, grid: { color: gridColor } } } }
+                    options: { 
+                        responsive: true, 
+                        maintainAspectRatio: false, 
+                        plugins: { 
+                            title: { display: true, text: 'Portfolio History', color: labelColor }, 
+                            legend: { labels: { color: labelColor }} 
+                        }, 
+                        scales: { 
+                            y: { 
+                                ticks: { color: labelColor }, 
+                                grid: { color: gridColor },
+                                max: chartMax // Apply the dynamic maximum scale here
+                            }, 
+                            x: { 
+                                ticks: { color: labelColor }, 
+                                grid: { color: gridColor } 
+                            } 
+                        } 
+                    }
                 });
             }
             openConfirmModal(text, onConfirmAction, onCancelAction = null) {
