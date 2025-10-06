@@ -500,9 +500,16 @@
             grid-column: 1 / -1;
             text-align: center;
             padding-top: 20px;
+            transition: max-height 0.5s ease-in-out, opacity 0.3s ease-in-out;
+            max-height: 100px;
+            opacity: 1;
+            overflow: hidden;
         }
         .group-footer.collapsed {
-            display: none;
+             max-height: 0;
+            opacity: 0;
+            padding: 0;
+            margin: 0;
         }
         .collapse-group-btn {
             padding: 8px 24px;
@@ -515,7 +522,36 @@
             background-color: var(--border-color);
             color: var(--text-primary);
         }
-        .summary-content { display: none; }
+        .summary-content {
+            grid-column: 1 / -1;
+            padding: 20px 0;
+            display: none;
+            transition: max-height 0.5s ease-in-out, opacity 0.3s ease-in-out;
+        }
+        .summary-content.collapsed {
+            display: none;
+        }
+        .summary-card {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 25px;
+            text-align: center;
+            max-width: 450px;
+            margin: 0 auto;
+            box-shadow: var(--shadow-sm);
+        }
+        .summary-card h4 {
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+            color: var(--text-primary);
+        }
+        .summary-card p {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            color: var(--text-secondary);
+            white-space: pre-line;
+        }
 
         /* --- Card Actions (Buy/Sell, Transactions) --- */
         .card-actions {
@@ -1998,11 +2034,18 @@
                 if(itemList.length === 0) return;
                 const groupWrapper = document.createElement('div');
                 groupWrapper.className = 'group-wrapper';
+
                 const header = document.createElement('div');
                 header.className = `group-header ${headerClass}`;
                 header.innerHTML = `<span>${title} (${itemList.length})</span><span class="toggle-icon">▼</span>`;
+
                 const content = document.createElement('div');
                 content.className = `group-content ${headerClass}-content`;
+                
+                const summaryContainer = document.createElement('div');
+                summaryContainer.className = 'summary-content collapsed'; // Collapsed by default
+                summaryContainer.innerHTML = `<div class="summary-card"><h4>${summary.title}</h4><p>${summary.text}</p></div>`;
+                
                 const footer = document.createElement('div');
                 footer.className = 'group-footer';
                 footer.innerHTML = `<button class="add-btn collapse-group-btn">Collapse</button>`;
@@ -2010,15 +2053,12 @@
                 const toggleGroup = () => {
                     const isCollapsed = header.classList.toggle('collapsed');
                     content.classList.toggle('collapsed');
+                    summaryContainer.classList.toggle('collapsed');
                     footer.classList.toggle('collapsed');
+
                     const toggleIcon = header.querySelector('.toggle-icon');
-                    if (toggleIcon) {
-                        toggleIcon.style.transform = isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
-                    }
-                    const collapseBtn = footer.querySelector('.collapse-group-btn');
-                    if(collapseBtn) {
-                        collapseBtn.textContent = isCollapsed ? 'Expand' : 'Collapse';
-                    }
+                    toggleIcon.style.transform = isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
+                    footer.querySelector('.collapse-group-btn').textContent = isCollapsed ? 'Expand' : 'Collapse';
                     this.groupCollapseState[title] = isCollapsed;
                     sessionStorage.setItem('groupCollapseState', JSON.stringify(this.groupCollapseState));
                 };
@@ -2034,14 +2074,14 @@
                 if (this.groupCollapseState[title] === true) {
                     header.classList.add('collapsed');
                     content.classList.add('collapsed');
+                    summaryContainer.classList.remove('collapsed');
                     footer.classList.add('collapsed');
                     const toggleIcon = header.querySelector('.toggle-icon');
-                    if (toggleIcon) toggleIcon.style.transform = 'rotate(-90deg)';
-                    const collapseBtn = footer.querySelector('.collapse-group-btn');
-                    if (collapseBtn) collapseBtn.textContent = 'Expand';
+                    toggleIcon.style.transform = 'rotate(-90deg)';
+                    footer.querySelector('.collapse-group-btn').textContent = 'Expand';
                 }
-                
-                groupWrapper.append(header, content, footer);
+
+                groupWrapper.append(header, content, summaryContainer, footer);
                 parent.appendChild(groupWrapper);
                 this.renderCards(itemList, content, type);
             }
