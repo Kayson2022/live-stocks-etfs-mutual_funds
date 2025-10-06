@@ -2029,86 +2029,115 @@
                     card.dataset.symbol = item.symbol;
                     card.dataset.type = type;
                     const stats = this.calculateTransactionStats(item.transactions, item.price);
-                    const platformHTML = item.platform ? `<div class="info-row"><span class="info-label">Platform:</span><span class="info-value">${item.platform}</span></div>` : '';
-                    const totalPL = stats.unrealizedPL;
-                    const totalPLPercent = stats.costOfRemainingShares > 0 ? (totalPL / stats.costOfRemainingShares) * 100 : 0;
-                    const positiveClass = value => value >= 0 ? 'positive' : 'negative';
+                    
                     let stockInfoHTML = '';
-                     if (type === 'watchlist' || type === 'fund') {
-                         stockInfoHTML = `<div class="info-row"><span class="info-label">Open:</span><span class="info-value">${this.formatCurrency(item.open || 0)}</span></div><div class="info-row"><span class="info-label">High:</span><span class="info-value">${this.formatCurrency(item.high || 0)}</span></div><div class="info-row"><span class="info-label">Low:</span><span class="info-value">${this.formatCurrency(item.low || 0)}</span></div><div class="info-row"><span class="info-label">Prev. Close:</span><span class="info-value">${this.formatCurrency(item.previousClose || 0)}</span></div>`;
-                     } else {
-                          stockInfoHTML = `
-                         <div class="info-row">
-                             <span class="info-label">Open:</span>
-                             <span class="info-value">${this.formatCurrency(item.open || 0)}</span>
-                         </div>
-                         <div class="info-row">
-                             <span class="info-label">Total Shares:</span>
-                             <span class="info-value">${this.formatNumber(stats.totalSharesOwned, 3)}</span>
-                         </div>
-                         <div class="info-row">
-                             <span class="info-label">Total Value:</span>
-                             <span class="info-value ${positiveClass(totalPL)}">${this.formatCurrency(stats.currentValue)}</span>
-                         </div>
-                         <div class="info-row">
-                             <span class="info-label">Avg. Cost:</span>
-                             <span class="info-value">${this.formatCurrency(stats.averageCostBasis)}</span>
-                         </div>
-                         <div class="info-row">
-                             <span class="info-label">Total P/L:</span>
-                             <span class="info-value ${positiveClass(totalPL)}">${this.formatCurrency(totalPL)}</span>
-                         </div>
-                         <div class="info-row">
-                             <span class="info-label">Total P/L %:</span>
-                             <span class="info-value ${positiveClass(totalPLPercent)}">${this.formatNumber(totalPLPercent, 2)}%</span>
-                         </div>
-                         <div class="info-row">
-                             <span class="info-label">Total Cost Basis:</span>
-                             <span class="info-value">${this.formatCurrency(stats.costOfRemainingShares)}</span>
-                         </div>
-                         ${platformHTML}`;
-                     }
                     let transactionDetailsHTML = '';
-                    if (type === 'stock' || type === 'fund') {
+            
+                    if ((type === 'stock' || type === 'fund') && stats.totalSharesOwned < 0.0001 && item.transactions && item.transactions.length > 0) {
+                        // --- RENDER A CLOSED POSITION CARD ---
+                        card.style.opacity = "0.7";
+                        const realizedPL = stats.realizedPL;
+                        const realizedClass = realizedPL >= 0 ? 'positive' : 'negative';
+            
+                        stockInfoHTML = `
+                            <div class="info-row" style="text-align: center; display: block; margin-bottom: 10px;">
+                                <span class="info-label" style="font-weight: bold; font-size: 1.1em;">Position Closed</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Realized P/L</span>
+                                <span class="info-value ${realizedClass}" style="font-size: 1.2em;">${this.formatCurrency(realizedPL)}</span>
+                            </div>
+                        `;
+            
                         transactionDetailsHTML = `
-                        <div class="transaction-details">
-                            <div class="transaction-header">
-                                <h4>Transactions:</h4>
-                                <div class="header-controls">
-                                    <button class="add-btn header-collapse-btn">Collapse</button>
+                            <div class="transaction-details">
+                                <div class="transaction-header">
+                                    <h4>Transactions</h4>
                                     <span class="toggle-icon">▼</span>
                                 </div>
+                                <div class="transactions-container">${(item.transactions || []).map((t, index) => `
+                                    <div class="transaction-entry">
+                                        <div class="transaction-info">
+                                            <span><strong class="${t.type}">${t.type.toUpperCase()}</strong>: ${this.formatNumber(t.shares, 3)} @ ${this.formatCurrency(t.price)}</span>
+                                            ${t.note ? `<span>Note: ${t.note}</span>` : ''}
+                                            <span>Date: ${t.date ? new Date(t.date).toLocaleDateString() : 'N/A'}</span>
+                                        </div>
+                                        <div class="transaction-entry-controls">
+                                            <button class="edit-transaction-btn" data-index="${index}" data-type="${t.type}">Edit</button>
+                                            <button class="delete-transaction-btn" data-index="${index}">&times;</button>
+                                        </div>
+                                    </div>`).join('')}</div>
                             </div>
-                            <div class="transactions-container">${ (item.transactions || []).map((t, index) => `
-                                <div class="transaction-entry">
-                                    <div class="transaction-info">
-                                        <span><strong class="${t.type}">${t.type.toUpperCase()}</strong>: ${this.formatNumber(t.shares, 3)} @ ${this.formatCurrency(t.price)}</span>
-                                        ${t.note ? `<span>Note: ${t.note}</span>` : ''}
-                                        <span>Date: ${t.date ? new Date(t.date).toLocaleDateString() : 'N/A'}</span>
-                                    </div>
-                                    <div class="transaction-entry-controls">
-                                        <button class="edit-transaction-btn" data-index="${index}" data-type="${t.type}">Edit</button>
-                                        <button class="delete-transaction-btn" data-index="${index}">&times;</button>
-                                    </div>
-                                </div>`).join('')}</div>
-                        </div>
-                        <div class="card-actions">
-                            <button class="transaction-btn buy-btn">Buy</button>
-                            <button class="transaction-btn sell-btn" style="background: #ff4757;">Sell</button>
-                        </div>
-                        <div class="card-actions card-actions-full">
-                            <button class="add-btn edit-btn" style="background-color: #f7b731; width: 100%;" data-action="edit">Edit Stock Details</button>
-                        </div>
-                        <div class="card-actions" style="grid-template-columns: 1fr;">
-                            <button class="transaction-btn set-alert-btn" style="background: #9b59b6; margin-top: 5px;">🔔 Set Alert</button>
-                        </div>
+                            <div class="card-actions">
+                                <button class="transaction-btn buy-btn">Buy Again</button>
+                                <button class="transaction-btn sell-btn" disabled style="background-color: #aaa; cursor: not-allowed;">Sell</button>
+                            </div>
+                            <div class="card-actions" style="grid-template-columns: 1fr; margin-top: 8px;">
+                                <button class="add-btn edit-btn" data-action="edit">Edit Details</button>
+                            </div>
+                            <div class="card-actions" style="grid-template-columns: 1fr; margin-top: 8px;">
+                                <button class="transaction-btn set-alert-btn" style="background-color: #9b59b6;">🔔 Set Alert</button>
+                            </div>
                         `;
-                    } else if (type === 'watchlist') {
-                         transactionDetailsHTML = `<div class="card-actions card-actions-watchlist" style="grid-template-columns: 1fr;">
-                             <button class="add-btn move-to-portfolio-btn" onclick="window.stockTracker.moveToPortfolio('${item.symbol}')">Move to Portfolio</button>
-                             <button class="transaction-btn set-alert-btn" style="background: #9b59b6; margin-top: 5px;">🔔 Set Alert</button>
-                         </div>`;
+                    } else {
+                        // --- RENDER A REGULAR OPEN POSITION OR WATCHLIST CARD ---
+                        const totalPL = stats.unrealizedPL;
+                        const totalPLPercent = stats.costOfRemainingShares > 0 ? (totalPL / stats.costOfRemainingShares) * 100 : 0;
+                        const positiveClass = value => value >= 0 ? 'positive' : 'negative';
+                        const platformHTML = item.platform ? `<div class="info-row"><span class="info-label">Platform:</span><span class="info-value">${item.platform}</span></div>` : '';
+            
+                        if (type === 'watchlist' || type === 'fund') {
+                            stockInfoHTML = `<div class="info-row"><span class="info-label">Open:</span><span class="info-value">${this.formatCurrency(item.open || 0)}</span></div><div class="info-row"><span class="info-label">High:</span><span class="info-value">${this.formatCurrency(item.high || 0)}</span></div><div class="info-row"><span class="info-label">Low:</span><span class="info-value">${this.formatCurrency(item.low || 0)}</span></div><div class="info-row"><span class="info-label">Prev. Close:</span><span class="info-value">${this.formatCurrency(item.previousClose || 0)}</span></div>`;
+                        } else {
+                            stockInfoHTML = `
+                                <div class="info-row"> <span class="info-label">Open:</span> <span class="info-value">${this.formatCurrency(item.open || 0)}</span> </div>
+                                <div class="info-row"> <span class="info-label">Total Shares:</span> <span class="info-value">${this.formatNumber(stats.totalSharesOwned, 3)}</span> </div>
+                                <div class="info-row"> <span class="info-label">Total Value:</span> <span class="info-value ${positiveClass(totalPL)}">${this.formatCurrency(stats.currentValue)}</span> </div>
+                                <div class="info-row"> <span class="info-label">Avg. Cost:</span> <span class="info-value">${this.formatCurrency(stats.averageCostBasis)}</span> </div>
+                                <div class="info-row"> <span class="info-label">Total P/L:</span> <span class="info-value ${positiveClass(totalPL)}">${this.formatCurrency(totalPL)}</span> </div>
+                                <div class="info-row"> <span class="info-label">Total P/L %:</span> <span class="info-value ${positiveClass(totalPLPercent)}">${this.formatNumber(totalPLPercent, 2)}%</span> </div>
+                                <div class="info-row"> <span class="info-label">Total Cost Basis:</span> <span class="info-value">${this.formatCurrency(stats.costOfRemainingShares)}</span> </div>
+                                ${platformHTML}`;
+                        }
+            
+                        if (type === 'stock' || type === 'fund') {
+                            transactionDetailsHTML = `
+                                <div class="transaction-details">
+                                    <div class="transaction-header">
+                                        <h4>Transactions</h4>
+                                        <span class="toggle-icon">▼</span>
+                                    </div>
+                                    <div class="transactions-container">${(item.transactions || []).map((t, index) => `
+                                        <div class="transaction-entry">
+                                            <div class="transaction-info">
+                                                <span><strong class="${t.type}">${t.type.toUpperCase()}</strong>: ${this.formatNumber(t.shares, 3)} @ ${this.formatCurrency(t.price)}</span>
+                                                ${t.note ? `<span>Note: ${t.note}</span>` : ''}
+                                                <span>Date: ${t.date ? new Date(t.date).toLocaleDateString() : 'N/A'}</span>
+                                            </div>
+                                            <div class="transaction-entry-controls">
+                                                <button class="edit-transaction-btn" data-index="${index}" data-type="${t.type}">Edit</button>
+                                                <button class="delete-transaction-btn" data-index="${index}">&times;</button>
+                                            </div>
+                                        </div>`).join('')}</div>
+                                </div>
+                                <div class="card-actions">
+                                    <button class="transaction-btn buy-btn">Buy</button>
+                                    <button class="transaction-btn sell-btn" style="background-color: var(--color-negative);">Sell</button>
+                                </div>
+                                <div class="card-actions" style="grid-template-columns: 1fr; margin-top: 8px;">
+                                    <button class="add-btn edit-btn" data-action="edit">Edit Details</button>
+                                </div>
+                                <div class="card-actions" style="grid-template-columns: 1fr; margin-top: 8px;">
+                                    <button class="transaction-btn set-alert-btn" style="background-color: #9b59b6;">🔔 Set Alert</button>
+                                </div>`;
+                        } else if (type === 'watchlist') {
+                            transactionDetailsHTML = `<div class="card-actions" style="grid-template-columns: 1fr; gap: 8px;">
+                                <button class="add-btn move-to-portfolio-btn" onclick="window.stockTracker.moveToPortfolio('${item.symbol}')">Move to Portfolio</button>
+                                <button class="transaction-btn set-alert-btn" style="background-color: #9b59b6;">🔔 Set Alert</button>
+                            </div>`;
+                        }
                     }
+                    
                     const todayPL = (item.change || 0) * stats.totalSharesOwned;
                     card.innerHTML = `
                         <div class="stock-header">
@@ -2123,24 +2152,20 @@
                         ${transactionDetailsHTML}
                         <div class="total-pl ${todayPL >= 0 ? 'positive' : 'negative'}">P/L Today: ${this.formatCurrency(todayPL)}</div>
                     `;
+                    
+                    container.appendChild(card);
                     const transactionHeader = card.querySelector('.transaction-header');
                     if (transactionHeader) {
                         const toggleTransactions = () => {
-                            transactionHeader.classList.toggle('collapsed');
-                            const transactionsContainer = transactionHeader.nextElementSibling;
-                            if (transactionsContainer) {
-                                transactionsContainer.classList.toggle('collapsed');
-                                const button = transactionHeader.querySelector('.header-collapse-btn');
-                                button.textContent = transactionHeader.classList.contains('collapsed') ? 'Expand' : 'Collapse';
+                            const container = transactionHeader.nextElementSibling;
+                            if (container) {
+                                container.classList.toggle('collapsed');
+                                transactionHeader.classList.toggle('collapsed');
+                                transactionHeader.querySelector('.toggle-icon').style.transform = container.classList.contains('collapsed') ? 'rotate(0deg)' : 'rotate(90deg)';
                             }
                         };
                         transactionHeader.addEventListener('click', toggleTransactions);
-                        transactionHeader.querySelector('.header-collapse-btn').addEventListener('click', (e) => {
-                            e.stopPropagation();
-                            toggleTransactions();
-                        });
                     }
-                    container.appendChild(card);
                 });
             }
             async moveToPortfolio(symbol) {
