@@ -377,6 +377,8 @@
             box-shadow: var(--shadow-sm);
             border: 1px solid var(--border-color);
             transition: var(--transition);
+            /* FIX: Ensure the card renders fully when in the grid */
+            min-height: 400px; 
         }
         .stock-card:hover, .fund-card:hover, .watchlist-card:hover {
             transform: translateY(-4px);
@@ -422,7 +424,6 @@
             border: none;
             cursor: pointer;
             font-size: 1.2rem;
-            transition: var(--transition);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -470,9 +471,27 @@
             align-items: center;
             cursor: pointer;
         }
-        .group-wrapper {
-            grid-column: 1 / -1;
+        /* Visual cue for collapsed headers */
+        .group-header.collapsed {
+            background-color: var(--bg-tertiary); 
+            border-radius: var(--radius-md) var(--radius-md) 0 0;
+            border: 1px solid var(--border-color);
+            padding: 16px;
+            border-bottom: none;
+            margin-top: 16px;
         }
+
+        .group-wrapper {
+            /* This is the container for header, summary, content, and footer */
+            grid-column: 1 / -1; 
+            display: contents; /* Allow children to participate directly in the stocks-grid parent layout */
+        }
+        
+        .group-header, .summary-content, .group-content, .group-footer {
+            /* All children of group-wrapper must span the full grid width */
+            grid-column: 1 / -1; 
+        }
+
         .group-content {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
@@ -497,19 +516,20 @@
         .group-header.collapsed .toggle-icon { transform: rotate(-90deg); }
         
         .group-footer {
-            grid-column: 1 / -1;
             text-align: center;
             padding-top: 20px;
             transition: max-height 0.5s ease-in-out, opacity 0.3s ease-in-out;
             max-height: 100px;
             opacity: 1;
             overflow: hidden;
+            margin-bottom: 24px; /* Space after the group */
         }
         .group-footer.collapsed {
              max-height: 0;
             opacity: 0;
             padding: 0;
-            margin: 0;
+            margin-top: 0;
+            margin-bottom: 0;
         }
         .collapse-group-btn {
             padding: 8px 24px;
@@ -522,18 +542,16 @@
             background-color: var(--border-color);
             color: var(--text-primary);
         }
-        /* --- START FIX FOR GROUP SUMMARY VISIBILITY --- */
+        /* --- FIX: GROUP SUMMARY VISIBILITY & LAYOUT --- */
         .summary-content {
-            grid-column: 1 / -1;
             padding: 20px 0;
-            /* Use height/opacity for smoother toggle, remove display: none */
-            max-height: 1000px;
+            max-height: 1000px; /* Large enough to hold content */
             opacity: 1;
             pointer-events: auto;
             overflow: hidden;
             transition: max-height 0.5s ease-in-out, opacity 0.3s ease-in-out, padding 0.5s ease-in-out;
         }
-        /* When group is expanded, summary should be HELD in the 'collapsed' class state */
+        /* When expanded, the summary content is collapsed (hidden) */
         .summary-content.collapsed {
             max-height: 0;
             opacity: 0;
@@ -541,7 +559,7 @@
             padding-bottom: 0;
             pointer-events: none;
         }
-        /* --- END FIX FOR GROUP SUMMARY VISIBILITY --- */
+        /* --- END FIX --- */
         .summary-card {
             background: var(--bg-tertiary);
             border: 1px solid var(--border-color);
@@ -562,6 +580,12 @@
             line-height: 1.6;
             color: var(--text-secondary);
             white-space: pre-line;
+        }
+        /* Add margin to the top of summary card when immediately following a collapsed header */
+        .group-header.collapsed + .summary-content:not(.collapsed) .summary-card {
+            margin-top: 0;
+            border-radius: 0 0 var(--radius-md) var(--radius-md);
+            border-top: none;
         }
 
         /* --- Card Actions (Buy/Sell, Transactions) --- */
@@ -785,7 +809,11 @@
             .header h1 { font-size: 1.5rem; }
             .header-controls { gap: 8px; }
             .summary-stats { grid-template-columns: repeat(2, 1fr); }
-            .stocks-grid { grid-template-columns: 1fr; }
+            .stocks-grid { 
+                grid-template-columns: 1fr; 
+                /* Ensure bottom space for chart/last element */
+                padding-bottom: 20px; 
+            }
             #user-name { display: none; }
         }
     </style>
@@ -1333,7 +1361,7 @@
                     modalSaveBtn: document.getElementById('modal-save-btn'),
                     settingsModal: document.getElementById('settingsModal'),
                     closeSettingsBtn: document.getElementById('closeSettingsBtn'),
-                    modalFinnhubKey: document.getElementById('modal-finnhub-key'),
+                    smodalFinnhubKey: document.getElementById('modal-finnhub-key'),
                     modalAlphaVantageKey: document.getElementById('modal-alpha-vantage-key'),
                     modalFmpKey: document.getElementById('modal-fmp-key'),
                     modalRefreshInterval: document.getElementById('modal-refresh-interval'),
@@ -2054,7 +2082,7 @@
                 content.className = `group-content ${headerClass}-content`;
                 
                 const summaryContainer = document.createElement('div');
-                summaryContainer.className = 'summary-content collapsed'; // Starts HIDDEN (Collapsed state in CSS is HIDDEN)
+                summaryContainer.className = 'summary-content collapsed';
                 summaryContainer.innerHTML = `<div class="summary-card"><h4>${summary.title}</h4><p>${summary.text}</p></div>`;
                 
                 const footer = document.createElement('div');
@@ -2062,10 +2090,10 @@
                 footer.innerHTML = `<button class="add-btn collapse-group-btn">Collapse</button>`;
 
                 const toggleGroup = () => {
-                    const isCollapsed = header.classList.toggle('collapsed'); // true when collapsing
+                    const isCollapsed = header.classList.toggle('collapsed');
                     content.classList.toggle('collapsed');
                     
-                    // FIX: Apply 'collapsed' class to summaryContainer ONLY when the group is EXPANDED (i.e., when !isCollapsed)
+                    // Toggle summary: show when group is collapsed, hide when expanded
                     summaryContainer.classList.toggle('collapsed', !isCollapsed);
 
                     footer.classList.toggle('collapsed');
@@ -2096,7 +2124,7 @@
                     footer.querySelector('.collapse-group-btn').textContent = 'Expand';
                 }
 
-                groupWrapper.append(header, summaryContainer, content, footer); // Move summary up to visually appear first when visible
+                groupWrapper.append(header, summaryContainer, content, footer); // All elements added to wrapper
                 parent.appendChild(groupWrapper);
                 this.renderCards(itemList, content, type);
             }
