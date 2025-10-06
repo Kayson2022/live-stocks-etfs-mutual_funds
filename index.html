@@ -619,6 +619,12 @@
             justify-content: center;
             gap: 16px;
         }
+        #alerts-summary-content .triggered-alert {
+            background-color: color-mix(in srgb, var(--color-positive) 10%, transparent);
+            border-left: 4px solid var(--color-positive);
+            margin: 2px -10px;
+            padding-left: 6px !important;
+        }
 
         /* --- Notifications & Popups --- */
         .loading, .error, .success, .refresh-status-popup, .alert-notification {
@@ -2379,22 +2385,30 @@
                 this.elements.alertsSummaryModal.style.display = 'flex';
                 const contentDiv = this.elements.alertsSummaryContent;
                 contentDiv.innerHTML = '';
-                const activeAlerts = this.priceAlerts.filter(a => !a.triggered);
-                if (activeAlerts.length === 0) {
-                    contentDiv.innerHTML = `<p style="text-align: center; color: #666; margin-top: 20px;">No active price alerts currently set.</p>`;
+                const allAlerts = this.priceAlerts.slice().sort((a, b) => (a.triggered === b.triggered) ? 0 : a.triggered ? -1 : 1);
+
+                if (allAlerts.length === 0) {
+                    contentDiv.innerHTML = `<p style="text-align: center; color: var(--text-secondary); margin-top: 20px;">No alerts currently set.</p>`;
                     return;
                 }
+
                 let html = '<ul style="list-style-type: none; padding: 0;">';
-                activeAlerts.forEach(alert => {
+                allAlerts.forEach(alert => {
                     const priceClass = alert.condition === 'above' ? 'positive' : 'negative';
                     const targetPrice = this.formatCurrency(alert.price);
                     const alertDate = new Date(alert.date || new Date());
                     const formattedDate = alertDate.toLocaleDateString();
                     const formattedTime = alertDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    const triggeredClass = alert.triggered ? 'triggered-alert' : '';
+                    const actionButtons = alert.triggered 
+                        ? `<button onclick="window.stockTracker.dismissPriceAlertById('${alert.id}')" class="edit-transaction-btn" style="background-color: var(--color-positive); color: white;">Dismiss</button>`
+                        : `<button onclick="window.stockTracker.openPriceAlertModal('${alert.symbol}')" class="edit-transaction-btn">Edit</button>
+                           <button onclick="window.stockTracker.removePriceAlertById('${alert.id}')" class="delete-transaction-btn">&times;</button>`;
+
                     html += `
-                        <li style="padding: 10px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                        <li class="${triggeredClass}" style="padding: 10px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
                             <div>
-                                <strong style="font-size: 1.1rem;">${alert.symbol}</strong><br>
+                                <strong style="font-size: 1.1rem;">${alert.symbol} ${alert.triggered ? '✔️' : ''}</strong><br>
                                 <span style="color: var(--text-secondary);">
                                     Alert: Price is
                                      <span class="${priceClass}">${alert.condition} ${targetPrice}</span>
@@ -2404,14 +2418,19 @@
                                 </span>
                             </div>
                             <div style="display:flex; gap: 5px;">
-                                <button onclick="window.stockTracker.openPriceAlertModal('${alert.symbol}')" class="edit-transaction-btn">Edit</button>
-                                <button onclick="window.stockTracker.removePriceAlertById('${alert.id}')" class="delete-transaction-btn">&times;</button>
+                                ${actionButtons}
                             </div>
                         </li>
                     `;
                 });
                 html += '</ul>';
                 contentDiv.innerHTML = html;
+            }
+            dismissPriceAlertById(alertId) {
+                this.priceAlerts = this.priceAlerts.filter(a => a.id !== alertId);
+                this.saveData();
+                this.openAlertsSummaryModal();
+                this.showSuccess('Alert dismissed.');
             }
             removePriceAlertById(alertId) {
                 const onCancel = () => this.openAlertsSummaryModal();
