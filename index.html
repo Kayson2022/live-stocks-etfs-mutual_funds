@@ -491,30 +491,11 @@
             padding-bottom: 0;
             gap: 0;
             pointer-events: none;
-            overflow: hidden;
+            overflow: hidden; /* Added to prevent content from peeking out */
         }
         .group-header .toggle-icon { transition: transform 0.3s ease; }
         .group-header.collapsed .toggle-icon { transform: rotate(-90deg); }
-        
-        .group-footer {
-            grid-column: 1 / -1;
-            text-align: center;
-            padding-top: 20px;
-        }
-        .group-footer.collapsed {
-            display: none;
-        }
-        .collapse-group-btn {
-            padding: 8px 24px;
-            font-size: 0.9rem;
-            background-color: var(--bg-tertiary);
-            color: var(--text-secondary);
-            border: 1px solid var(--border-color);
-        }
-        .collapse-group-btn:hover {
-            background-color: var(--border-color);
-            color: var(--text-primary);
-        }
+        .group-footer { display: none; }
         .summary-content { display: none; }
 
         /* --- Card Actions (Buy/Sell, Transactions) --- */
@@ -2003,26 +1984,22 @@
                 header.innerHTML = `<span>${title} (${itemList.length})</span><span class="toggle-icon">▼</span>`;
                 const content = document.createElement('div');
                 content.className = `group-content ${headerClass}-content`;
+                const summaryContainer = document.createElement('div');
+                summaryContainer.className = 'summary-content collapsed';
+                summaryContainer.innerHTML = `<div class="summary-card"><h4>${summary.title}</h4><p>${summary.text}</p></div>`;
                 const footer = document.createElement('div');
                 footer.className = 'group-footer';
                 footer.innerHTML = `<button class="add-btn collapse-group-btn">Collapse</button>`;
-
                 const toggleGroup = () => {
                     const isCollapsed = header.classList.toggle('collapsed');
                     content.classList.toggle('collapsed');
-                    footer.classList.toggle('collapsed');
+                    summaryContainer.classList.toggle('collapsed');
                     const toggleIcon = header.querySelector('.toggle-icon');
-                    if (toggleIcon) {
-                        toggleIcon.style.transform = isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
-                    }
-                    const collapseBtn = footer.querySelector('.collapse-group-btn');
-                    if(collapseBtn) {
-                        collapseBtn.textContent = isCollapsed ? 'Expand' : 'Collapse';
-                    }
+                    toggleIcon.style.transform = isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
+                    footer.querySelector('.collapse-group-btn').textContent = isCollapsed ? 'Expand' : 'Collapse';
                     this.groupCollapseState[title] = isCollapsed;
                     sessionStorage.setItem('groupCollapseState', JSON.stringify(this.groupCollapseState));
                 };
-
                 header.addEventListener('click', toggleGroup);
                 footer.querySelector('.collapse-group-btn').addEventListener('click', (e) => {
                     e.preventDefault();
@@ -2030,18 +2007,15 @@
                     toggleGroup();
                     header.scrollIntoView({ behavior: 'smooth' });
                 });
-
                 if (this.groupCollapseState[title] === true) {
                     header.classList.add('collapsed');
                     content.classList.add('collapsed');
-                    footer.classList.add('collapsed');
+                    summaryContainer.classList.remove('collapsed');
                     const toggleIcon = header.querySelector('.toggle-icon');
-                    if (toggleIcon) toggleIcon.style.transform = 'rotate(-90deg)';
-                    const collapseBtn = footer.querySelector('.collapse-group-btn');
-                    if (collapseBtn) collapseBtn.textContent = 'Expand';
+                    toggleIcon.style.transform = 'rotate(-90deg)';
+                    footer.querySelector('.collapse-group-btn').textContent = 'Expand';
                 }
-                
-                groupWrapper.append(header, content, footer);
+                groupWrapper.append(header, content, summaryContainer, footer);
                 parent.appendChild(groupWrapper);
                 this.renderCards(itemList, content, type);
             }
