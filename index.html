@@ -369,9 +369,9 @@
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
             gap: 24px;
-            /* FIX 1: Ensure rows auto-adjust based on content height, preventing overflow/clipping */
-            align-items: stretch; 
-            grid-auto-rows: 1fr; 
+            /* FIX 1: Use grid-auto-rows: auto and align-items: start to force natural height flow */
+            align-items: start; 
+            grid-auto-rows: auto; 
         }
         .stock-card, .fund-card, .watchlist-card {
             background-color: var(--bg-secondary);
@@ -2054,19 +2054,24 @@
                 });
             }
             renderGroupedStocks(items, container, type) {
-                // FIX: Use the full list length for grouping context
+                // Determine the stocks to display based on the filter results (items)
+                // Determine the total stocks for accurate counting (allStocks)
                 const allStocks = this.stocks;
-                const gains = allStocks.filter(s => (s.changePercent || 0) >= 0).sort((a, b) => b.changePercent - a.changePercent);
-                const losses = allStocks.filter(s => (s.changePercent || 0) < 0).sort((a, b) => a.changePercent - b.changePercent);
+                const filterTerm = this.elements.portfolioFilter.value.trim().toLowerCase();
+                const isFiltered = filterTerm.length > 0;
                 
-                // If filtering is active, use the filtered lists for rendering, but the full lists for performance calcs
-                const filteredGains = items.filter(s => (s.changePercent || 0) >= 0).sort((a, b) => b.changePercent - a.changePercent);
-                const filteredLosses = items.filter(s => (s.changePercent || 0) < 0).sort((a, b) => a.changePercent - b.changePercent);
+                // Use filtered list for sorting/grouping:
+                const sortedItems = this.sortItems([...items], 'performance');
 
-                // Use filtered lists for card display, but retain the original logic for Biggest Gain/Other Gains
-                const biggestGain = filteredGains.length > 0 ? [filteredGains[0]] : [];
-                const otherGains = filteredGains.filter(s => biggestGain.length === 0 || s.symbol !== biggestGain[0].symbol);
-                
+                // Separate groups based on filtered results
+                const filteredGains = sortedItems.filter(s => (s.changePercent || 0) >= 0);
+                const filteredLosses = sortedItems.filter(s => (s.changePercent || 0) < 0);
+
+                // Determine counts for group titles
+                const totalGainsCount = isFiltered ? filteredGains.length : allStocks.filter(s => (s.changePercent || 0) >= 0).length;
+                const totalLossesCount = isFiltered ? filteredLosses.length : allStocks.filter(s => (s.changePercent || 0) < 0).length;
+
+                // Handle Empty States
                 if (items.length === 0 && allStocks.length > 0) { 
                     container.innerHTML = `<div class="loading" style="grid-column: 1 / -1;">No stocks match the current filter.</div>`; 
                     return; 
@@ -2075,9 +2080,18 @@
                      return;
                 }
 
-                if (biggestGain.length > 0) this.createGroup(`🚀 Biggest Gain Today (${biggestGain.length})`, biggestGain, 'biggest-gain-header', container, type, this.getGroupSummary(biggestGain, 'biggest-gain'));
-                this.createGroup(`📈 Gains Today (${otherGains.length})`, otherGains, 'gains-header', container, type, this.getGroupSummary(otherGains, 'gains'));
-                this.createGroup(`📉 Losses Today (${filteredLosses.length})`, filteredLosses, 'losses-header', container, type, this.getGroupSummary(filteredLosses, 'losses'));
+                // Render Biggest Gain (always one card, taken from the filtered/sorted list)
+                const biggestGain = filteredGains.length > 0 ? [filteredGains[0]] : [];
+                const otherGains = filteredGains.filter(s => biggestGain.length === 0 || s.symbol !== biggestGain[0].symbol);
+                
+                // Generate Titles (using filtered/all counts appropriately)
+                const biggestGainTitle = biggestGain.length > 0 ? `🚀 Biggest Gain Today (1)` : '';
+                const gainsTitle = `📈 Gains Today (${otherGains.length})`;
+                const lossesTitle = `📉 Losses Today (${filteredLosses.length})`;
+
+                if (biggestGain.length > 0) this.createGroup(biggestGainTitle, biggestGain, 'biggest-gain-header', container, type, this.getGroupSummary(biggestGain, 'biggest-gain'));
+                this.createGroup(gainsTitle, otherGains, 'gains-header', container, type, this.getGroupSummary(otherGains, 'gains'));
+                this.createGroup(lossesTitle, filteredLosses, 'losses-header', container, type, this.getGroupSummary(filteredLosses, 'losses'));
             }
             renderGroupedByPlatform(items, container, type) {
                 if (items.length === 0) { container.innerHTML = `<div class="loading" style="grid-column: 1 / -1;">Your portfolio is empty.</div>`; return; }
