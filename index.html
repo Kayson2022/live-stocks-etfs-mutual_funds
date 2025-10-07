@@ -7,7 +7,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- 
     ==================================================================
-    ==      NEW, REDESIGNED STYLESHEET                          ==
+    ==      NEW, REDESIGNED STYLESHEET                              ==
     ==================================================================
     This is the new, professional stylesheet for the UI redesign.
     -->
@@ -369,9 +369,8 @@
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
             gap: 24px;
-            /* FIX 1: Use grid-auto-rows: auto and align-items: start to force natural height flow */
-            align-items: start; 
-            grid-auto-rows: auto; 
+            /* FIX: Align items to the start of the grid cell instead of stretching them. This allows cards to have their own natural height. */
+            align-items: start;
         }
         .stock-card, .fund-card, .watchlist-card {
             background-color: var(--bg-secondary);
@@ -381,39 +380,17 @@
             border: 1px solid var(--border-color);
             transition: var(--transition);
             
-            /* Enforce vertical flex flow and auto height for grid calculation */
+            /* FIX: Ensure cards are flex containers that flow vertically. */
             display: flex;
             flex-direction: column;
-            position: relative; 
-            overflow: visible; 
-            height: auto; 
-            /* Removed min-height: 250px; to allow true content height to dominate */
+            
+            /* FIX: Let content determine the height. Removed fixed min-height. */
+            height: auto;
         }
         .stock-card:hover, .fund-card:hover, .watchlist-card:hover {
             transform: translateY(-4px);
             box-shadow: var(--shadow-md);
             border-color: color-mix(in srgb, var(--border-color) 70%, black);
-        }
-        /* ADDED: Colored top border for grouped cards */
-        .gains-header-content .stock-card,
-        .biggest-gain-header-content .stock-card {
-            border-top-width: 4px;
-            border-top-color: var(--color-positive);
-        }
-        .losses-header-content .stock-card {
-            border-top-width: 4px;
-            border-top-color: var(--color-negative);
-        }
-
-        /* ADDED: Ambient hover effect for grouped cards */
-        .gains-header-content .stock-card:hover,
-        .biggest-gain-header-content .stock-card:hover {
-            border-color: var(--color-positive);
-            box-shadow: var(--shadow-md), 0 0 20px color-mix(in srgb, var(--color-positive) 30%, transparent);
-        }
-        .losses-header-content .stock-card:hover {
-            border-color: var(--color-negative);
-            box-shadow: var(--shadow-md), 0 0 20px color-mix(in srgb, var(--color-negative) 30%, transparent);
         }
         .stock-header {
             display: flex;
@@ -455,10 +432,8 @@
             padding-top: 16px;
             margin-top: 16px;
             border-top: 1px solid var(--border-color);
-        }
-        /* Added flex-grow to ensure info area fills space when transactions are collapsed */
-        .stock-info, .transaction-details { 
-            flex-grow: 1; 
+            /* FIX: Allow this section to grow and fill available space, pushing actions to the bottom. */
+            flex-grow: 1;
         }
 
         .info-row {
@@ -485,25 +460,14 @@
             align-items: center;
             cursor: pointer;
         }
-        /* Visual cue for collapsed headers */
-        .group-header.collapsed {
-            background-color: var(--bg-tertiary); 
-            border-radius: var(--radius-md) var(--radius-md) 0 0;
-            border: 1px solid var(--border-color);
-            padding: 16px;
-            border-bottom: none;
-            margin-top: 16px;
-        }
-
         .group-wrapper {
-            /* FIX 1: Change to block to prevent inner grid layout conflict and enable scrolling */
+            /* FIX: Make the wrapper a simple block element that spans the grid, preventing layout conflicts. */
             grid-column: 1 / -1; 
-            display: block; 
+            display: block;
             width: 100%;
         }
         
         .group-header, .summary-content, .group-content, .group-footer {
-            /* Ensure these children span the parent grid when the wrapper itself is a grid item */
             grid-column: 1 / -1; 
             width: 100%;
         }
@@ -512,100 +476,23 @@
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
             gap: 24px;
-            max-height: 5000px;
+            max-height: 5000px; /* High value for smooth collapse animation */
             opacity: 1;
             overflow: hidden;
-            transition: max-height 0.5s ease-in-out, opacity 0.3s ease-in-out;
-            /* FIX 3: Add margin to the bottom of the group content to prevent final card clipping */
-            margin-bottom: 24px; 
+            transition: max-height 0.5s ease-in-out, opacity 0.3s ease-in-out, margin-bottom 0.5s ease-in-out, gap 0.5s ease-in-out;
+            /* FIX: Add bottom margin to prevent the last row of cards from being clipped. */
+            margin-bottom: 24px;
         }
         .group-content.collapsed {
             max-height: 0;
             opacity: 0;
-            margin-top: 0;
-            margin-bottom: 0; /* Clear bottom margin when collapsed */
-            padding-top: 0;
-            padding-bottom: 0;
+            margin-bottom: 0;
             gap: 0;
             pointer-events: none;
-            overflow: hidden;
         }
         .group-header .toggle-icon { transition: transform 0.3s ease; }
         .group-header.collapsed .toggle-icon { transform: rotate(-90deg); }
         
-        .group-footer {
-            text-align: center;
-            padding-top: 20px;
-            transition: max-height 0.5s ease-in-out, opacity 0.3s ease-in-out;
-            max-height: 100px;
-            opacity: 1;
-            overflow: hidden;
-            margin-bottom: 24px; /* Space after the group */
-        }
-        .group-footer.collapsed {
-             max-height: 0;
-            opacity: 0;
-            padding: 0;
-            margin-top: 0;
-            margin-bottom: 0;
-        }
-        .collapse-group-btn {
-            padding: 8px 24px;
-            font-size: 0.9rem;
-            background-color: var(--bg-tertiary);
-            color: var(--text-secondary);
-            border: 1px solid var(--border-color);
-        }
-        .collapse-group-btn:hover {
-            background-color: var(--border-color);
-            color: var(--text-primary);
-        }
-        /* --- FIX: GROUP SUMMARY VISIBILITY & LAYOUT --- */
-        .summary-content {
-            padding: 20px 0;
-            max-height: 1000px; /* Large enough to hold content */
-            opacity: 1;
-            pointer-events: auto;
-            overflow: hidden;
-            transition: max-height 0.5s ease-in-out, opacity 0.3s ease-in-out, padding 0.5s ease-in-out;
-        }
-        /* When expanded, the summary content is collapsed (hidden) */
-        .summary-content.collapsed {
-            max-height: 0;
-            opacity: 0;
-            padding-top: 0;
-            padding-bottom: 0;
-            pointer-events: none;
-        }
-        /* --- END FIX --- */
-        .summary-card {
-            background: var(--bg-tertiary);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-md);
-            padding: 25px;
-            text-align: center;
-            max-width: 450px;
-            margin: 0 auto;
-            box-shadow: var(--shadow-sm);
-        }
-        .summary-card h4 {
-            margin-bottom: 15px;
-            font-size: 1.3rem;
-            color: var(--text-primary);
-        }
-        .summary-card p {
-            font-size: 1.1rem;
-            line-height: 1.6;
-            color: var(--text-secondary);
-            white-space: pre-line;
-        }
-        /* Add margin to the top of summary card when immediately following a collapsed header */
-        .group-header.collapsed + .summary-content:not(.collapsed) .summary-card {
-            margin-top: 0;
-            border-radius: 0 0 var(--radius-md) var(--radius-md);
-            border-top: none;
-        }
-
         /* --- Card Actions (Buy/Sell, Transactions) --- */
         .card-actions {
             margin-top: 20px;
@@ -642,31 +529,19 @@
         }
         .transaction-header h4 { font-size: 1rem; }
         .transactions-container {
-             /* Set initial max-height to 0, which the JS will override when expanded */
              max-height: 0; 
              opacity: 0; 
              margin-top: 0;
              transition: max-height 0.4s ease, opacity 0.3s ease, margin-top 0.3s ease;
-             overflow: hidden;
+             overflow-y: auto; /* Use auto for scroll if content exceeds max-height */
+             overflow-x: hidden;
         }
         .transactions-container:not(.collapsed) {
-             /* When transactions container is not collapsed (i.e., expanded in JS) */
-             max-height: 1000px; /* Use a generous height for the expansion */
+             max-height: 400px; /* Generous height, scroll if needed */
              opacity: 1;
              margin-top: 10px;
         }
-        /* Ensure the transaction details section flows correctly */
-        .transaction-details {
-            display: flex;
-            flex-direction: column;
-            width: 100%;
-        }
         
-        .transactions-container.collapsed {
-            /* FIX: Ensure collapsed container has no physical height/space in the document flow */
-            display: none; 
-        }
-
         .transaction-entry {
             background-color: var(--bg-tertiary);
             border-radius: var(--radius-sm);
@@ -845,14 +720,8 @@
             .header h1 { font-size: 1.5rem; }
             .header-controls { gap: 8px; }
             .summary-stats { grid-template-columns: repeat(2, 1fr); }
-            .stocks-grid { 
+            .stocks-grid, .group-content { 
                 grid-template-columns: 1fr; 
-                /* Ensure bottom space for chart/last element */
-                padding-bottom: 20px; 
-            }
-            .stock-card, .fund-card, .watchlist-card {
-                /* height: auto is already the default for flex items, explicitly setting it here too just in case */
-                height: auto; 
             }
             #user-name { display: none; }
         }
@@ -882,13 +751,13 @@
     <div id="app-container" class="container">
         <!-- New Header Structure -->
         <header class="header">
-             <h1>💰 Portfolio Tracker</h1>
-             <div class="header-controls">
+            <h1>💰 Portfolio Tracker</h1>
+            <div class="header-controls">
                 <div id="user-info" style="display: none;">
                     <span id="user-name"></span>
                     <button id="sign-out-btn">Sign Out</button>
                 </div>
-             </div>
+            </div>
         </header>
 
         <div id="header-countdown">Next update in: <span id="countdown">90</span>s</div>
@@ -1168,7 +1037,7 @@
 
     <!-- 
     ==================================================================
-    ==      YOUR ORIGINAL JAVASCRIPT                            ==
+    ==      YOUR ORIGINAL JAVASCRIPT                                ==
     ==================================================================
     This is your full, unchanged JavaScript block, ensuring all
     functionality is preserved.
@@ -1206,8 +1075,8 @@
                     if ((quoteData.c === 0 && quoteData.pc === 0) || !profileData.name) return { success: false, symbol, reason: 'Invalid or empty API payload' };
                     return { success: true, data: { symbol, name: profileData.name ?? symbol, price: quoteData.c ?? 0, change: quoteData.d ?? 0, changePercent: quoteData.dp ?? 0, open: quoteData.o ?? 0, high: quoteData.h ?? 0, low: quoteData.l ?? 0, previousClose: quoteData.pc ?? 0, industry: profileData.finnhubIndustry ?? 'N/A' } };
                 } catch (error) {
-                     console.error(`Error fetching stock/ETF data for ${symbol}:`, error);
-                     return { success: false, symbol, reason: error.message };
+                      console.error(`Error fetching stock/ETF data for ${symbol}:`, error);
+                      return { success: false, symbol, reason: error.message };
                 }
             }
             async fetchStockEtfQuote(symbol) {
@@ -1401,7 +1270,7 @@
                     modalSaveBtn: document.getElementById('modal-save-btn'),
                     settingsModal: document.getElementById('settingsModal'),
                     closeSettingsBtn: document.getElementById('closeSettingsBtn'),
-                    smodalFinnhubKey: document.getElementById('modal-finnhub-key'),
+                    modalFinnhubKey: document.getElementById('modal-finnhub-key'),
                     modalAlphaVantageKey: document.getElementById('modal-alpha-vantage-key'),
                     modalFmpKey: document.getElementById('modal-fmp-key'),
                     modalRefreshInterval: document.getElementById('modal-refresh-interval'),
@@ -1639,8 +1508,8 @@
                 let baseItems = [...items];
 
                 let filteredItems = baseItems.filter(item =>
-                     item.symbol.toLowerCase().includes(filterTerm) ||
-                     (item.name && item.name.toLowerCase().includes(filterTerm)) ||
+                    item.symbol.toLowerCase().includes(filterTerm) ||
+                    (item.name && item.name.toLowerCase().includes(filterTerm)) ||
                     (item.platform && item.platform.toLowerCase().includes(filterTerm))
                 );
                 
@@ -1903,7 +1772,7 @@
             }
             calculateTotalContributions() {
                 return this.stocks.reduce((contributions, stock) =>
-                     contributions + (stock.transactions || []).reduce((sum, t) => sum + (t.type === 'buy' ? t.shares * t.price : -t.shares * t.price), 0), 0);
+                    contributions + (stock.transactions || []).reduce((sum, t) => sum + (t.type === 'buy' ? t.shares * t.price : -t.shares * t.price), 0), 0);
             }
             calculateTotalDividends() {
                 return this.stocks.reduce((sum, stock) => sum + (stock.dividends || []).reduce((divSum, div) => divSum + div.totalAmount, 0), 0);
@@ -2048,7 +1917,7 @@
                             item.transactions.splice(index, 1);
                             this.showSuccess(`🗑️ Deleted transaction for ${symbol}.`);
                         } else {
-                              this.showError(`Error: Transaction index ${index} not found for ${symbol}.`);
+                             this.showError(`Error: Transaction index ${index} not found for ${symbol}.`);
                         }
                         await this.saveData();
                         this.renderContent();
@@ -2580,7 +2449,7 @@
                 if (!symbol || isNaN(price) || price <= 0) { this.showError("Invalid alert data."); return; }
                 const existingAlertIndex = this.priceAlerts.findIndex(
                     a => a.symbol === symbol &&
-                     a.price === price &&
+                       a.price === price &&
                     a.condition === this.elements.alertCondition.value &&
                     !a.triggered
                 );
@@ -2672,7 +2541,7 @@
                     const item = allItems.find(i => i.symbol === alert.symbol);
                     if (!item) return;
                     const trigger = (alert.condition === 'above' && item.price > alert.price) ||
-                                           (alert.condition === 'below' && item.price < alert.price);
+                                      (alert.condition === 'below' && item.price < alert.price);
                     if (trigger) {
                         alert.triggered = true;
                         this.showAlertNotification(item, alert);
