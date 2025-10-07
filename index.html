@@ -366,13 +366,15 @@
 
         /* --- Asset Cards --- */
         .stocks-grid {
+            align-items: start; /* FIX: Prevent card stacking */
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
             gap: 24px;
-            /* FIX 1: Align items to start, preventing cards from settling at bottom of row */
-            align-items: start; 
         }
         .stock-card, .fund-card, .watchlist-card {
+            position: relative; /* FIX */
+            height: auto; /* FIX */
+            overflow: visible; /* FIX */
             background-color: var(--bg-secondary);
             border-radius: var(--radius-md);
             padding: 24px;
@@ -380,12 +382,10 @@
             border: 1px solid var(--border-color);
             transition: var(--transition);
             
-            /* --- FIX 2: Enforce vertical flex flow and auto height for grid calculation --- */
+            /* --- FIX: Enforce vertical flex flow --- */
             display: flex;
             flex-direction: column;
-            position: relative; /* Added position for relative positioning of content */
             overflow: visible; /* Prevent internal clipping */
-            height: auto; /* Essential for correct grid height calculation on expanding content */
             min-height: 250px; 
         }
         .stock-card:hover, .fund-card:hover, .watchlist-card:hover {
@@ -840,14 +840,17 @@
             .header h1 { font-size: 1.5rem; }
             .header-controls { gap: 8px; }
             .summary-stats { grid-template-columns: repeat(2, 1fr); }
-            .stocks-grid { 
+            .stocks-grid {
+            align-items: start; /* FIX: Prevent card stacking */ 
                 grid-template-columns: 1fr; 
                 /* Ensure bottom space for chart/last element */
                 padding-bottom: 20px; 
             }
             .stock-card, .fund-card, .watchlist-card {
-                /* height: auto is already the default for flex items, explicitly setting it here too just in case */
-                height: auto; 
+            position: relative; /* FIX */
+            height: auto; /* FIX */
+            overflow: visible; /* FIX */
+                height: auto; /* Force height recalculation */
             }
             #user-name { display: none; }
         }
