@@ -366,15 +366,14 @@
 
         /* --- Asset Cards --- */
         .stocks-grid {
-            align-items: start; /* FIX: Prevent card stacking */
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
             gap: 24px;
+            /* FIX 1: Ensure rows auto-adjust based on content height, preventing overflow/clipping */
+            align-items: stretch; 
+            grid-auto-rows: 1fr; 
         }
         .stock-card, .fund-card, .watchlist-card {
-            position: relative; /* FIX */
-            height: auto; /* FIX */
-            overflow: visible; /* FIX */
             background-color: var(--bg-secondary);
             border-radius: var(--radius-md);
             padding: 24px;
@@ -382,10 +381,12 @@
             border: 1px solid var(--border-color);
             transition: var(--transition);
             
-            /* --- FIX: Enforce vertical flex flow --- */
+            /* Enforce vertical flex flow and auto height for grid calculation */
             display: flex;
             flex-direction: column;
-            overflow: visible; /* Prevent internal clipping */
+            position: relative; 
+            overflow: visible; 
+            height: auto; 
             min-height: 250px; 
         }
         .stock-card:hover, .fund-card:hover, .watchlist-card:hover {
@@ -513,12 +514,14 @@
             opacity: 1;
             overflow: hidden;
             transition: max-height 0.5s ease-in-out, opacity 0.3s ease-in-out;
+            /* FIX 3: Add margin to the bottom of the group content to prevent final card clipping */
+            margin-bottom: 24px; 
         }
         .group-content.collapsed {
             max-height: 0;
             opacity: 0;
             margin-top: 0;
-            margin-bottom: 0;
+            margin-bottom: 0; /* Clear bottom margin when collapsed */
             padding-top: 0;
             padding-bottom: 0;
             gap: 0;
@@ -840,17 +843,14 @@
             .header h1 { font-size: 1.5rem; }
             .header-controls { gap: 8px; }
             .summary-stats { grid-template-columns: repeat(2, 1fr); }
-            .stocks-grid {
-            align-items: start; /* FIX: Prevent card stacking */ 
+            .stocks-grid { 
                 grid-template-columns: 1fr; 
                 /* Ensure bottom space for chart/last element */
                 padding-bottom: 20px; 
             }
             .stock-card, .fund-card, .watchlist-card {
-            position: relative; /* FIX */
-            height: auto; /* FIX */
-            overflow: visible; /* FIX */
-                height: auto; /* Force height recalculation */
+                /* height: auto is already the default for flex items, explicitly setting it here too just in case */
+                height: auto; 
             }
             #user-name { display: none; }
         }
@@ -1632,13 +1632,19 @@
                     return;
                 }
                 const filterTerm = (this.currentTab === 'stocks' ? this.elements.portfolioFilter.value : '').toLowerCase();
-                let filteredItems = items.filter(item =>
+                
+                // Use a copy of the list for filtering/sorting
+                let baseItems = [...items];
+
+                let filteredItems = baseItems.filter(item =>
                      item.symbol.toLowerCase().includes(filterTerm) ||
                      (item.name && item.name.toLowerCase().includes(filterTerm)) ||
                     (item.platform && item.platform.toLowerCase().includes(filterTerm))
                 );
+                
                 const sortBy = this.elements.portfolioSort.value;
-                const sortedItems = this.sortItems([...filteredItems], sortBy);
+                const sortedItems = this.sortItems(filteredItems, sortBy);
+                
                 if (type === 'stock') {
                     this.renderPortfolioSummary();
                     if (sortBy === 'platform') {
@@ -2048,14 +2054,30 @@
                 });
             }
             renderGroupedStocks(items, container, type) {
-                const gains = items.filter(s => (s.changePercent || 0) >= 0).sort((a, b) => b.changePercent - a.changePercent);
-                const losses = items.filter(s => (s.changePercent || 0) < 0).sort((a, b) => a.changePercent - b.changePercent);
-                if (items.length === 0) { container.innerHTML = `<div class="loading" style="grid-column: 1 / -1;">Your portfolio is empty.</div>`; return; }
-                const biggestGain = gains.length > 0 ? [gains[0]] : [];
-                if (biggestGain.length > 0) this.createGroup('🚀 Biggest Gain Today', biggestGain, 'biggest-gain-header', container, type, this.getGroupSummary(biggestGain, 'biggest-gain'));
-                const otherGains = gains.filter(s => biggestGain.length === 0 || s.symbol !== biggestGain[0].symbol);
-                this.createGroup('📈 Gains Today', otherGains, 'gains-header', container, type, this.getGroupSummary(otherGains, 'gains'));
-                this.createGroup('📉 Losses Today', losses, 'losses-header', container, type, this.getGroupSummary(losses, 'losses'));
+                // FIX: Use the full list length for grouping context
+                const allStocks = this.stocks;
+                const gains = allStocks.filter(s => (s.changePercent || 0) >= 0).sort((a, b) => b.changePercent - a.changePercent);
+                const losses = allStocks.filter(s => (s.changePercent || 0) < 0).sort((a, b) => a.changePercent - b.changePercent);
+                
+                // If filtering is active, use the filtered lists for rendering, but the full lists for performance calcs
+                const filteredGains = items.filter(s => (s.changePercent || 0) >= 0).sort((a, b) => b.changePercent - a.changePercent);
+                const filteredLosses = items.filter(s => (s.changePercent || 0) < 0).sort((a, b) => a.changePercent - b.changePercent);
+
+                // Use filtered lists for card display, but retain the original logic for Biggest Gain/Other Gains
+                const biggestGain = filteredGains.length > 0 ? [filteredGains[0]] : [];
+                const otherGains = filteredGains.filter(s => biggestGain.length === 0 || s.symbol !== biggestGain[0].symbol);
+                
+                if (items.length === 0 && allStocks.length > 0) { 
+                    container.innerHTML = `<div class="loading" style="grid-column: 1 / -1;">No stocks match the current filter.</div>`; 
+                    return; 
+                } else if (items.length === 0) {
+                     container.innerHTML = `<div class="loading" style="grid-column: 1 / -1;">Your portfolio is empty.</div>`; 
+                     return;
+                }
+
+                if (biggestGain.length > 0) this.createGroup(`🚀 Biggest Gain Today (${biggestGain.length})`, biggestGain, 'biggest-gain-header', container, type, this.getGroupSummary(biggestGain, 'biggest-gain'));
+                this.createGroup(`📈 Gains Today (${otherGains.length})`, otherGains, 'gains-header', container, type, this.getGroupSummary(otherGains, 'gains'));
+                this.createGroup(`📉 Losses Today (${filteredLosses.length})`, filteredLosses, 'losses-header', container, type, this.getGroupSummary(filteredLosses, 'losses'));
             }
             renderGroupedByPlatform(items, container, type) {
                 if (items.length === 0) { container.innerHTML = `<div class="loading" style="grid-column: 1 / -1;">Your portfolio is empty.</div>`; return; }
@@ -2068,7 +2090,7 @@
                     return acc;
                 }, {});
                 for (const platformName in platformGroups) {
-                    this.createGroup(platformName, platformGroups[platformName], 'platform-header', container, type, this.getGroupSummary(platformGroups[platformName], 'platform'));
+                    this.createGroup(`${platformName} (${platformGroups[platformName].length})`, platformGroups[platformName], 'platform-header', container, type, this.getGroupSummary(platformGroups[platformName], 'platform'));
                 }
             }
             getGroupSummary(items, type) {
@@ -2114,7 +2136,7 @@
 
                 const header = document.createElement('div');
                 header.className = `group-header ${headerClass}`;
-                header.innerHTML = `<span>${title} (${itemList.length})</span><span class="toggle-icon">▼</span>`;
+                header.innerHTML = `<span>${title}</span><span class="toggle-icon">▼</span>`;
 
                 const content = document.createElement('div');
                 content.className = `group-content ${headerClass}-content`;
