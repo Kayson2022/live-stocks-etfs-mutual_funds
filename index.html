@@ -7,7 +7,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- 
     ==================================================================
-    ==      NEW, REDESIGNED STYLESHEET                              ==
+    ==                  NEW, REDESIGNED STYLESHEET                  ==
     ==================================================================
     This is the new, professional stylesheet for the UI redesign.
     -->
@@ -369,8 +369,6 @@
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
             gap: 24px;
-            /* FIX: Align items to the start of the grid cell instead of stretching them. This allows cards to have their own natural height. */
-            align-items: start;
         }
         .stock-card, .fund-card, .watchlist-card {
             background-color: var(--bg-secondary);
@@ -379,18 +377,32 @@
             box-shadow: var(--shadow-sm);
             border: 1px solid var(--border-color);
             transition: var(--transition);
-            
-            /* FIX: Ensure cards are flex containers that flow vertically. */
-            display: flex;
-            flex-direction: column;
-            
-            /* FIX: Let content determine the height. Removed fixed min-height. */
-            height: auto;
         }
         .stock-card:hover, .fund-card:hover, .watchlist-card:hover {
             transform: translateY(-4px);
             box-shadow: var(--shadow-md);
             border-color: color-mix(in srgb, var(--border-color) 70%, black);
+        }
+        /* ADDED: Colored top border for grouped cards */
+        .gains-header-content .stock-card,
+        .biggest-gain-header-content .stock-card {
+            border-top-width: 4px;
+            border-top-color: var(--color-positive);
+        }
+        .losses-header-content .stock-card {
+            border-top-width: 4px;
+            border-top-color: var(--color-negative);
+        }
+
+        /* ADDED: Ambient hover effect for grouped cards */
+        .gains-header-content .stock-card:hover,
+        .biggest-gain-header-content .stock-card:hover {
+            border-color: var(--color-positive);
+            box-shadow: var(--shadow-md), 0 0 20px color-mix(in srgb, var(--color-positive) 30%, transparent);
+        }
+        .losses-header-content .stock-card:hover {
+            border-color: var(--color-negative);
+            box-shadow: var(--shadow-md), 0 0 20px color-mix(in srgb, var(--color-negative) 30%, transparent);
         }
         .stock-header {
             display: flex;
@@ -410,6 +422,7 @@
             border: none;
             cursor: pointer;
             font-size: 1.2rem;
+            transition: var(--transition);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -432,10 +445,7 @@
             padding-top: 16px;
             margin-top: 16px;
             border-top: 1px solid var(--border-color);
-            /* FIX: Allow this section to grow and fill available space, pushing actions to the bottom. */
-            flex-grow: 1;
         }
-
         .info-row {
             display: flex;
             justify-content: space-between;
@@ -461,38 +471,88 @@
             cursor: pointer;
         }
         .group-wrapper {
-            /* FIX: Make the wrapper a simple block element that spans the grid, preventing layout conflicts. */
-            grid-column: 1 / -1; 
-            display: block;
-            width: 100%;
+            grid-column: 1 / -1;
         }
-        
-        .group-header, .summary-content, .group-content, .group-footer {
-            grid-column: 1 / -1; 
-            width: 100%;
-        }
-
         .group-content {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
             gap: 24px;
-            max-height: 5000px; /* High value for smooth collapse animation */
+            max-height: 5000px;
             opacity: 1;
             overflow: hidden;
-            transition: max-height 0.5s ease-in-out, opacity 0.3s ease-in-out, margin-bottom 0.5s ease-in-out, gap 0.5s ease-in-out;
-            /* FIX: Add bottom margin to prevent the last row of cards from being clipped. */
-            margin-bottom: 24px;
+            transition: max-height 0.5s ease-in-out, opacity 0.3s ease-in-out;
         }
         .group-content.collapsed {
             max-height: 0;
             opacity: 0;
+            margin-top: 0;
             margin-bottom: 0;
+            padding-top: 0;
+            padding-bottom: 0;
             gap: 0;
             pointer-events: none;
+            overflow: hidden;
         }
         .group-header .toggle-icon { transition: transform 0.3s ease; }
         .group-header.collapsed .toggle-icon { transform: rotate(-90deg); }
         
+        .group-footer {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding-top: 20px;
+            transition: max-height 0.5s ease-in-out, opacity 0.3s ease-in-out;
+            max-height: 100px;
+            opacity: 1;
+            overflow: hidden;
+        }
+        .group-footer.collapsed {
+             max-height: 0;
+            opacity: 0;
+            padding: 0;
+            margin: 0;
+        }
+        .collapse-group-btn {
+            padding: 8px 24px;
+            font-size: 0.9rem;
+            background-color: var(--bg-tertiary);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+        }
+        .collapse-group-btn:hover {
+            background-color: var(--border-color);
+            color: var(--text-primary);
+        }
+        .summary-content {
+            grid-column: 1 / -1;
+            padding: 20px 0;
+            display: none;
+            transition: max-height 0.5s ease-in-out, opacity 0.3s ease-in-out;
+        }
+        .summary-content.collapsed {
+            display: none;
+        }
+        .summary-card {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 25px;
+            text-align: center;
+            max-width: 450px;
+            margin: 0 auto;
+            box-shadow: var(--shadow-sm);
+        }
+        .summary-card h4 {
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+            color: var(--text-primary);
+        }
+        .summary-card p {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            color: var(--text-secondary);
+            white-space: pre-line;
+        }
+
         /* --- Card Actions (Buy/Sell, Transactions) --- */
         .card-actions {
             margin-top: 20px;
@@ -529,19 +589,13 @@
         }
         .transaction-header h4 { font-size: 1rem; }
         .transactions-container {
-             max-height: 0; 
-             opacity: 0; 
-             margin-top: 0;
+             max-height: 1000px; opacity: 1; margin-top: 10px;
              transition: max-height 0.4s ease, opacity 0.3s ease, margin-top 0.3s ease;
-             overflow-y: auto; /* Use auto for scroll if content exceeds max-height */
-             overflow-x: hidden;
+             overflow: hidden;
         }
-        .transactions-container:not(.collapsed) {
-             max-height: 400px; /* Generous height, scroll if needed */
-             opacity: 1;
-             margin-top: 10px;
+        .transactions-container.collapsed {
+            max-height: 0; opacity: 0; margin-top: 0; pointer-events: none;
         }
-        
         .transaction-entry {
             background-color: var(--bg-tertiary);
             border-radius: var(--radius-sm);
@@ -720,9 +774,7 @@
             .header h1 { font-size: 1.5rem; }
             .header-controls { gap: 8px; }
             .summary-stats { grid-template-columns: repeat(2, 1fr); }
-            .stocks-grid, .group-content { 
-                grid-template-columns: 1fr; 
-            }
+            .stocks-grid { grid-template-columns: 1fr; }
             #user-name { display: none; }
         }
     </style>
@@ -751,13 +803,13 @@
     <div id="app-container" class="container">
         <!-- New Header Structure -->
         <header class="header">
-            <h1>💰 Portfolio Tracker</h1>
-            <div class="header-controls">
+             <h1>💰 Portfolio Tracker</h1>
+             <div class="header-controls">
                 <div id="user-info" style="display: none;">
                     <span id="user-name"></span>
                     <button id="sign-out-btn">Sign Out</button>
                 </div>
-            </div>
+             </div>
         </header>
 
         <div id="header-countdown">Next update in: <span id="countdown">90</span>s</div>
@@ -1037,7 +1089,7 @@
 
     <!-- 
     ==================================================================
-    ==      YOUR ORIGINAL JAVASCRIPT                                ==
+    ==                  YOUR ORIGINAL JAVASCRIPT                    ==
     ==================================================================
     This is your full, unchanged JavaScript block, ensuring all
     functionality is preserved.
@@ -1075,8 +1127,8 @@
                     if ((quoteData.c === 0 && quoteData.pc === 0) || !profileData.name) return { success: false, symbol, reason: 'Invalid or empty API payload' };
                     return { success: true, data: { symbol, name: profileData.name ?? symbol, price: quoteData.c ?? 0, change: quoteData.d ?? 0, changePercent: quoteData.dp ?? 0, open: quoteData.o ?? 0, high: quoteData.h ?? 0, low: quoteData.l ?? 0, previousClose: quoteData.pc ?? 0, industry: profileData.finnhubIndustry ?? 'N/A' } };
                 } catch (error) {
-                      console.error(`Error fetching stock/ETF data for ${symbol}:`, error);
-                      return { success: false, symbol, reason: error.message };
+                     console.error(`Error fetching stock/ETF data for ${symbol}:`, error);
+                     return { success: false, symbol, reason: error.message };
                 }
             }
             async fetchStockEtfQuote(symbol) {
@@ -1113,7 +1165,7 @@
                                  summary: `Profile data pulled successfully. Check the company website for the latest official news. (Industry: ${profile.industry})`,
                                  banner_image: profile.image || 'https://placehold.co/100x100/eee/ccc?text=FMP',
                                  source: profile.website ? new URL(profile.website).hostname : 'Google Search',
-                                 date: new Date().toISOString(),
+                                date: new Date().toISOString(),
                             };
                         } else {
                             return {
@@ -1122,7 +1174,7 @@
                                  summary: `FMP profile data unavailable. Clicking this card will perform a real-time Google search for news on ${symbol}.`,
                                  banner_image: 'https://placehold.co/100x100/34a853/ffffff?text=Google',
                                  source: 'Google Search Fallback',
-                                 date: new Date().toISOString(),
+                                date: new Date().toISOString(),
                             };
                         }
                     });
@@ -1503,19 +1555,13 @@
                     return;
                 }
                 const filterTerm = (this.currentTab === 'stocks' ? this.elements.portfolioFilter.value : '').toLowerCase();
-                
-                // Use a copy of the list for filtering/sorting
-                let baseItems = [...items];
-
-                let filteredItems = baseItems.filter(item =>
-                    item.symbol.toLowerCase().includes(filterTerm) ||
-                    (item.name && item.name.toLowerCase().includes(filterTerm)) ||
+                let filteredItems = items.filter(item =>
+                     item.symbol.toLowerCase().includes(filterTerm) ||
+                     (item.name && item.name.toLowerCase().includes(filterTerm)) ||
                     (item.platform && item.platform.toLowerCase().includes(filterTerm))
                 );
-                
                 const sortBy = this.elements.portfolioSort.value;
-                const sortedItems = this.sortItems(filteredItems, sortBy);
-                
+                const sortedItems = this.sortItems([...filteredItems], sortBy);
                 if (type === 'stock') {
                     this.renderPortfolioSummary();
                     if (sortBy === 'platform') {
@@ -1772,7 +1818,7 @@
             }
             calculateTotalContributions() {
                 return this.stocks.reduce((contributions, stock) =>
-                    contributions + (stock.transactions || []).reduce((sum, t) => sum + (t.type === 'buy' ? t.shares * t.price : -t.shares * t.price), 0), 0);
+                     contributions + (stock.transactions || []).reduce((sum, t) => sum + (t.type === 'buy' ? t.shares * t.price : -t.shares * t.price), 0), 0);
             }
             calculateTotalDividends() {
                 return this.stocks.reduce((sum, stock) => sum + (stock.dividends || []).reduce((divSum, div) => divSum + div.totalAmount, 0), 0);
@@ -1910,8 +1956,8 @@
             
             removeTransaction(symbol, index, type) {
                  this.openConfirmModal('Delete this transaction?', async () => {
-                     const itemList = (type === 'stock') ? this.stocks : this.mutualFunds;
-                     const item = itemList.find(i => i.symbol === symbol);
+                    const itemList = (type === 'stock') ? this.stocks : this.mutualFunds;
+                    const item = itemList.find(i => i.symbol === symbol);
                     if (item) {
                         if (item.transactions && index >= 0 && index < item.transactions.length) {
                             item.transactions.splice(index, 1);
@@ -1925,44 +1971,14 @@
                 });
             }
             renderGroupedStocks(items, container, type) {
-                // Determine the stocks to display based on the filter results (items)
-                // Determine the total stocks for accurate counting (allStocks)
-                const allStocks = this.stocks;
-                const filterTerm = this.elements.portfolioFilter.value.trim().toLowerCase();
-                const isFiltered = filterTerm.length > 0;
-                
-                // Use filtered list for sorting/grouping:
-                const sortedItems = this.sortItems([...items], 'performance');
-
-                // Separate groups based on filtered results
-                const filteredGains = sortedItems.filter(s => (s.changePercent || 0) >= 0);
-                const filteredLosses = sortedItems.filter(s => (s.changePercent || 0) < 0);
-
-                // Determine counts for group titles
-                const gainsCount = filteredGains.length;
-                const lossesCount = filteredLosses.length;
-
-                // Handle Empty States
-                if (items.length === 0 && allStocks.length > 0) { 
-                    container.innerHTML = `<div class="loading" style="grid-column: 1 / -1;">No stocks match the current filter.</div>`; 
-                    return; 
-                } else if (items.length === 0) {
-                     container.innerHTML = `<div class="loading" style="grid-column: 1 / -1;">Your portfolio is empty.</div>`; 
-                     return;
-                }
-
-                // Render Biggest Gain (always one card, taken from the filtered/sorted list)
-                const biggestGain = filteredGains.length > 0 ? [filteredGains[0]] : [];
-                const otherGains = filteredGains.filter(s => biggestGain.length === 0 || s.symbol !== biggestGain[0].symbol);
-                
-                // Generate Titles (using filtered counts for groups being rendered)
-                const biggestGainTitle = biggestGain.length > 0 ? `🚀 Biggest Gain Today (1)` : '';
-                const gainsTitle = `📈 Gains Today (${otherGains.length})`;
-                const lossesTitle = `📉 Losses Today (${filteredLosses.length})`;
-
-                if (biggestGain.length > 0) this.createGroup(biggestGainTitle, biggestGain, 'biggest-gain-header', container, type, this.getGroupSummary(biggestGain, 'biggest-gain'));
-                this.createGroup(gainsTitle, otherGains, 'gains-header', container, type, this.getGroupSummary(otherGains, 'gains'));
-                this.createGroup(lossesTitle, filteredLosses, 'losses-header', container, type, this.getGroupSummary(filteredLosses, 'losses'));
+                const gains = items.filter(s => (s.changePercent || 0) >= 0).sort((a, b) => b.changePercent - a.changePercent);
+                const losses = items.filter(s => (s.changePercent || 0) < 0).sort((a, b) => a.changePercent - b.changePercent);
+                if (items.length === 0) { container.innerHTML = `<div class="loading" style="grid-column: 1 / -1;">Your portfolio is empty.</div>`; return; }
+                const biggestGain = gains.length > 0 ? [gains[0]] : [];
+                if (biggestGain.length > 0) this.createGroup('🚀 Biggest Gain Today', biggestGain, 'biggest-gain-header', container, type, this.getGroupSummary(biggestGain, 'biggest-gain'));
+                const otherGains = gains.filter(s => biggestGain.length === 0 || s.symbol !== biggestGain[0].symbol);
+                this.createGroup('📈 Gains Today', otherGains, 'gains-header', container, type, this.getGroupSummary(otherGains, 'gains'));
+                this.createGroup('📉 Losses Today', losses, 'losses-header', container, type, this.getGroupSummary(losses, 'losses'));
             }
             renderGroupedByPlatform(items, container, type) {
                 if (items.length === 0) { container.innerHTML = `<div class="loading" style="grid-column: 1 / -1;">Your portfolio is empty.</div>`; return; }
@@ -1975,7 +1991,7 @@
                     return acc;
                 }, {});
                 for (const platformName in platformGroups) {
-                    this.createGroup(`${platformName} (${platformGroups[platformName].length})`, platformGroups[platformName], 'platform-header', container, type, this.getGroupSummary(platformGroups[platformName], 'platform'));
+                    this.createGroup(platformName, platformGroups[platformName], 'platform-header', container, type, this.getGroupSummary(platformGroups[platformName], 'platform'));
                 }
             }
             getGroupSummary(items, type) {
@@ -2021,13 +2037,13 @@
 
                 const header = document.createElement('div');
                 header.className = `group-header ${headerClass}`;
-                header.innerHTML = `<span>${title}</span><span class="toggle-icon">▼</span>`;
+                header.innerHTML = `<span>${title} (${itemList.length})</span><span class="toggle-icon">▼</span>`;
 
                 const content = document.createElement('div');
                 content.className = `group-content ${headerClass}-content`;
                 
                 const summaryContainer = document.createElement('div');
-                summaryContainer.className = 'summary-content collapsed';
+                summaryContainer.className = 'summary-content collapsed'; // Collapsed by default
                 summaryContainer.innerHTML = `<div class="summary-card"><h4>${summary.title}</h4><p>${summary.text}</p></div>`;
                 
                 const footer = document.createElement('div');
@@ -2037,10 +2053,7 @@
                 const toggleGroup = () => {
                     const isCollapsed = header.classList.toggle('collapsed');
                     content.classList.toggle('collapsed');
-                    
-                    // Toggle summary: show when group is collapsed, hide when expanded
-                    summaryContainer.classList.toggle('collapsed', !isCollapsed);
-
+                    summaryContainer.classList.toggle('collapsed');
                     footer.classList.toggle('collapsed');
 
                     const toggleIcon = header.querySelector('.toggle-icon');
@@ -2058,25 +2071,24 @@
                     header.scrollIntoView({ behavior: 'smooth' });
                 });
 
-                // Apply saved state
                 if (this.groupCollapseState[title] === true) {
                     header.classList.add('collapsed');
                     content.classList.add('collapsed');
-                    summaryContainer.classList.remove('collapsed'); // SHOW summary when collapsed
+                    summaryContainer.classList.remove('collapsed');
                     footer.classList.add('collapsed');
                     const toggleIcon = header.querySelector('.toggle-icon');
                     toggleIcon.style.transform = 'rotate(-90deg)';
                     footer.querySelector('.collapse-group-btn').textContent = 'Expand';
                 }
 
-                groupWrapper.append(header, summaryContainer, content, footer); // All elements added to wrapper
+                groupWrapper.append(header, content, summaryContainer, footer);
                 parent.appendChild(groupWrapper);
                 this.renderCards(itemList, content, type);
             }
             renderCards(itemList, container, type) {
                 if (!container.classList.contains('group-content')) {
-                     container.innerHTML = '';
-                    }
+                    container.innerHTML = '';
+                 }
                 itemList.forEach(item => {
                     const card = document.createElement('div');
                     card.className = `${type}-card`;
@@ -2161,7 +2173,7 @@
                                         <h4>Transactions</h4>
                                         <span class="toggle-icon">▼</span>
                                     </div>
-                                    <div class="transactions-container collapsed">${(item.transactions || []).map((t, index) => `
+                                    <div class="transactions-container">${(item.transactions || []).map((t, index) => `
                                         <div class="transaction-entry">
                                             <div class="transaction-info">
                                                 <span><strong class="${t.type}">${t.type.toUpperCase()}</strong>: ${this.formatNumber(t.shares, 3)} @ ${this.formatCurrency(t.price)}</span>
@@ -2173,17 +2185,17 @@
                                                 <button class="delete-transaction-btn" data-index="${index}">&times;</button>
                                             </div>
                                         </div>`).join('')}</div>
-                                    </div>
-                                    <div class="card-actions">
-                                        <button class="transaction-btn buy-btn">Buy</button>
-                                        <button class="transaction-btn sell-btn" style="background-color: var(--color-negative);">Sell</button>
-                                    </div>
-                                    <div class="card-actions" style="grid-template-columns: 1fr; margin-top: 8px;">
-                                        <button class="add-btn edit-btn" data-action="edit">Edit Details</button>
-                                    </div>
-                                    <div class="card-actions" style="grid-template-columns: 1fr; margin-top: 8px;">
-                                        <button class="transaction-btn set-alert-btn" style="background-color: #9b59b6;">🔔 Set Alert</button>
-                                    </div>`;
+                                </div>
+                                <div class="card-actions">
+                                    <button class="transaction-btn buy-btn">Buy</button>
+                                    <button class="transaction-btn sell-btn" style="background-color: var(--color-negative);">Sell</button>
+                                </div>
+                                <div class="card-actions" style="grid-template-columns: 1fr; margin-top: 8px;">
+                                    <button class="add-btn edit-btn" data-action="edit">Edit Details</button>
+                                </div>
+                                <div class="card-actions" style="grid-template-columns: 1fr; margin-top: 8px;">
+                                    <button class="transaction-btn set-alert-btn" style="background-color: #9b59b6;">🔔 Set Alert</button>
+                                </div>`;
                         } else if (type === 'watchlist') {
                             transactionDetailsHTML = `<div class="card-actions" style="grid-template-columns: 1fr; gap: 8px;">
                                 <button class="add-btn move-to-portfolio-btn" onclick="window.stockTracker.moveToPortfolio('${item.symbol}')">Move to Portfolio</button>
@@ -2210,22 +2222,12 @@
                     container.appendChild(card);
                     const transactionHeader = card.querySelector('.transaction-header');
                     if (transactionHeader) {
-                        // Apply initial collapse state based on CSS default
-                        const transactionContainer = transactionHeader.nextElementSibling;
-                        if (transactionContainer && transactionContainer.classList.contains('transactions-container')) {
-                             transactionHeader.querySelector('.toggle-icon').style.transform = 'rotate(0deg)';
-                        }
-                        
                         const toggleTransactions = () => {
                             const container = transactionHeader.nextElementSibling;
                             if (container) {
-                                // Toggle the collapsed class, but also check the default state in JS
                                 container.classList.toggle('collapsed');
-                                transactionHeader.classList.toggle('collapsed', container.classList.contains('collapsed'));
-                                
-                                // Update toggle icon rotation based on the new collapsed state
-                                const isCollapsed = container.classList.contains('collapsed');
-                                transactionHeader.querySelector('.toggle-icon').style.transform = isCollapsed ? 'rotate(0deg)' : 'rotate(90deg)';
+                                transactionHeader.classList.toggle('collapsed');
+                                transactionHeader.querySelector('.toggle-icon').style.transform = container.classList.contains('collapsed') ? 'rotate(0deg)' : 'rotate(90deg)';
                             }
                         };
                         transactionHeader.addEventListener('click', toggleTransactions);
@@ -2449,7 +2451,7 @@
                 if (!symbol || isNaN(price) || price <= 0) { this.showError("Invalid alert data."); return; }
                 const existingAlertIndex = this.priceAlerts.findIndex(
                     a => a.symbol === symbol &&
-                       a.price === price &&
+                     a.price === price &&
                     a.condition === this.elements.alertCondition.value &&
                     !a.triggered
                 );
@@ -2460,7 +2462,7 @@
                          condition: this.elements.alertCondition.value,
                          price,
                          triggered: false,
-                         date: new Date().toISOString()
+                        date: new Date().toISOString()
                     };
                     this.priceAlerts.push(newAlert);
                     this.showSuccess(`Alert set for ${symbol} at $${this.formatNumber(price, 2)}!`);
@@ -2525,12 +2527,12 @@
                 const onCancel = () => this.openAlertsSummaryModal();
                  this.openConfirmModal(`Are you sure you want to delete this specific price alert?`,
                      async () => {
-                         this.priceAlerts = this.priceAlerts.filter(a => a.id !== alertId);
-                         await this.saveData();
-                         this.showSuccess(`🗑️ Deleted price alert.`);
-                         this.openAlertsSummaryModal();
+                        this.priceAlerts = this.priceAlerts.filter(a => a.id !== alertId);
+                        await this.saveData();
+                        this.showSuccess(`🗑️ Deleted price alert.`);
+                        this.openAlertsSummaryModal();
                      },
-                     onCancel
+                    onCancel
                 );
             }
             checkPriceAlerts() {
@@ -2541,7 +2543,7 @@
                     const item = allItems.find(i => i.symbol === alert.symbol);
                     if (!item) return;
                     const trigger = (alert.condition === 'above' && item.price > alert.price) ||
-                                      (alert.condition === 'below' && item.price < alert.price);
+                                     (alert.condition === 'below' && item.price < alert.price);
                     if (trigger) {
                         alert.triggered = true;
                         this.showAlertNotification(item, alert);
@@ -2566,14 +2568,14 @@
                 if (symbols.length === 0) {
                      this.elements.newsArticlesContainer.innerHTML = `<div class="loading">No symbols to fetch news for. Add stocks or watchlist items first.</div>`;
                      this.restoreScrollPosition();
-                     return;
-                    }
+                    return;
+                 }
                 const now = Date.now();
                 if (this.newsFeed.length > 0 && now - this.newsFetchTime < 15 * 60 * 1000) {
                      this.renderNews();
                      this.restoreScrollPosition();
-                     return;
-                    }
+                    return;
+                 }
                 this.elements.newsArticlesContainer.innerHTML = '<div class="loading">Fetching news...</div>';
                 const result = await this.apiService.fetchNews(symbols);
                 if (result.success) {
