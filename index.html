@@ -377,8 +377,13 @@
             box-shadow: var(--shadow-sm);
             border: 1px solid var(--border-color);
             transition: var(--transition);
-            /* FIX: Ensure the card renders fully when in the grid */
-            min-height: 400px; 
+            /* --- FIX: Remove hard min-height for flexible content --- */
+            /* min-height: 400px; */ 
+            
+            /* --- FIX: Enable internal vertical stacking --- */
+            display: flex;
+            flex-direction: column;
+            overflow: visible; /* Prevent internal clipping */
         }
         .stock-card:hover, .fund-card:hover, .watchlist-card:hover {
             transform: translateY(-4px);
