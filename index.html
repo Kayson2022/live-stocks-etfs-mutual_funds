@@ -505,7 +505,8 @@
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
             gap: 24px;
-            max-height: 5000px;
+            /* FIX: Increased max-height to a very large value to prevent cutoff */
+            max-height: 50000px; 
             opacity: 1;
             overflow: hidden;
             transition: max-height 0.5s ease-in-out, opacity 0.3s ease-in-out;
@@ -2740,4 +2741,3 @@
     </script>
 </body>
 </html>
-
