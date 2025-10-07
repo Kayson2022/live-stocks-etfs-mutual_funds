@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -8,7 +7,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- 
     ==================================================================
-    ==      NEW, REDESIGNED STYLESHEET                          ==
+    ==                  NEW, REDESIGNED STYLESHEET                  ==
     ==================================================================
     This is the new, professional stylesheet for the UI redesign.
     -->
@@ -501,16 +500,9 @@
             grid-column: 1 / -1;
             text-align: center;
             padding-top: 20px;
-            transition: max-height 0.5s ease-in-out, opacity 0.3s ease-in-out;
-            max-height: 100px;
-            opacity: 1;
-            overflow: hidden;
         }
         .group-footer.collapsed {
-             max-height: 0;
-            opacity: 0;
-            padding: 0;
-            margin: 0;
+            display: none;
         }
         .collapse-group-btn {
             padding: 8px 24px;
@@ -523,47 +515,7 @@
             background-color: var(--border-color);
             color: var(--text-primary);
         }
-        /* --- START FIX FOR GROUP SUMMARY VISIBILITY --- */
-        .summary-content {
-            grid-column: 1 / -1;
-            padding: 20px 0;
-            /* Use height/opacity for smoother toggle, remove display: none */
-            max-height: 1000px;
-            opacity: 1;
-            pointer-events: auto;
-            overflow: hidden;
-            transition: max-height 0.5s ease-in-out, opacity 0.3s ease-in-out, padding 0.5s ease-in-out;
-        }
-        /* When group is expanded, summary should be HELD in the 'collapsed' class state */
-        .summary-content.collapsed {
-            max-height: 0;
-            opacity: 0;
-            padding-top: 0;
-            padding-bottom: 0;
-            pointer-events: none;
-        }
-        /* --- END FIX FOR GROUP SUMMARY VISIBILITY --- */
-        .summary-card {
-            background: var(--bg-tertiary);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-md);
-            padding: 25px;
-            text-align: center;
-            max-width: 450px;
-            margin: 0 auto;
-            box-shadow: var(--shadow-sm);
-        }
-        .summary-card h4 {
-            margin-bottom: 15px;
-            font-size: 1.3rem;
-            color: var(--text-primary);
-        }
-        .summary-card p {
-            font-size: 1.1rem;
-            line-height: 1.6;
-            color: var(--text-secondary);
-            white-space: pre-line;
-        }
+        .summary-content { display: none; }
 
         /* --- Card Actions (Buy/Sell, Transactions) --- */
         .card-actions {
@@ -1101,7 +1053,7 @@
 
     <!-- 
     ==================================================================
-    ==      YOUR ORIGINAL JAVASCRIPT                            ==
+    ==                  YOUR ORIGINAL JAVASCRIPT                    ==
     ==================================================================
     This is your full, unchanged JavaScript block, ensuring all
     functionality is preserved.
@@ -1177,7 +1129,7 @@
                                  summary: `Profile data pulled successfully. Check the company website for the latest official news. (Industry: ${profile.industry})`,
                                  banner_image: profile.image || 'https://placehold.co/100x100/eee/ccc?text=FMP',
                                  source: profile.website ? new URL(profile.website).hostname : 'Google Search',
-                                 date: new Date().toISOString(),
+                                date: new Date().toISOString(),
                             };
                         } else {
                             return {
@@ -1186,7 +1138,7 @@
                                  summary: `FMP profile data unavailable. Clicking this card will perform a real-time Google search for news on ${symbol}.`,
                                  banner_image: 'https://placehold.co/100x100/34a853/ffffff?text=Google',
                                  source: 'Google Search Fallback',
-                                 date: new Date().toISOString(),
+                                date: new Date().toISOString(),
                             };
                         }
                     });
@@ -1968,14 +1920,14 @@
             
             removeTransaction(symbol, index, type) {
                  this.openConfirmModal('Delete this transaction?', async () => {
-                     const itemList = (type === 'stock') ? this.stocks : this.mutualFunds;
-                     const item = itemList.find(i => i.symbol === symbol);
+                    const itemList = (type === 'stock') ? this.stocks : this.mutualFunds;
+                    const item = itemList.find(i => i.symbol === symbol);
                     if (item) {
                         if (item.transactions && index >= 0 && index < item.transactions.length) {
                             item.transactions.splice(index, 1);
                             this.showSuccess(`🗑️ Deleted transaction for ${symbol}.`);
                         } else {
-                              this.showError(`Error: Transaction index ${index} not found for ${symbol}.`);
+                             this.showError(`Error: Transaction index ${index} not found for ${symbol}.`);
                         }
                         await this.saveData();
                         this.renderContent();
@@ -2046,34 +1998,27 @@
                 if(itemList.length === 0) return;
                 const groupWrapper = document.createElement('div');
                 groupWrapper.className = 'group-wrapper';
-
                 const header = document.createElement('div');
                 header.className = `group-header ${headerClass}`;
                 header.innerHTML = `<span>${title} (${itemList.length})</span><span class="toggle-icon">▼</span>`;
-
                 const content = document.createElement('div');
                 content.className = `group-content ${headerClass}-content`;
-                
-                const summaryContainer = document.createElement('div');
-                summaryContainer.className = 'summary-content collapsed'; // Starts HIDDEN (Collapsed state in CSS is HIDDEN)
-                summaryContainer.innerHTML = `<div class="summary-card"><h4>${summary.title}</h4><p>${summary.text}</p></div>`;
-                
                 const footer = document.createElement('div');
                 footer.className = 'group-footer';
                 footer.innerHTML = `<button class="add-btn collapse-group-btn">Collapse</button>`;
 
                 const toggleGroup = () => {
-                    const isCollapsed = header.classList.toggle('collapsed'); // true when collapsing
+                    const isCollapsed = header.classList.toggle('collapsed');
                     content.classList.toggle('collapsed');
-                    
-                    // FIX: Apply 'collapsed' class to summaryContainer ONLY when the group is EXPANDED (i.e., when !isCollapsed)
-                    summaryContainer.classList.toggle('collapsed', !isCollapsed);
-
                     footer.classList.toggle('collapsed');
-
                     const toggleIcon = header.querySelector('.toggle-icon');
-                    toggleIcon.style.transform = isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
-                    footer.querySelector('.collapse-group-btn').textContent = isCollapsed ? 'Expand' : 'Collapse';
+                    if (toggleIcon) {
+                        toggleIcon.style.transform = isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
+                    }
+                    const collapseBtn = footer.querySelector('.collapse-group-btn');
+                    if(collapseBtn) {
+                        collapseBtn.textContent = isCollapsed ? 'Expand' : 'Collapse';
+                    }
                     this.groupCollapseState[title] = isCollapsed;
                     sessionStorage.setItem('groupCollapseState', JSON.stringify(this.groupCollapseState));
                 };
@@ -2086,25 +2031,24 @@
                     header.scrollIntoView({ behavior: 'smooth' });
                 });
 
-                // Apply saved state
                 if (this.groupCollapseState[title] === true) {
                     header.classList.add('collapsed');
                     content.classList.add('collapsed');
-                    summaryContainer.classList.remove('collapsed'); // SHOW summary when collapsed
                     footer.classList.add('collapsed');
                     const toggleIcon = header.querySelector('.toggle-icon');
-                    toggleIcon.style.transform = 'rotate(-90deg)';
-                    footer.querySelector('.collapse-group-btn').textContent = 'Expand';
+                    if (toggleIcon) toggleIcon.style.transform = 'rotate(-90deg)';
+                    const collapseBtn = footer.querySelector('.collapse-group-btn');
+                    if (collapseBtn) collapseBtn.textContent = 'Expand';
                 }
-
-                groupWrapper.append(header, summaryContainer, content, footer); // Move summary up to visually appear first when visible
+                
+                groupWrapper.append(header, content, footer);
                 parent.appendChild(groupWrapper);
                 this.renderCards(itemList, content, type);
             }
             renderCards(itemList, container, type) {
                 if (!container.classList.contains('group-content')) {
-                     container.innerHTML = '';
-                    }
+                    container.innerHTML = '';
+                 }
                 itemList.forEach(item => {
                     const card = document.createElement('div');
                     card.className = `${type}-card`;
@@ -2201,17 +2145,17 @@
                                                 <button class="delete-transaction-btn" data-index="${index}">&times;</button>
                                             </div>
                                         </div>`).join('')}</div>
-                                    </div>
-                                    <div class="card-actions">
-                                        <button class="transaction-btn buy-btn">Buy</button>
-                                        <button class="transaction-btn sell-btn" style="background-color: var(--color-negative);">Sell</button>
-                                    </div>
-                                    <div class="card-actions" style="grid-template-columns: 1fr; margin-top: 8px;">
-                                        <button class="add-btn edit-btn" data-action="edit">Edit Details</button>
-                                    </div>
-                                    <div class="card-actions" style="grid-template-columns: 1fr; margin-top: 8px;">
-                                        <button class="transaction-btn set-alert-btn" style="background-color: #9b59b6;">🔔 Set Alert</button>
-                                    </div>`;
+                                </div>
+                                <div class="card-actions">
+                                    <button class="transaction-btn buy-btn">Buy</button>
+                                    <button class="transaction-btn sell-btn" style="background-color: var(--color-negative);">Sell</button>
+                                </div>
+                                <div class="card-actions" style="grid-template-columns: 1fr; margin-top: 8px;">
+                                    <button class="add-btn edit-btn" data-action="edit">Edit Details</button>
+                                </div>
+                                <div class="card-actions" style="grid-template-columns: 1fr; margin-top: 8px;">
+                                    <button class="transaction-btn set-alert-btn" style="background-color: #9b59b6;">🔔 Set Alert</button>
+                                </div>`;
                         } else if (type === 'watchlist') {
                             transactionDetailsHTML = `<div class="card-actions" style="grid-template-columns: 1fr; gap: 8px;">
                                 <button class="add-btn move-to-portfolio-btn" onclick="window.stockTracker.moveToPortfolio('${item.symbol}')">Move to Portfolio</button>
@@ -2478,7 +2422,7 @@
                          condition: this.elements.alertCondition.value,
                          price,
                          triggered: false,
-                         date: new Date().toISOString()
+                        date: new Date().toISOString()
                     };
                     this.priceAlerts.push(newAlert);
                     this.showSuccess(`Alert set for ${symbol} at $${this.formatNumber(price, 2)}!`);
@@ -2543,12 +2487,12 @@
                 const onCancel = () => this.openAlertsSummaryModal();
                  this.openConfirmModal(`Are you sure you want to delete this specific price alert?`,
                      async () => {
-                         this.priceAlerts = this.priceAlerts.filter(a => a.id !== alertId);
-                         await this.saveData();
-                         this.showSuccess(`🗑️ Deleted price alert.`);
-                         this.openAlertsSummaryModal();
+                        this.priceAlerts = this.priceAlerts.filter(a => a.id !== alertId);
+                        await this.saveData();
+                        this.showSuccess(`🗑️ Deleted price alert.`);
+                        this.openAlertsSummaryModal();
                      },
-                     onCancel
+                    onCancel
                 );
             }
             checkPriceAlerts() {
@@ -2559,7 +2503,7 @@
                     const item = allItems.find(i => i.symbol === alert.symbol);
                     if (!item) return;
                     const trigger = (alert.condition === 'above' && item.price > alert.price) ||
-                                           (alert.condition === 'below' && item.price < alert.price);
+                                     (alert.condition === 'below' && item.price < alert.price);
                     if (trigger) {
                         alert.triggered = true;
                         this.showAlertNotification(item, alert);
@@ -2584,14 +2528,14 @@
                 if (symbols.length === 0) {
                      this.elements.newsArticlesContainer.innerHTML = `<div class="loading">No symbols to fetch news for. Add stocks or watchlist items first.</div>`;
                      this.restoreScrollPosition();
-                     return;
-                    }
+                    return;
+                 }
                 const now = Date.now();
                 if (this.newsFeed.length > 0 && now - this.newsFetchTime < 15 * 60 * 1000) {
                      this.renderNews();
                      this.restoreScrollPosition();
-                     return;
-                    }
+                    return;
+                 }
                 this.elements.newsArticlesContainer.innerHTML = '<div class="loading">Fetching news...</div>';
                 const result = await this.apiService.fetchNews(symbols);
                 if (result.success) {
