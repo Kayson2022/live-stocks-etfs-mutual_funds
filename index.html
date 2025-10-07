@@ -496,14 +496,16 @@
         }
 
         .group-wrapper {
-            /* This is the container for header, summary, content, and footer */
+            /* FIX 1: Change to block to prevent inner grid layout conflict and enable scrolling */
             grid-column: 1 / -1; 
-            display: contents; /* Allow children to participate directly in the stocks-grid parent layout */
+            display: block; 
+            width: 100%;
         }
         
         .group-header, .summary-content, .group-content, .group-footer {
-            /* All children of group-wrapper must span the full grid width */
+            /* Ensure these children span the parent grid when the wrapper itself is a grid item */
             grid-column: 1 / -1; 
+            width: 100%;
         }
 
         .group-content {
@@ -2068,8 +2070,8 @@
                 const filteredLosses = sortedItems.filter(s => (s.changePercent || 0) < 0);
 
                 // Determine counts for group titles
-                const totalGainsCount = isFiltered ? filteredGains.length : allStocks.filter(s => (s.changePercent || 0) >= 0).length;
-                const totalLossesCount = isFiltered ? filteredLosses.length : allStocks.filter(s => (s.changePercent || 0) < 0).length;
+                const gainsCount = filteredGains.length;
+                const lossesCount = filteredLosses.length;
 
                 // Handle Empty States
                 if (items.length === 0 && allStocks.length > 0) { 
@@ -2084,7 +2086,7 @@
                 const biggestGain = filteredGains.length > 0 ? [filteredGains[0]] : [];
                 const otherGains = filteredGains.filter(s => biggestGain.length === 0 || s.symbol !== biggestGain[0].symbol);
                 
-                // Generate Titles (using filtered/all counts appropriately)
+                // Generate Titles (using filtered counts for groups being rendered)
                 const biggestGainTitle = biggestGain.length > 0 ? `🚀 Biggest Gain Today (1)` : '';
                 const gainsTitle = `📈 Gains Today (${otherGains.length})`;
                 const lossesTitle = `📉 Losses Today (${filteredLosses.length})`;
