@@ -377,13 +377,12 @@
             box-shadow: var(--shadow-sm);
             border: 1px solid var(--border-color);
             transition: var(--transition);
-            /* --- FIX: Remove hard min-height for flexible content --- */
-            /* min-height: 400px; */ 
             
-            /* --- FIX: Enable internal vertical stacking --- */
+            /* --- FIX: Enable internal vertical stacking to account for expanded height --- */
             display: flex;
             flex-direction: column;
             overflow: visible; /* Prevent internal clipping */
+            min-height: 250px; /* Resetting this lower helps layout and prevents squishing */
         }
         .stock-card:hover, .fund-card:hover, .watchlist-card:hover {
             transform: translateY(-4px);
@@ -452,6 +451,11 @@
             margin-top: 16px;
             border-top: 1px solid var(--border-color);
         }
+        /* Added flex-grow to ensure info area fills space when transactions are collapsed */
+        .stock-info, .transaction-details { 
+            flex-grow: 1; 
+        }
+
         .info-row {
             display: flex;
             justify-content: space-between;
@@ -629,13 +633,26 @@
         }
         .transaction-header h4 { font-size: 1rem; }
         .transactions-container {
-             max-height: 1000px; opacity: 1; margin-top: 10px;
+             /* Set initial max-height to 0, which the JS will override when expanded */
+             max-height: 0; 
+             opacity: 0; 
+             margin-top: 0;
              transition: max-height 0.4s ease, opacity 0.3s ease, margin-top 0.3s ease;
              overflow: hidden;
         }
-        .transactions-container.collapsed {
-            max-height: 0; opacity: 0; margin-top: 0; pointer-events: none;
+        .transactions-container:not(.collapsed) {
+             /* When transactions container is not collapsed (i.e., expanded in JS) */
+             max-height: 1000px; /* Use a generous height for the expansion */
+             opacity: 1;
+             margin-top: 10px;
         }
+        /* Ensure the transaction details section flows correctly */
+        .transaction-details {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+        }
+        
         .transaction-entry {
             background-color: var(--bg-tertiary);
             border-radius: var(--radius-sm);
@@ -2221,7 +2238,7 @@
                                         <h4>Transactions</h4>
                                         <span class="toggle-icon">▼</span>
                                     </div>
-                                    <div class="transactions-container">${(item.transactions || []).map((t, index) => `
+                                    <div class="transactions-container collapsed">${(item.transactions || []).map((t, index) => `
                                         <div class="transaction-entry">
                                             <div class="transaction-info">
                                                 <span><strong class="${t.type}">${t.type.toUpperCase()}</strong>: ${this.formatNumber(t.shares, 3)} @ ${this.formatCurrency(t.price)}</span>
@@ -2270,12 +2287,22 @@
                     container.appendChild(card);
                     const transactionHeader = card.querySelector('.transaction-header');
                     if (transactionHeader) {
+                        // Apply initial collapse state based on CSS default
+                        const transactionContainer = transactionHeader.nextElementSibling;
+                        if (transactionContainer && transactionContainer.classList.contains('transactions-container')) {
+                             transactionHeader.querySelector('.toggle-icon').style.transform = 'rotate(0deg)';
+                        }
+                        
                         const toggleTransactions = () => {
                             const container = transactionHeader.nextElementSibling;
                             if (container) {
+                                // Toggle the collapsed class, but also check the default state in JS
                                 container.classList.toggle('collapsed');
-                                transactionHeader.classList.toggle('collapsed');
-                                transactionHeader.querySelector('.toggle-icon').style.transform = container.classList.contains('collapsed') ? 'rotate(0deg)' : 'rotate(90deg)';
+                                transactionHeader.classList.toggle('collapsed', container.classList.contains('collapsed'));
+                                
+                                // Update toggle icon rotation based on the new collapsed state
+                                const isCollapsed = container.classList.contains('collapsed');
+                                transactionHeader.querySelector('.toggle-icon').style.transform = isCollapsed ? 'rotate(0deg)' : 'rotate(90deg)';
                             }
                         };
                         transactionHeader.addEventListener('click', toggleTransactions);
