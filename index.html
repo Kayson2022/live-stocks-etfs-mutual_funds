@@ -653,6 +653,11 @@
             width: 100%;
         }
         
+        .transactions-container.collapsed {
+            /* FIX: Ensure collapsed container has no physical height/space in the document flow */
+            display: none; 
+        }
+
         .transaction-entry {
             background-color: var(--bg-tertiary);
             border-radius: var(--radius-sm);
@@ -835,6 +840,9 @@
                 grid-template-columns: 1fr; 
                 /* Ensure bottom space for chart/last element */
                 padding-bottom: 20px; 
+            }
+            .stock-card, .fund-card, .watchlist-card {
+                height: auto; /* Force height recalculation */
             }
             #user-name { display: none; }
         }
