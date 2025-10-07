@@ -378,11 +378,11 @@
             border: 1px solid var(--border-color);
             transition: var(--transition);
             
-            /* --- FIX: Enable internal vertical stacking to account for expanded height --- */
+            /* --- FIX: Enforce vertical flex flow --- */
             display: flex;
             flex-direction: column;
             overflow: visible; /* Prevent internal clipping */
-            min-height: 250px; /* Resetting this lower helps layout and prevents squishing */
+            min-height: 250px; 
         }
         .stock-card:hover, .fund-card:hover, .watchlist-card:hover {
             transform: translateY(-4px);
