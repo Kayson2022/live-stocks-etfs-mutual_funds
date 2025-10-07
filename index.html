@@ -369,6 +369,8 @@
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
             gap: 24px;
+            /* FIX 1: Align items to start, preventing cards from settling at bottom of row */
+            align-items: start; 
         }
         .stock-card, .fund-card, .watchlist-card {
             background-color: var(--bg-secondary);
@@ -378,10 +380,12 @@
             border: 1px solid var(--border-color);
             transition: var(--transition);
             
-            /* --- FIX: Enforce vertical flex flow --- */
+            /* --- FIX 2: Enforce vertical flex flow and auto height for grid calculation --- */
             display: flex;
             flex-direction: column;
+            position: relative; /* Added position for relative positioning of content */
             overflow: visible; /* Prevent internal clipping */
+            height: auto; /* Essential for correct grid height calculation on expanding content */
             min-height: 250px; 
         }
         .stock-card:hover, .fund-card:hover, .watchlist-card:hover {
@@ -842,7 +846,8 @@
                 padding-bottom: 20px; 
             }
             .stock-card, .fund-card, .watchlist-card {
-                height: auto; /* Force height recalculation */
+                /* height: auto is already the default for flex items, explicitly setting it here too just in case */
+                height: auto; 
             }
             #user-name { display: none; }
         }
