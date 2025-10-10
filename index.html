@@ -1540,7 +1540,7 @@
                 }
             }
             handleCardAction(event) {
-                const clickedButton = event.target.closest('.transaction-btn, .edit-btn, .edit-transaction-btn, .delete-transaction-btn, .set-alert-btn');
+                const clickedButton = event.target.closest('.transaction-btn, .edit-btn, .edit-transaction-btn, .delete-transaction-btn, .set-alert-btn, .move-to-portfolio-btn');
                 if (!clickedButton) return;
                 const card = clickedButton.closest('.stock-card, .fund-card, .watchlist-card');
                 if (!card) return;
@@ -1574,6 +1574,8 @@
                     this.openEditStockModal(id);
                 } else if (clickedButton.classList.contains('set-alert-btn')) {
                     this.openPriceAlertModal(item.symbol);
+                } else if (clickedButton.classList.contains('move-to-portfolio-btn')) {
+                    this.moveToPortfolio(id);
                 }
             }
             switchTab(tab) {
@@ -1716,11 +1718,19 @@
                 if (!this.userId) return;
                 const userDocRef = doc(db, "users", this.userId);
                 const docSnap = await getDoc(userDocRef);
+                
+                const ensureId = (item) => {
+                    if (!item.id) {
+                        item.id = Date.now().toString() + Math.random().toString(36).substring(2, 9);
+                    }
+                    return item;
+                };
+
                 if (docSnap.exists()) {
                     const data = docSnap.data();
-                    this.stocks = data.stocks || [];
-                    this.mutualFunds = data.mutualFunds || [];
-                    this.watchlist = data.watchlist || [];
+                    this.stocks = (data.stocks || []).map(ensureId);
+                    this.mutualFunds = (data.mutualFunds || []).map(ensureId);
+                    this.watchlist = (data.watchlist || []).map(ensureId);
                     this.portfolioHistory = data.portfolioHistory || [];
                     this.priceAlerts = data.priceAlerts || [];
                 }
@@ -2371,23 +2381,20 @@
                 }
             }
 
-            async moveToPortfolio(symbol) {
-                const stockToMove = this.watchlist.find(stock => stock.symbol === symbol);
-                if (!stockToMove) return;
+            async moveToPortfolio(id) {
+                const stockIndex = this.watchlist.findIndex(stock => stock.id === id);
+                if (stockIndex === -1) return;
 
-                const newStock = { 
-                    ...stockToMove, 
-                    id: Date.now().toString() + Math.random().toString(36).substring(2, 9),
-                    transactions: [], 
-                    platform: ''
-                };
+                const [stockToMove] = this.watchlist.splice(stockIndex, 1);
                 
-                this.stocks.push(newStock);
-                this.watchlist = this.watchlist.filter(stock => stock.symbol !== symbol);
+                stockToMove.transactions = [];
+                stockToMove.dividends = [];
                 
+                this.stocks.push(stockToMove);
+
                 await this.saveData();
                 this.renderContent();
-                this.showSuccess(`✅ Moved ${symbol} to portfolio!`);
+                this.showSuccess(`✅ Moved ${stockToMove.symbol} to portfolio!`);
             }
             showRefreshStatus(type, stats) {
                 const statusDiv = this.elements.refreshStatusPopup;
