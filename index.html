@@ -2219,7 +2219,7 @@
                      container.innerHTML = '';
                 }
                 
-                const predefinedPlatforms = ['Fidelity', 'Robinhood', 'Vanguard', 'Charles Schwab', 'E*TRADE', 'Uncategorized'];
+                const predefinedPlatforms = ['Fidelity', 'Robinhood', 'Vanguard', 'Charles Schwab', 'E*TRADE', 'Merrill Edge', 'Uncategorized'];
                 const existingPlatforms = [...new Set(this.stocks.map(s => s.platform).filter(p => p))];
                 const allPlatforms = [...new Set([...predefinedPlatforms, ...existingPlatforms])].sort();
 
@@ -2373,9 +2373,18 @@
 
             async moveToPortfolio(symbol) {
                 const stockToMove = this.watchlist.find(stock => stock.symbol === symbol);
-                if (!stockToMove || this.stocks.some(s => s.symbol === symbol)) return;
-                this.stocks.push({...stockToMove, transactions: [], platform: stockToMove.platform || ''});
+                if (!stockToMove) return;
+
+                const newStock = { 
+                    ...stockToMove, 
+                    id: Date.now().toString() + Math.random().toString(36).substring(2, 9),
+                    transactions: [], 
+                    platform: ''
+                };
+                
+                this.stocks.push(newStock);
                 this.watchlist = this.watchlist.filter(stock => stock.symbol !== symbol);
+                
                 await this.saveData();
                 this.renderContent();
                 this.showSuccess(`✅ Moved ${symbol} to portfolio!`);
