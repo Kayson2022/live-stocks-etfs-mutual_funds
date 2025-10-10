@@ -233,7 +233,7 @@
             gap: 16px;
             flex-wrap: wrap;
         }
-        .search-input, #portfolioFilter, #portfolioSort, #platformInput {
+        .search-input, #portfolioFilter, #portfolioSort, #platformInput, #platformFilter {
             flex: 1;
             min-width: 200px;
             padding: 12px 16px;
@@ -244,7 +244,7 @@
             color: var(--text-primary);
             transition: var(--transition);
         }
-        .search-input:focus, #portfolioFilter:focus, #portfolioSort:focus, #platformInput:focus {
+        .search-input:focus, #portfolioFilter:focus, #portfolioSort:focus, #platformInput:focus, #platformFilter:focus {
             outline: none;
             border-color: var(--accent-primary);
             box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-primary) 20%, transparent);
@@ -467,6 +467,17 @@
         .info-value { font-weight: 600; }
         .positive { color: var(--color-positive) !important; }
         .negative { color: var(--color-negative) !important; }
+
+        .platform-select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
 
         /* --- Group Headers --- */
         .group-header, .watchlist-title {
@@ -913,6 +924,7 @@
 
             <div class="portfolio-controls">
                 <input type="text" id="portfolioFilter" placeholder="🔎 Filter your portfolio...">
+                <select id="platformFilter" class="search-input" style="display: none;"></select>
                 <select id="portfolioSort">
                     <option value="performance">Sort by Performance</option>
                     <option value="alphabetical">Sort Alphabetical (A-Z)</option>
@@ -1363,7 +1375,9 @@
                     stockInput: document.getElementById('stockInput'), addBtn: document.getElementById('addBtn'),
                     platformInput: document.getElementById('platformInput'),
                     liveUpdateBtn: document.getElementById('liveUpdateBtn'), toggleLiveUpdateBtn: document.getElementById('toggleLiveUpdateBtn'), clearAllBtn: document.getElementById('clearAllBtn'),
-                    portfolioFilter: document.getElementById('portfolioFilter'), portfolioSort: document.getElementById('portfolioSort'), settingsBtn: document.getElementById('settingsBtn'),
+                    portfolioFilter: document.getElementById('portfolioFilter'), 
+                    platformFilter: document.getElementById('platformFilter'),
+                    portfolioSort: document.getElementById('portfolioSort'), settingsBtn: document.getElementById('settingsBtn'),
                     mutualFundInput: document.getElementById('mutualFundInput'), addFundBtn: document.getElementById('addFundBtn'),
                     watchlistInput: document.getElementById('watchlistInput'), addWatchlistBtn: document.getElementById('addWatchlistBtn'),
                     exportBtn: document.getElementById('exportBtn'), importFile: document.getElementById('importFile'),
@@ -1446,6 +1460,7 @@
                 this.elements.exportBtn.addEventListener('click', () => this.exportData());
                 this.elements.importFile.addEventListener('change', (e) => this.importData(e));
                 this.elements.portfolioFilter.addEventListener('input', () => this.renderContent());
+                this.elements.platformFilter.addEventListener('change', () => this.renderContent());
                 this.elements.portfolioSort.addEventListener('change', () => this.renderContent());
                 this.elements.addFundBtn.addEventListener('click', () => this.addItemFromInput('fund'));
                 this.elements.mutualFundInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') this.addItemFromInput('fund'); });
@@ -1513,6 +1528,7 @@
                     }
                 });
                 this.elements.stocksGrid.addEventListener('click', (e) => this.handleCardAction(e));
+                this.elements.stocksGrid.addEventListener('change', (e) => this.handlePlatformChange(e));
             }
             saveScrollPosition() {
                 this.lastScrollPosition = window.scrollY;
@@ -1564,30 +1580,43 @@
                 if (tab === 'news') this.fetchAndRenderNews();
                 else this.renderContent();
             }
+
             sortItems(items, sortBy) {
                 switch (sortBy) {
                     case 'performance':
                         return items.sort((a, b) => (b.changePercent || 0) - (a.changePercent || 0));
+
                     case 'alphabetical':
                         return items.sort((a, b) => a.symbol.localeCompare(b.symbol));
+
                     case 'value':
                         return items.sort((a, b) => {
                             const valueA = this.calculateTransactionStats(a.transactions, a.price).currentValue;
                             const valueB = this.calculateTransactionStats(b.transactions, b.price).currentValue;
                             return valueB - valueA;
                         });
+
                     case 'pl_overall':
-                         return items.sort((a, b) => {
-                            const plA = this.calculateTransactionStats(a.transactions, a.price).unrealizedPL;
-                            const plB = this.calculateTransactionStats(b.transactions, a.price).unrealizedPL;
-                            return plB - plA;
+                        return items.sort((a, b) => {
+                            const statsA = this.calculateTransactionStats(a.transactions, a.price);
+                            const statsB = this.calculateTransactionStats(b.transactions, b.price);
+                            const totalPlA = statsA.unrealizedPL + statsA.realizedPL;
+                            const totalPlB = statsB.unrealizedPL + statsB.realizedPL;
+                            return totalPlB - totalPlA;
                         });
+
                     case 'platform':
-                        return items.sort((a, b) => (a.platform || '').localeCompare(b.platform || ''));
+                        return items.sort((a, b) => {
+                            const platformCompare = (a.platform || 'Uncategorized').localeCompare(b.platform || 'Uncategorized');
+                            if (platformCompare !== 0) return platformCompare;
+                            return (b.changePercent || 0) - (a.changePercent || 0);
+                        });
+
                     default:
                         return items;
                 }
             }
+            
             renderContent() {
                 if (!this.userId && db) return;
                 this.saveScrollPosition();
@@ -1606,17 +1635,48 @@
                     this.fetchAndRenderNews();
                     return;
                 }
-                const filterTerm = (this.currentTab === 'stocks' ? this.elements.portfolioFilter.value : '').toLowerCase();
-                let filteredItems = items.filter(item =>
-                    item.symbol.toLowerCase().includes(filterTerm) ||
-                    (item.name && item.name.toLowerCase().includes(filterTerm)) ||
-                    (item.platform && item.platform.toLowerCase().includes(filterTerm))
-                );
+                
                 const sortBy = this.elements.portfolioSort.value;
+                let filteredItems = items;
+
+                if (this.currentTab === 'stocks') {
+                    if (sortBy === 'platform') {
+                        this.elements.portfolioFilter.style.display = 'none';
+                        this.elements.platformFilter.style.display = 'block';
+
+                        const platforms = ['All Platforms', ...[...new Set(this.stocks.map(s => s.platform).filter(p => p))].sort()];
+                        const currentSelection = this.elements.platformFilter.value;
+                        this.elements.platformFilter.innerHTML = platforms.map(p => `<option value="${p}">${p}</option>`).join('');
+                        
+                        if (platforms.includes(currentSelection)) {
+                            this.elements.platformFilter.value = currentSelection;
+                        }
+
+                        const platformFilterTerm = this.elements.platformFilter.value;
+                        if (platformFilterTerm && platformFilterTerm !== 'All Platforms') {
+                            filteredItems = items.filter(item => (item.platform || 'Uncategorized') === platformFilterTerm);
+                        }
+                    } else {
+                        this.elements.portfolioFilter.style.display = 'block';
+                        this.elements.platformFilter.style.display = 'none';
+                        const filterTerm = this.elements.portfolioFilter.value.toLowerCase();
+                        if (filterTerm) {
+                            filteredItems = items.filter(item =>
+                                item.symbol.toLowerCase().includes(filterTerm) ||
+                                (item.name && item.name.toLowerCase().includes(filterTerm))
+                            );
+                        }
+                    }
+                }
+
                 const sortedItems = this.sortItems([...filteredItems], sortBy);
+                
                 if (type === 'stock') {
                     this.renderPortfolioSummary();
-                    if (sortBy === 'platform') {
+                    
+                    const isGrouping = sortBy === 'platform' && this.elements.platformFilter.value === 'All Platforms';
+
+                    if (isGrouping) {
                         this.renderGroupedByPlatform(sortedItems, grid, type);
                     } else if (sortBy === 'performance') {
                         this.renderGroupedStocks(sortedItems, grid, type);
@@ -1636,6 +1696,7 @@
                 }
                 this.restoreScrollPosition();
             }
+
             async saveData() {
                 if (!this.userId) return;
                 const userDocRef = doc(db, "users", this.userId);
@@ -2141,10 +2202,16 @@
                 parent.appendChild(groupWrapper);
                 this.renderCards(itemList, content, type);
             }
+            // ==================================================================
+            // ==      CARD RENDERING LOGIC UPDATED FOR ON-CARD DROPDOWN       ==
+            // ==================================================================
             renderCards(itemList, container, type) {
                 if (!container.classList.contains('group-content')) {
                      container.innerHTML = '';
-                 }
+                }
+                
+                const platforms = ['Fidelity', 'Robinhood', 'Vanguard', 'Charles Schwab', 'E*TRADE', 'Uncategorized'];
+
                 itemList.forEach(item => {
                     const card = document.createElement('div');
                     card.className = `${type}-card`;
@@ -2154,7 +2221,17 @@
                     
                     let stockInfoHTML = '';
                     let transactionDetailsHTML = '';
-            
+                    
+                    const platformOptions = platforms.map(p => `<option value="${p}" ${item.platform === p ? 'selected' : ''}>${p}</option>`).join('');
+                    const platformSelectHTML = `
+                        <div class="info-row">
+                            <span class="info-label">Platform:</span>
+                            <select class="platform-select" data-symbol="${item.symbol}">
+                                <option value="">Select...</option>
+                                ${platformOptions}
+                            </select>
+                        </div>`;
+
                     if ((type === 'stock' || type === 'fund') && stats.totalSharesOwned < 0.0001 && item.transactions && item.transactions.length > 0) {
                         // --- RENDER A CLOSED POSITION CARD ---
                         card.style.opacity = "0.7";
@@ -2206,7 +2283,6 @@
                         const totalPL = stats.unrealizedPL;
                         const totalPLPercent = stats.costOfRemainingShares > 0 ? (totalPL / stats.costOfRemainingShares) * 100 : 0;
                         const positiveClass = value => value >= 0 ? 'positive' : 'negative';
-                        const platformHTML = item.platform ? `<div class="info-row"><span class="info-label">Platform:</span><span class="info-value">${item.platform}</span></div>` : '';
                 
                         if (type === 'watchlist' || type === 'fund') {
                             stockInfoHTML = `<div class="info-row"><span class="info-label">Open:</span><span class="info-value">${this.formatCurrency(item.open || 0)}</span></div><div class="info-row"><span class="info-label">High:</span><span class="info-value">${this.formatCurrency(item.high || 0)}</span></div><div class="info-row"><span class="info-label">Low:</span><span class="info-value">${this.formatCurrency(item.low || 0)}</span></div><div class="info-row"><span class="info-label">Prev. Close:</span><span class="info-value">${this.formatCurrency(item.previousClose || 0)}</span></div>`;
@@ -2219,7 +2295,7 @@
                                 <div class="info-row"> <span class="info-label">Total P/L:</span> <span class="info-value ${positiveClass(totalPL)}">${this.formatCurrency(totalPL)}</span> </div>
                                 <div class="info-row"> <span class="info-label">Total P/L %:</span> <span class="info-value ${positiveClass(totalPLPercent)}">${this.formatNumber(totalPLPercent, 2)}%</span> </div>
                                 <div class="info-row"> <span class="info-label">Total Cost Basis:</span> <span class="info-value">${this.formatCurrency(stats.costOfRemainingShares)}</span> </div>
-                                ${platformHTML}`;
+                                ${platformSelectHTML}`;
                         }
                 
                         if (type === 'stock' || type === 'fund') {
@@ -2290,6 +2366,24 @@
                     }
                 });
             }
+
+            async handlePlatformChange(event) {
+                if (event.target.classList.contains('platform-select')) {
+                    const selectElement = event.target;
+                    const symbol = selectElement.dataset.symbol;
+                    const newPlatform = selectElement.value;
+
+                    const stock = this.stocks.find(s => s.symbol === symbol);
+                    if (stock) {
+                        stock.platform = newPlatform;
+                        await this.saveData();
+                        this.showSuccess(`✅ Platform for ${symbol} updated to ${newPlatform}.`);
+                        // Re-render to update platform dropdowns if a new one was added implicitly
+                        this.renderContent();
+                    }
+                }
+            }
+
             async moveToPortfolio(symbol) {
                 const stockToMove = this.watchlist.find(stock => stock.symbol === symbol);
                 if (!stockToMove || this.stocks.some(s => s.symbol === symbol)) return;
@@ -2741,3 +2835,4 @@
     </script>
 </body>
 </html>
+
