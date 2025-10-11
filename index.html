@@ -1043,7 +1043,7 @@
                 <input type="date" class="search-input" id="edit-stock-date">
             </div>
             <div class="transaction-input-group">
-                <label for="edit-stock-platform">Platform:</label>
+                <label for="edit-stock-platform">Default Platform:</label>
                 <input type="text" class="search-input" id="edit-stock-platform" placeholder="e.g., Fidelity, Robinhood">
             </div>
             <button class="add-btn" id="save-stock-edit-btn">Save All Details</button>
@@ -1067,7 +1067,7 @@
             </div>
             <div class="transaction-input-group">
                 <label for="modal-platform">Platform:</label>
-                <input type="text" class="search-input" id="modal-platform" placeholder="e.g., Fidelity">
+                <select class="search-input" id="modal-platform"></select>
             </div>
             <div class="transaction-input-group">
                 <label for="modal-note">Note:</label>
@@ -2015,6 +2015,19 @@
                 if (transactionIndex === -1) {
                     this.elements.modalDate.value = new Date().toISOString().split('T')[0];
                 }
+
+                // Populate platform dropdown
+                const predefinedPlatforms = ['Fidelity', 'Robinhood', 'Vanguard', 'Charles Schwab', 'E*TRADE', 'Merrill Edge', 'Uncategorized'];
+                const existingPlatforms = [...new Set(this.stocks.flatMap(s => (s.transactions || []).map(t => t.platform)).filter(p => p))];
+                const allPlatforms = [...new Set([...predefinedPlatforms, ...existingPlatforms])].sort();
+                const platformOptions = allPlatforms.map(p => `<option value="${p}">${p}</option>`).join('');
+                const platformDropdown = this.elements.modalPlatform;
+                platformDropdown.innerHTML = `
+                    <option value="">Select Platform...</option>
+                    ${platformOptions}
+                    <option value="add_new">++ Add New Platform...</option>
+                `;
+
                 this.elements.modalDividendFields.style.display = 'none';
                 this.elements.modalShares.parentNode.style.display = 'block';
                 this.elements.modalPrice.parentNode.style.display = 'block';
@@ -2025,6 +2038,12 @@
                     this.elements.modalPlatform.parentNode.style.display = 'none';
                     this.elements.modalDividendFields.style.display = 'block';
                 }
+
+                 if (transactionIndex > -1) {
+                    const transaction = item.transactions[transactionIndex];
+                    this.elements.modalPlatform.value = transaction.platform || '';
+                }
+
                 Object.assign(this.elements.modalSaveBtn.dataset, { id, type, transactionType, transactionIndex });
             }
             closeTransactionModal() { this.elements.transactionModal.style.display = 'none'; }
@@ -2044,7 +2063,17 @@
                 if (transactionType === 'buy' || transactionType === 'sell') {
                     const shares = parseFloat(this.elements.modalShares.value);
                     const price = parseFloat(this.elements.modalPrice.value);
-                    const platform = this.elements.modalPlatform.value.trim();
+                    let platform = this.elements.modalPlatform.value;
+
+                    if (platform === 'add_new') {
+                        const customPlatform = prompt("Please enter the new platform name:");
+                        if (customPlatform && customPlatform.trim() !== '') {
+                            platform = customPlatform.trim();
+                        } else {
+                            this.showError("New platform name cannot be empty.");
+                            return; // Stop the save process
+                        }
+                    }
 
                     if (isNaN(shares) || shares <= 0 || isNaN(price) || price < 0) {
                         this.showError('Invalid input. Shares must be positive and Price must be non-negative.');
@@ -2069,11 +2098,9 @@
                     };
         
                     if (isEditing) {
-                        // Remove placeholder if it exists
                         const placeholderIndex = item.transactions.findIndex(t => t.note === 'Initial placeholder');
                         if (placeholderIndex > -1 && placeholderIndex !== index) {
                             item.transactions.splice(placeholderIndex, 1);
-                            // If we are editing the placeholder, just overwrite it
                             if (index > placeholderIndex) index--;
                         }
                         item.transactions[index] = newTransaction;
@@ -2756,7 +2783,7 @@
                 this.elements.editStockSymbolDisplay.textContent = stock.symbol;
                 this.elements.editStockSymbol.value = stock.symbol || '';
                 this.elements.editStockName.value = stock.name || '';
-                this.elements.editStockPlatform.value = stock.platform || ''; // This is now a general/default platform
+                this.elements.editStockPlatform.value = firstBuyTransaction?.platform || ''; 
                 this.elements.editStockShares.value = stats.totalSharesOwned > 0 ? stats.totalSharesOwned.toFixed(3) : 0;
                 this.elements.editStockCost.value = stats.averageCostBasis > 0 ? stats.averageCostBasis.toFixed(4) : 0;
                 this.elements.editStockDate.value = initialDate;
@@ -2786,15 +2813,14 @@
                 stock.symbol = newSymbol;
                 stock.name = newName;
                 
-                // This logic needs to adapt since platform is now per-transaction
                 if (stock.transactions && stock.transactions.length > 0) {
                     let firstBuyIndex = stock.transactions.findIndex(t => t.type === 'buy');
                     if (firstBuyIndex !== -1) {
                         stock.transactions[firstBuyIndex].shares = newShares;
                         stock.transactions[firstBuyIndex].price = newCost;
                         stock.transactions[firstBuyIndex].date = new Date(newDateInput).toISOString();
-                        stock.transactions[firstBuyIndex].platform = newPlatform; // Update platform on first buy
-                    } else { // Should not happen if shares > 0
+                        stock.transactions[firstBuyIndex].platform = newPlatform;
+                    } else { 
                          stock.transactions.push({
                             type: 'buy', shares: newShares, price: newCost, platform: newPlatform,
                             note: 'Initial Basis (via Edit Stock Details)',
@@ -2819,4 +2845,3 @@
     </script>
 </body>
 </html>
-
