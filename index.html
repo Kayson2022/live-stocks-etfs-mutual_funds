@@ -1732,16 +1732,20 @@
                 const userDocRef = doc(db, "users", this.userId);
                 const docSnap = await getDoc(userDocRef);
                 
+                let migrationNeeded = false;
                 const ensureIdAndMigratePlatform = (item) => {
                     if (!item.id) {
                         item.id = Date.now().toString() + Math.random().toString(36).substring(2, 9);
+                        migrationNeeded = true;
                     }
-                    // One-time migration for old data structure
-                    if (item.platform && item.transactions && item.transactions.every(t => !t.platform)) {
+                    if (item.platform && item.transactions && item.transactions.some(t => !t.platform)) {
                         item.transactions.forEach(t => {
-                            t.platform = item.platform;
+                            if (!t.platform) {
+                                t.platform = item.platform;
+                            }
                         });
                         delete item.platform;
+                        migrationNeeded = true;
                     }
                     return item;
                 };
@@ -1750,9 +1754,14 @@
                     const data = docSnap.data();
                     this.stocks = (data.stocks || []).map(ensureIdAndMigratePlatform);
                     this.mutualFunds = (data.mutualFunds || []).map(ensureIdAndMigratePlatform);
-                    this.watchlist = (data.watchlist || []).map(ensureIdAndMigratePlatform);
+                    this.watchlist = (data.watchlist || []).map(item => item.id ? item : {...item, id: Date.now().toString() + Math.random().toString(36).substring(2, 9)});
                     this.portfolioHistory = data.portfolioHistory || [];
                     this.priceAlerts = data.priceAlerts || [];
+
+                    if (migrationNeeded) {
+                        console.log("Data migration performed. Saving updated structure.");
+                        await this.saveData();
+                    }
                 }
                 this.updatePortfolioHistory();
                 this.renderContent();
