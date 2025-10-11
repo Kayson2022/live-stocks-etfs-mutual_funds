@@ -1043,7 +1043,7 @@
                 <input type="date" class="search-input" id="edit-stock-date">
             </div>
             <div class="transaction-input-group">
-                <label for="edit-stock-platform">Default Platform:</label>
+                <label for="edit-stock-platform">Platform:</label>
                 <input type="text" class="search-input" id="edit-stock-platform" placeholder="e.g., Fidelity, Robinhood">
             </div>
             <button class="add-btn" id="save-stock-edit-btn">Save All Details</button>
@@ -1067,7 +1067,7 @@
             </div>
             <div class="transaction-input-group">
                 <label for="modal-platform">Platform:</label>
-                <select class="search-input" id="modal-platform"></select>
+                <input type="text" class="search-input" id="modal-platform" placeholder="e.g., Fidelity">
             </div>
             <div class="transaction-input-group">
                 <label for="modal-note">Note:</label>
@@ -1398,6 +1398,7 @@
                     modalFmpKey: document.getElementById('modal-fmp-key'),
                     modalRefreshInterval: document.getElementById('modal-refresh-interval'),
                     modalSaveSettingsBtn: document.getElementById('modal-save-settings-btn'),
+                    enablePushNotificationsBtn: document.getElementById('enable-push-notifications-btn'),
                     diversificationChartContainer: document.getElementById('diversification-chart-container'),
                     diversificationChart: document.getElementById('diversificationChart'),
                     historyChartContainer: document.getElementById('history-chart-container'),
@@ -1476,6 +1477,7 @@
                 this.elements.settingsBtn.addEventListener('click', () => this.openSettingsModal());
                 this.elements.closeSettingsBtn.addEventListener('click', () => this.closeSettingsModal());
                 this.elements.modalSaveSettingsBtn.addEventListener('click', () => this.saveSettings());
+                this.elements.enablePushNotificationsBtn.addEventListener('click', () => this.enablePushNotifications());
                 this.elements.confirmModalCancelBtn.addEventListener('click', () => this.closeConfirmModal(true));
                 this.elements.confirmModalConfirmBtn.addEventListener('click', () => this.handleConfirmAction());
                 this.elements.listAllBtn.addEventListener('click', () => this.openListAllModal());
@@ -2015,19 +2017,6 @@
                 if (transactionIndex === -1) {
                     this.elements.modalDate.value = new Date().toISOString().split('T')[0];
                 }
-
-                // Populate platform dropdown
-                const predefinedPlatforms = ['Fidelity', 'Robinhood', 'Vanguard', 'Charles Schwab', 'E*TRADE', 'Merrill Edge', 'Uncategorized'];
-                const existingPlatforms = [...new Set(this.stocks.flatMap(s => (s.transactions || []).map(t => t.platform)).filter(p => p))];
-                const allPlatforms = [...new Set([...predefinedPlatforms, ...existingPlatforms])].sort();
-                const platformOptions = allPlatforms.map(p => `<option value="${p}">${p}</option>`).join('');
-                const platformDropdown = this.elements.modalPlatform;
-                platformDropdown.innerHTML = `
-                    <option value="">Select Platform...</option>
-                    ${platformOptions}
-                    <option value="add_new">++ Add New Platform...</option>
-                `;
-
                 this.elements.modalDividendFields.style.display = 'none';
                 this.elements.modalShares.parentNode.style.display = 'block';
                 this.elements.modalPrice.parentNode.style.display = 'block';
@@ -2038,12 +2027,6 @@
                     this.elements.modalPlatform.parentNode.style.display = 'none';
                     this.elements.modalDividendFields.style.display = 'block';
                 }
-
-                 if (transactionIndex > -1) {
-                    const transaction = item.transactions[transactionIndex];
-                    this.elements.modalPlatform.value = transaction.platform || '';
-                }
-
                 Object.assign(this.elements.modalSaveBtn.dataset, { id, type, transactionType, transactionIndex });
             }
             closeTransactionModal() { this.elements.transactionModal.style.display = 'none'; }
@@ -2063,17 +2046,7 @@
                 if (transactionType === 'buy' || transactionType === 'sell') {
                     const shares = parseFloat(this.elements.modalShares.value);
                     const price = parseFloat(this.elements.modalPrice.value);
-                    let platform = this.elements.modalPlatform.value;
-
-                    if (platform === 'add_new') {
-                        const customPlatform = prompt("Please enter the new platform name:");
-                        if (customPlatform && customPlatform.trim() !== '') {
-                            platform = customPlatform.trim();
-                        } else {
-                            this.showError("New platform name cannot be empty.");
-                            return; // Stop the save process
-                        }
-                    }
+                    const platform = this.elements.modalPlatform.value.trim();
 
                     if (isNaN(shares) || shares <= 0 || isNaN(price) || price < 0) {
                         this.showError('Invalid input. Shares must be positive and Price must be non-negative.');
@@ -2098,9 +2071,11 @@
                     };
         
                     if (isEditing) {
+                        // Remove placeholder if it exists
                         const placeholderIndex = item.transactions.findIndex(t => t.note === 'Initial placeholder');
                         if (placeholderIndex > -1 && placeholderIndex !== index) {
                             item.transactions.splice(placeholderIndex, 1);
+                            // If we are editing the placeholder, just overwrite it
                             if (index > placeholderIndex) index--;
                         }
                         item.transactions[index] = newTransaction;
@@ -2573,6 +2548,19 @@
                 this.showSuccess('✅ Settings saved!');
                 this.startLiveUpdate();
             }
+            enablePushNotifications() {
+                if (!("Notification" in window)) {
+                    this.showError("This browser does not support desktop notification");
+                } else if (Notification.permission === "granted") {
+                    new Notification("Notifications are already enabled!");
+                } else if (Notification.permission !== "denied") {
+                    Notification.requestPermission().then(permission => {
+                        if (permission === "granted") {
+                            new Notification("Notifications enabled!");
+                        }
+                    });
+                }
+            }
             toggleDarkMode() {
                 this.isDarkMode = !this.isDarkMode;
                 localStorage.setItem('darkMode', this.isDarkMode);
@@ -2725,15 +2713,21 @@
                 });
             }
             showAlertNotification(item, alert) {
-                const type = alert.condition === 'above' ? 'positive' : 'negative';
                 const message = `🔔 ALERT: ${item.symbol} reached $${this.formatNumber(item.price)}! It is ${alert.condition} your target of $${this.formatNumber(alert.price)}.`;
+                
+                // In-app notification
                 const alertDiv = this.elements.alertNotification;
                 alertDiv.classList.remove('positive', 'negative');
-                alertDiv.classList.add('active', type);
+                alertDiv.classList.add('active', alert.condition === 'above' ? 'positive' : 'negative');
                 alertDiv.innerHTML = `<h4>Price Alert Triggered</h4><p>${message}</p>`;
                 setTimeout(() => {
                     alertDiv.classList.remove('active');
                 }, 10000);
+
+                // Browser push notification
+                if (Notification.permission === "granted") {
+                    new Notification("Price Alert!", { body: message });
+                }
             }
             async fetchAndRenderNews() {
                 this.saveScrollPosition();
@@ -2819,7 +2813,7 @@
                         stock.transactions[firstBuyIndex].shares = newShares;
                         stock.transactions[firstBuyIndex].price = newCost;
                         stock.transactions[firstBuyIndex].date = new Date(newDateInput).toISOString();
-                        stock.transactions[firstBuyIndex].platform = newPlatform;
+                        stock.transactions[firstBuyIndex].platform = newPlatform; // Update platform on first buy
                     } else { 
                          stock.transactions.push({
                             type: 'buy', shares: newShares, price: newCost, platform: newPlatform,
@@ -2845,3 +2839,4 @@
     </script>
 </body>
 </html>
+
