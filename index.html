@@ -1067,7 +1067,7 @@
             </div>
             <div class="transaction-input-group">
                 <label for="modal-platform">Platform:</label>
-                <input type="text" class="search-input" id="modal-platform" placeholder="e.g., Fidelity">
+                <select class="search-input" id="modal-platform"></select>
             </div>
             <div class="transaction-input-group">
                 <label for="modal-note">Note:</label>
@@ -1620,11 +1620,9 @@
                         });
 
                     case 'platform':
-                        return items.sort((a, b) => {
-                            const platformCompare = (a.platform || 'Uncategorized').localeCompare(b.platform || 'Uncategorized');
-                            if (platformCompare !== 0) return platformCompare;
-                            return (b.changePercent || 0) - (a.changePercent || 0);
-                        });
+                        // This case is handled by grouping, but we'll sort within groups by performance.
+                        return items.sort((a, b) => (b.changePercent || 0) - (a.changePercent || 0));
+
 
                     default:
                         return items;
@@ -2026,6 +2024,24 @@
                 if (transactionIndex === -1) {
                     this.elements.modalDate.value = new Date().toISOString().split('T')[0];
                 }
+                
+                // Populate platform dropdown
+                const predefinedPlatforms = ['Fidelity', 'Robinhood', 'Vanguard', 'Charles Schwab', 'E*TRADE', 'Merrill Edge', 'Uncategorized'];
+                const existingPlatforms = [...new Set(this.stocks.flatMap(s => s.transactions.map(t => t.platform)).filter(p => p))];
+                const allPlatforms = [...new Set([...predefinedPlatforms, ...existingPlatforms])].sort();
+                const platformSelect = this.elements.modalPlatform;
+                platformSelect.innerHTML = `<option value="">Select...</option>`;
+                allPlatforms.forEach(p => {
+                    platformSelect.innerHTML += `<option value="${p}">${p}</option>`;
+                });
+                platformSelect.innerHTML += `<option value="add_new">++ Add New Platform...</option>`;
+                
+                if (transactionIndex > -1) {
+                    const transaction = item.transactions[transactionIndex];
+                    platformSelect.value = transaction.platform || "";
+                }
+
+
                 this.elements.modalDividendFields.style.display = 'none';
                 this.elements.modalShares.parentNode.style.display = 'block';
                 this.elements.modalPrice.parentNode.style.display = 'block';
@@ -2055,7 +2071,16 @@
                 if (transactionType === 'buy' || transactionType === 'sell') {
                     const shares = parseFloat(this.elements.modalShares.value);
                     const price = parseFloat(this.elements.modalPrice.value);
-                    const platform = this.elements.modalPlatform.value.trim();
+                    let platform = this.elements.modalPlatform.value;
+
+                    if (platform === 'add_new') {
+                        const customPlatform = prompt("Please enter the new platform name:");
+                        if (customPlatform && customPlatform.trim() !== '') {
+                            platform = customPlatform.trim();
+                        } else {
+                            return; // User cancelled or entered nothing
+                        }
+                    }
 
                     if (isNaN(shares) || shares <= 0 || isNaN(price) || price < 0) {
                         this.showError('Invalid input. Shares must be positive and Price must be non-negative.');
@@ -2848,4 +2873,3 @@
     </script>
 </body>
 </html>
-
