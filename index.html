@@ -1315,6 +1315,7 @@
                 this.currentTab = 'stocks'; this.onConfirm = null;
                 this.isLiveUpdatePaused = false;
                 this.isDarkMode = false;
+                this.isPrivacyMode = false;
                 this.countdownIntervalId = null;
                 this.refreshIntervalId = null;
                 this.groupCollapseState = {};
@@ -1338,6 +1339,7 @@
                 this.cacheDOMElements();
                 this.setupEventListeners();
                 this.applyTheme();
+                this.applyPrivacyMode();
                 if (!db) {
                      this.showError("Firebase is not configured. Please add your firebaseConfig object to the script tag.");
                     this.elements.loginContainer.style.display = 'block';
@@ -1458,6 +1460,7 @@
                     smallCountdown: document.getElementById('smallCountdown'),
                     smallCountdownContainer: document.getElementById('small-countdown-container'),
                     toggleDarkModeBtn: document.getElementById('toggleDarkModeBtn'),
+                    togglePrivacyBtn: document.getElementById('togglePrivacyBtn'),
                     quickLookupBtn: document.getElementById('quickLookupBtn'),
                     updateAllFundsBtn: document.getElementById('updateAllFundsBtn'),
                     clearAllFundsBtn: document.getElementById('clearAllFundsBtn'),
@@ -1525,6 +1528,7 @@
                 this.elements.listAllBtn.addEventListener('click', () => this.openListAllModal());
                 this.elements.closeListAllBtn.addEventListener('click', () => this.closeListAllModal());
                 this.elements.toggleDarkModeBtn.addEventListener('click', () => this.toggleDarkMode());
+                this.elements.togglePrivacyBtn.addEventListener('click', () => this.togglePrivacyMode());
                 this.elements.saveAlertBtn.addEventListener('click', () => this.savePriceAlert());
                 this.elements.updateAllFundsBtn.addEventListener('click', () => this.refreshFunds());
                 this.elements.clearAllFundsBtn.addEventListener('click', () => this.clearAllItems('fund'));
@@ -1589,6 +1593,15 @@
             }
             handleCardAction(event) {
                 const clickedButton = event.target.closest('.transaction-btn, .edit-btn, .edit-transaction-btn, .delete-transaction-btn, .set-alert-btn, .move-to-portfolio-btn');
+                
+                // Allow card clicks for chart expansion, but not on buttons
+                if (!clickedButton && event.target.closest('.stock-card')) {
+                    const card = event.target.closest('.stock-card');
+                    card.classList.toggle('expanded');
+                    this.renderCardChart(card.dataset.symbol);
+                    return;
+                }
+                
                 if (!clickedButton) return;
                 const card = clickedButton.closest('.stock-card, .fund-card, .watchlist-card');
                 if (!card) return;
@@ -2347,6 +2360,20 @@
                     
                     let stockInfoHTML = '';
                     let transactionDetailsHTML = '';
+                    let cardChartHTML = '';
+
+                    if (type === 'stock') {
+                        cardChartHTML = `
+                            <div class="card-chart-container">
+                                <div class="chart-controls">
+                                    <button class="chart-range-btn" data-range="1M">1M</button>
+                                    <button class="chart-range-btn" data-range="6M">6M</button>
+                                    <button class="chart-range-btn active" data-range="1Y">1Y</button>
+                                    <button class="chart-range-btn" data-range="5Y">5Y</button>
+                                </div>
+                                <canvas id="chart-${item.symbol}"></canvas>
+                            </div>`;
+                    }
 
                     if (type === 'stock' && stats.totalSharesOwned < 0.0001 && item.transactions && item.transactions.length > 0) {
                         card.style.opacity = "0.7";
@@ -2428,6 +2455,7 @@
                             <span>${item.change >= 0 ? '▲' : '▼'} ${this.formatCurrency(item.change || 0)} (${(item.changePercent || 0).toFixed(2)}%)</span>
                         </div>
                         <div class="stock-info">${stockInfoHTML}</div>
+                        ${cardChartHTML}
                         ${transactionDetailsHTML}
                         <div class="total-pl ${todayPL >= 0 ? 'positive' : 'negative'}">P/L Today: ${this.formatCurrency(todayPL)}</div>
                     `;
@@ -2446,6 +2474,11 @@
                         transactionHeader.addEventListener('click', toggleTransactions);
                     }
                 });
+            }
+
+            async renderCardChart(symbol) {
+                // This is a placeholder for the real API call
+                console.log(`Fetching chart data for ${symbol}`);
             }
             
             async moveToPortfolio(id) {
@@ -2649,6 +2682,16 @@
                     this.renderDiversificationChart();
                     this.renderHistoryChart();
                 }
+            }
+            togglePrivacyMode() {
+                this.isPrivacyMode = !this.isPrivacyMode;
+                localStorage.setItem('privacyMode', this.isPrivacyMode);
+                this.applyPrivacyMode();
+            }
+            applyPrivacyMode() {
+                this.isPrivacyMode = localStorage.getItem('privacyMode') === 'true';
+                document.body.classList.toggle('privacy-mode', this.isPrivacyMode);
+                this.elements.togglePrivacyBtn.textContent = this.isPrivacyMode ? '👁️ Disable Privacy' : '👁️ Privacy Mode';
             }
             openListAllModal() { this.elements.listAllModal.style.display = 'flex'; this.listAllSymbols(); }
             closeListAllModal() { this.elements.listAllModal.style.display = 'none'; }
