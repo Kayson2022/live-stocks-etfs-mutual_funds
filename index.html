@@ -6,6 +6,7 @@
     <title>Live Stocks & Funds Tracker</title>
     <link rel="icon" href="data:,">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <!-- 
     ==================================================================
     ==      REVISED & IMPROVED STYLESHEET                           ==
@@ -52,6 +53,17 @@
             --color-positive: #2ECC71;
             --color-negative: #E74C3C;
         }
+
+        /* --- Privacy Mode --- */
+        body.privacy-mode .stock-price,
+        body.privacy-mode .stock-change,
+        body.privacy-mode .info-value,
+        body.privacy-mode .summary-value,
+        body.privacy-mode .total-pl {
+            filter: blur(5px);
+            transition: filter 0.2s ease-in-out;
+        }
+
 
         /* --- Base & Reset Styles --- */
         * {
@@ -379,13 +391,9 @@
             box-shadow: var(--shadow-sm);
             border: 1px solid var(--border-color);
             transition: var(--transition);
-            /* FIX: Removed fixed min-height.
-              The fixed height was causing content to be cut off when the 
-              transaction list was expanded. Removing it allows the card
-              to grow naturally with its content.
-            */
             display: flex;
             flex-direction: column;
+            cursor: pointer;
         }
         .stock-card:hover, .fund-card:hover, .watchlist-card:hover {
             transform: translateY(-4px);
@@ -453,7 +461,6 @@
             padding-top: 16px;
             margin-top: 16px;
             border-top: 1px solid var(--border-color);
-            /* This makes the info section grow and push buttons down */
             flex-grow: 1; 
         }
         .info-row {
@@ -478,6 +485,41 @@
             font-size: 0.9rem;
             font-weight: 600;
         }
+
+        /* --- Card Chart --- */
+        .card-chart-container {
+            max-height: 0;
+            opacity: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-in-out, opacity 0.3s ease-in-out, margin-top 0.5s ease-in-out;
+            margin-top: 0;
+        }
+        .stock-card.expanded .card-chart-container {
+            max-height: 300px; /* Adjust as needed */
+            opacity: 1;
+            margin-top: 20px;
+        }
+        .chart-controls {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+            justify-content: center;
+        }
+        .chart-range-btn {
+            padding: 4px 12px;
+            font-size: 0.8rem;
+            background-color: var(--bg-tertiary);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+        }
+        .chart-range-btn.active, .chart-range-btn:hover {
+            background-color: var(--accent-primary);
+            color: white;
+            border-color: var(--accent-primary);
+        }
+
 
         /* --- Group Headers --- */
         .group-header, .watchlist-title {
@@ -945,6 +987,7 @@
                 <button class="add-btn" id="settingsBtn">⚙️ Settings</button>
                 <button class="add-btn" id="viewAlertsBtn">🔔 View Active Alerts</button>
                 <button class="add-btn" id="listAllBtn">📋 List All Stocks</button>
+                <button class="add-btn" id="togglePrivacyBtn">👁️ Privacy Mode</button>
                  <button class="add-btn" id="toggleDarkModeBtn">🌙 Toggle Theme</button>
                 <button class="add-btn" id="clearAllBtn">🗑️ Clear All Data</button>
             </div>
@@ -1466,7 +1509,6 @@
                 this.elements.exportBtn.addEventListener('click', () => this.exportData());
                 this.elements.importFile.addEventListener('change', (e) => this.importData(e));
                 this.elements.portfolioFilter.addEventListener('input', () => this.renderContent());
-                this.elements.platformFilter.addEventListener('change', () => this.renderContent());
                 this.elements.portfolioSort.addEventListener('change', () => this.renderContent());
                 this.elements.addFundBtn.addEventListener('click', () => this.addItemFromInput('fund'));
                 this.elements.mutualFundInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') this.addItemFromInput('fund'); });
@@ -2873,3 +2915,4 @@
     </script>
 </body>
 </html>
+
