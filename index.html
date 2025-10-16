@@ -261,6 +261,30 @@
             border-color: var(--accent-primary);
             box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-primary) 20%, transparent);
         }
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            flex: 1;
+        }
+        .input-wrapper .search-input {
+            width: 100%;
+            padding-right: 30px; 
+        }
+        .clear-btn {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: var(--text-secondary);
+            font-size: 1.5rem;
+            font-weight: bold;
+            display: none;
+        }
+        .search-input:not(:placeholder-shown) + .clear-btn {
+            display: block;
+        }
+
 
         /* --- Portfolio Summary --- */
         @keyframes animate-gradient {
@@ -959,14 +983,18 @@
             </div>
 
             <div class="search-section">
-                <input type="text" class="search-input" id="stockInput" placeholder="Enter stock symbol (e.g., AAPL)">
-                <input type="text" class="search-input" id="platformInput" placeholder="Platform (e.g., Fidelity)">
+                <div class="input-wrapper">
+                    <input type="text" class="search-input" id="stockInput" placeholder="Enter stock symbol (e.g., AAPL)">
+                    <span class="clear-btn" id="clearStockInput">×</span>
+                </div>
                 <button class="add-btn" id="addBtn">Add Stock</button>
             </div>
 
             <div class="portfolio-controls">
-                <input type="text" id="portfolioFilter" placeholder="🔎 Filter your portfolio...">
-                <select id="platformFilter" class="search-input" style="display: none;"></select>
+                <div class="input-wrapper">
+                    <input type="text" id="portfolioFilter" class="search-input" placeholder="🔎 Filter your portfolio...">
+                    <span class="clear-btn" id="clearPortfolioFilter">×</span>
+                </div>
                 <select id="portfolioSort">
                     <option value="performance">Sort by Performance</option>
                     <option value="alphabetical">Sort Alphabetical (A-Z)</option>
@@ -1423,6 +1451,8 @@
                     stocksGrid: document.getElementById('stocksGrid'), loadingDiv: document.getElementById('loading'), errorDiv: document.getElementById('error'), successDiv: document.getElementById('success'),
                     stockInput: document.getElementById('stockInput'), addBtn: document.getElementById('addBtn'),
                     platformInput: document.getElementById('platformInput'),
+                    clearStockInput: document.getElementById('clearStockInput'),
+                    clearPortfolioFilter: document.getElementById('clearPortfolioFilter'),
                     liveUpdateBtn: document.getElementById('liveUpdateBtn'), toggleLiveUpdateBtn: document.getElementById('toggleLiveUpdateBtn'), clearAllBtn: document.getElementById('clearAllBtn'),
                     portfolioFilter: document.getElementById('portfolioFilter'), 
                     platformFilter: document.getElementById('platformFilter'),
@@ -1505,14 +1535,28 @@
                 this.elements.signOutBtn.addEventListener('click', () => this.signOut());
                 this.elements.addBtn.addEventListener('click', () => this.addItemFromInput('stock'));
                 this.elements.stockInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') this.addItemFromInput('stock'); });
-                this.elements.platformInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') this.addItemFromInput('stock'); });
+                this.elements.stockInput.addEventListener('input', () => { this.elements.clearStockInput.style.display = this.elements.stockInput.value ? 'block' : 'none'; });
+                this.elements.clearStockInput.addEventListener('click', () => {
+                    this.elements.stockInput.value = '';
+                    this.elements.stockInput.focus();
+                    this.elements.clearStockInput.style.display = 'none';
+                });
+                this.elements.portfolioFilter.addEventListener('input', () => { 
+                    this.elements.clearPortfolioFilter.style.display = this.elements.portfolioFilter.value ? 'block' : 'none';
+                    this.renderContent();
+                });
+                this.elements.clearPortfolioFilter.addEventListener('click', () => {
+                    this.elements.portfolioFilter.value = '';
+                    this.renderContent();
+                    this.elements.portfolioFilter.focus();
+                    this.elements.clearPortfolioFilter.style.display = 'none';
+                });
                 this.elements.liveUpdateBtn.addEventListener('click', () => this.refreshCurrentTab());
                 this.elements.clearAllBtn.addEventListener('click', () => this.clearAllItems('stock'));
                 this.elements.toggleLiveUpdateBtn.addEventListener('click', () => this.toggleLiveUpdate());
                 this.elements.exportBtn.addEventListener('click', () => this.exportData());
                 this.elements.importFile.addEventListener('change', (e) => this.importData(e));
-                this.elements.portfolioFilter.addEventListener('input', () => this.renderContent());
-                this.elements.platformFilter.addEventListener('change', () => this.renderContent());
+                
                 this.elements.portfolioSort.addEventListener('change', () => this.renderContent());
                 this.elements.addFundBtn.addEventListener('click', () => this.addItemFromInput('fund'));
                 this.elements.mutualFundInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') this.addItemFromInput('fund'); });
@@ -1964,13 +2008,12 @@
                 const isStock = type === 'stock';
                 const input = isStock ? this.elements.stockInput : (type === 'fund' ? this.elements.mutualFundInput : this.elements.watchlistInput);
                 const symbol = input.value.trim().toUpperCase();
-                const platform = isStock ? this.elements.platformInput.value.trim() : null;
+                
                 if (!symbol) return;
                 input.value = '';
-                if(isStock) this.elements.platformInput.value = '';
-                await this.addItem(symbol, type, platform);
+                await this.addItem(symbol, type);
             }
-            async addItem(symbol, type, platform = null) {
+            async addItem(symbol, type) {
                 this.showLoading(true, `Adding ${symbol}...`);
                 try {
                     let targetList, listName;
@@ -1991,12 +2034,6 @@
                     } else {
                         newItem.transactions = [];
                         newItem.dividends = [];
-                        if (platform) {
-                             // This is a new stock, so we can create a dummy first transaction if a platform is given
-                            newItem.transactions.push({
-                                type: 'buy', shares: 0, price: 0, date: new Date().toISOString(), platform: platform, note: 'Initial placeholder'
-                            });
-                        }
                         targetList.push(newItem);
                     }
                     await this.saveData();
