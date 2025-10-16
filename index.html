@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1234,7 +1233,7 @@
                     const [quoteResponse, profileResponse] = await Promise.all([fetch(quoteUrl), fetch(profileUrl)]);
                     if (!quoteResponse.ok || !profileResponse.ok) return { success: false, symbol, reason: `HTTP Error: ${quoteResponse.status}` };
                     const [quoteData, profileData] = await Promise.all([quoteResponse.json(), profileResponse.json()]);
-                    if ((quoteData.c === 0 && quoteData.pc === 0) || !profileData.name) return { success: false, symbol, reason: 'Invalid or empty API payload' };
+                    if (quoteData.c === 0 && quoteData.pc === 0) return { success: false, symbol, reason: 'Invalid or empty API payload' };
                     return { success: true, data: { symbol, name: profileData.name ?? symbol, price: quoteData.c ?? 0, change: quoteData.d ?? 0, changePercent: quoteData.dp ?? 0, open: quoteData.o ?? 0, high: quoteData.h ?? 0, low: quoteData.l ?? 0, previousClose: quoteData.pc ?? 0, industry: profileData.finnhubIndustry ?? 'N/A' } };
                 } catch (error) {
                       console.error(`Error fetching stock/ETF data for ${symbol}:`, error);
@@ -1513,6 +1512,7 @@
                 this.elements.exportBtn.addEventListener('click', () => this.exportData());
                 this.elements.importFile.addEventListener('change', (e) => this.importData(e));
                 this.elements.portfolioFilter.addEventListener('input', () => this.renderContent());
+                this.elements.platformFilter.addEventListener('change', () => this.renderContent());
                 this.elements.portfolioSort.addEventListener('change', () => this.renderContent());
                 this.elements.addFundBtn.addEventListener('click', () => this.addItemFromInput('fund'));
                 this.elements.mutualFundInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') this.addItemFromInput('fund'); });
@@ -1593,13 +1593,14 @@
                 }
             }
             handleCardAction(event) {
-                const clickedButton = event.target.closest('.transaction-btn, .edit-btn, .edit-transaction-btn, .delete-transaction-btn, .set-alert-btn, .move-to-portfolio-btn');
+                const clickedButton = event.target.closest('.transaction-btn, .edit-btn, .edit-transaction-btn, .delete-transaction-btn, .set-alert-btn, .move-to-portfolio-btn, .chart-range-btn');
                 
-                // Allow card clicks for chart expansion, but not on buttons
                 if (!clickedButton && event.target.closest('.stock-card')) {
                     const card = event.target.closest('.stock-card');
                     card.classList.toggle('expanded');
-                    this.renderCardChart(card.dataset.symbol);
+                    if (card.classList.contains('expanded')) {
+                        this.renderCardChart(card.dataset.symbol);
+                    }
                     return;
                 }
                 
@@ -1609,6 +1610,16 @@
                 
                 const id = card.dataset.id;
                 const type = card.dataset.type;
+                const symbol = card.dataset.symbol;
+
+                if (clickedButton.classList.contains('chart-range-btn')) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    const range = clickedButton.dataset.range;
+                    this.renderCardChart(symbol, range);
+                    return;
+                }
+
                 if (!id || !type) return;
 
                 event.preventDefault();
