@@ -1455,7 +1455,6 @@
                     signOutBtn: document.getElementById('sign-out-btn'),
                     stocksGrid: document.getElementById('stocksGrid'), loadingDiv: document.getElementById('loading'), errorDiv: document.getElementById('error'), successDiv: document.getElementById('success'),
                     stockInput: document.getElementById('stockInput'), addBtn: document.getElementById('addBtn'),
-                    platformInput: document.getElementById('platformInput'),
                     clearStockInput: document.getElementById('clearStockInput'),
                     clearPortfolioFilter: document.getElementById('clearPortfolioFilter'),
                     liveUpdateBtn: document.getElementById('liveUpdateBtn'), toggleLiveUpdateBtn: document.getElementById('toggleLiveUpdateBtn'), clearAllBtn: document.getElementById('clearAllBtn'),
@@ -2402,7 +2401,7 @@
             renderCards(itemList, container, type) {
                 if (!container.classList.contains('group-content')) {
                      container.innerHTML = '';
-                }
+                 }
 
                 itemList.forEach(item => {
                     const card = document.createElement('div');
