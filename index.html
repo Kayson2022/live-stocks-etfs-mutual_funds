@@ -1266,7 +1266,7 @@
                     const [quoteResponse, profileResponse] = await Promise.all([fetch(quoteUrl), fetch(profileUrl)]);
                     if (!quoteResponse.ok || !profileResponse.ok) return { success: false, symbol, reason: `HTTP Error: ${quoteResponse.status}` };
                     const [quoteData, profileData] = await Promise.all([quoteResponse.json(), profileResponse.json()]);
-                    if (quoteData.c === 0 && quoteData.pc === 0 && !profileData.name) return { success: false, symbol, reason: 'Invalid or empty API payload' };
+                    if (quoteData.c === 0 && quoteData.pc === 0) return { success: false, symbol, reason: 'Invalid or empty API payload' };
                     return { success: true, data: { symbol, name: profileData.name ?? symbol, price: quoteData.c ?? 0, change: quoteData.d ?? 0, changePercent: quoteData.dp ?? 0, open: quoteData.o ?? 0, high: quoteData.h ?? 0, low: quoteData.l ?? 0, previousClose: quoteData.pc ?? 0, industry: profileData.finnhubIndustry ?? 'N/A' } };
                 } catch (error) {
                       console.error(`Error fetching stock/ETF data for ${symbol}:`, error);
