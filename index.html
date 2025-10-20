@@ -1161,39 +1161,23 @@
             </div>
         </div>
     </div>
-    <!-- UPDATED: Price Alert Modal for Range Setting -->
+    <!-- MODIFICATION: Updated price alert modal for Min/Max/Range -->
     <div id="priceAlertModal" class="modal" style="display: none;">
         <div class="modal-content">
             <button class="close-modal-btn" onclick="window.stockTracker.closePriceAlertModal()">&times;</button>
-            <h3 class="modal-title">Set Range Alerts for <span id="alert-symbol"></span></h3>
-            
-            <!-- HIGH Price Alert (Profit Taking) -->
-            <div style="border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 16px;">
-                <h4 style="font-size: 1.2rem; margin-bottom: 10px;">📈 High Price Alert (Profit Target)</h4>
-                <div class="transaction-input-group">
-                    <label for="alert-max-price">Target Price (Price is $\gt$):</label>
-                    <input type="number" class="search-input" id="alert-max-price" placeholder="e.g., 120" min="0">
-                </div>
-                <div class="transaction-input-group">
-                    <label for="alert-max-action">Action/Message (Optional):</label>
-                    <input type="text" class="search-input" id="alert-max-action" placeholder="e.g., Sale (Profit Taking)">
-                </div>
+            <h3 class="modal-title">Set Price Alerts for <span id="alert-symbol"></span></h3>
+            <p style="text-align: center; color: var(--text-secondary); margin-top: -16px; margin-bottom: 24px;">
+                Set price targets to receive notifications. Leave a field blank to disable that alert.
+            </p>
+            <div class="transaction-input-group">
+                <label for="alert-max-price">Alert when price RISES ABOVE (Max Price):</label>
+                <input type="number" class="search-input" id="alert-max-price" placeholder="e.g., 120 (for profit taking)" min="0">
             </div>
-
-            <!-- LOW Price Alert (Stop Loss/Recovery) -->
-            <div>
-                <h4 style="font-size: 1.2rem; margin-bottom: 10px;">📉 Low Price Alert (Stop Loss)</h4>
-                <div class="transaction-input-group">
-                    <label for="alert-min-price">Trigger Price (Price is $\lt$):</label>
-                    <input type="number" class="search-input" id="alert-min-price" placeholder="e.g., 100" min="0">
-                </div>
-                <div class="transaction-input-group">
-                    <label for="alert-min-action">Action/Message (Optional):</label>
-                    <input type="text" class="search-input" id="alert-min-action" placeholder="e.g., Sale to recover principal">
-                </div>
+            <div class="transaction-input-group">
+                <label for="alert-min-price">Alert when price DROPS BELOW (Min Price):</label>
+                <input type="number" class="search-input" id="alert-min-price" placeholder="e.g., 90 (for loss prevention)" min="0">
             </div>
-
-            <button class="add-btn" id="save-alert-btn" style="margin-top: 20px;">Save Range Alerts</button>
+            <button class="add-btn" id="save-alert-btn">Save Alerts</button>
         </div>
     </div>
     <div id="alertsSummaryModal" class="modal" style="display: none;">
@@ -1226,7 +1210,7 @@
         import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         const firebaseConfig = {
-  apiKey: "YOUR_API_KEY", // Placeholder for actual API Key
+  apiKey: "AIzaSyDQq5O5IwTqTPnUPMqx5Aztpr2sr0Qahjc",
   authDomain: "stocks-etfs-mutual-funds-live.firebaseapp.com",
   projectId: "stocks-etfs-mutual-funds-live",
   storageBucket: "stocks-etfs-mutual-funds-live.firebasestorage.app",
@@ -1239,21 +1223,6 @@
             app = initializeApp(firebaseConfig);
             auth = getAuth(app);
             db = getFirestore(app);
-        } else {
-             // Added check for the placeholder key and display warning
-             const errorDiv = document.getElementById('firebase-auth-error');
-             if (errorDiv) {
-                errorDiv.style.display = 'block';
-                errorDiv.style.marginTop = '20px';
-                errorDiv.innerHTML = `
-                    <h4 style="color: var(--color-negative); font-size: 1.1rem; margin-bottom: 10px;">Authentication Disabled</h4>
-                    <p style="color: var(--text-secondary); font-size: 0.95rem;">
-                        Firebase is running in **placeholder mode**. To enable sign-in and save data, you must replace 
-                        <code style="background-color: var(--bg-tertiary); padding: 2px 4px; border-radius: var(--radius-sm);">"YOUR_API_KEY"</code> 
-                        with your actual **Firebase Web API Key** in the <code style="background-color: var(--bg-tertiary); padding: 2px 4px; border-radius: var(--radius-sm);">firebaseConfig</code> object.
-                    </p>
-                `;
-             }
         }
 
         class ApiService {
@@ -1372,30 +1341,12 @@
                 this.setupEventListeners();
                 this.applyTheme();
                 this.applyPrivacyMode();
-                
-                // Check if the API key is the placeholder, if so, disable auth logic but allow UI to run
-                if (!db && firebaseConfig.apiKey !== "YOUR_API_KEY") {
+                if (!db) {
                      this.showError("Firebase is not configured. Please add your firebaseConfig object to the script tag.");
                     this.elements.loginContainer.style.display = 'block';
                     return;
                 }
-                
-                if (db) {
-                    this.handleAuthentication();
-                } else {
-                    // If running without a valid key (placeholder mode), bypass auth and show the app
-                    this.userId = 'guest-user-id';
-                    this.elements.loginContainer.style.display = 'none';
-                    this.elements.appContainer.style.display = 'block';
-                    this.elements.userInfo.style.display = 'flex';
-                    this.elements.userName.textContent = `Welcome, Guest (Data not saved)`;
-                    this.elements.signOutBtn.textContent = 'Auth Required';
-                    this.elements.signOutBtn.disabled = true;
-                    this.showError("Data persistence is disabled. Replace YOUR_API_KEY in the code to enable sign-in and saving.");
-                    this.loadData();
-                    this.startLiveUpdate();
-                }
-
+                this.handleAuthentication();
             }
             formatCurrency(num) {
                 if (typeof num !== 'number') return num;
@@ -1426,23 +1377,26 @@
                 });
             }
             signIn() {
-                if (firebaseConfig.apiKey === "YOUR_API_KEY") {
-                    this.showError("Cannot sign in. Please replace 'YOUR_API_KEY' with your actual Firebase Web API Key in the code to enable authentication.");
-                    return;
-                }
                 const provider = new GoogleAuthProvider();
                 signInWithPopup(auth, provider).catch(error => {
                     console.error("Google sign-in error", error);
-                    let displayMessage = "Could not sign in with Google. Please try again.";
-                    
-                    if (error.code === 'auth/api-key-not-valid') {
-                        displayMessage = "Authentication Failed: API Key is invalid. Please check your Firebase Console and update the `firebaseConfig` object with the correct Web API Key.";
-                    } else if (error.code === 'auth/unauthorized-domain') {
-                        // This block is already detailed in the HTML, but also show in the popup
-                        displayMessage = `Authentication Error: Unauthorized Domain. Please add the domain this app is running on (e.g., localhost or the Canvas domain) to the **Authorized Domains** list in your Firebase Console > Authentication > Settings tab.`;
+                    if (error.code === 'auth/unauthorized-domain') {
+                        const errorDiv = document.getElementById('firebase-auth-error');
+                        errorDiv.style.display = 'block';
+                        errorDiv.innerHTML = `
+                            <h4>Authentication Error: Unauthorized Domain</h4>
+                            <p>This application's domain is not authorized for sign-in with your Firebase project.</p>
+                            <p><b>To fix this, you must add the domain to the authorized list in your Firebase console:</b></p>
+                            <ol>
+                                <li>Go to the <a href="https://console.firebase.google.com/" target="_blank">Firebase Console</a> and select your project.</li>
+                                <li>Navigate to <b>Authentication</b> > <b>Settings</b> tab.</li>
+                                <li>Under the <b>Authorized domains</b> section, click <b>Add domain</b>.</li>
+                                <li>Enter the domain where this app is hosted and click Add.</li>
+                            </ol>
+                        `;
+                    } else {
+                        this.showError("Could not sign in with Google. Please try again.");
                     }
-                    
-                    this.showError(displayMessage);
                 });
             }
             signOut() {
@@ -1454,7 +1408,6 @@
                 const userFmpKey = localStorage.getItem('fmpApiKey');
                 this.config = {
                     refreshIntervalMs: parseInt(localStorage.getItem('refreshIntervalMs')) || 90000,
-                    // Note: Placeholder keys below are for demonstration only and will likely fail in a live environment.
                     finnhubApiKey: userFinnhubKey || "d316lc1r01qnu2r0opjgd316lc1r01qnu2r0opk0",
                     alphaVantageKey: userAlphaVantageKey || "0ZPH51BZ2N5O9G8Q",
                     fmpApiKey: userFmpKey || "vOqUU3gDIDYWghK8m4ZlsVQwLDnhfYMS"
@@ -1520,13 +1473,11 @@
                     listAllModal: document.getElementById('listAllModal'),
                     listAllContent: document.getElementById('list-all-content'),
                     closeListAllBtn: document.getElementById('closeListAllBtn'),
-                    // UPDATED Alert elements for Range Alert
                     priceAlertModal: document.getElementById('priceAlertModal'),
                     alertSymbol: document.getElementById('alert-symbol'),
+                    // MODIFICATION: Changed alert inputs
                     alertMaxPrice: document.getElementById('alert-max-price'),
-                    alertMaxAction: document.getElementById('alert-max-action'),
                     alertMinPrice: document.getElementById('alert-min-price'),
-                    alertMinAction: document.getElementById('alert-min-action'),
                     saveAlertBtn: document.getElementById('save-alert-btn'),
                     alertNotification: document.getElementById('alert-notification'),
                     newsTab: document.getElementById('news-tab'),
@@ -1824,19 +1775,18 @@
                     this.renderFundsPortfolioSummary();
                     this.renderCards(sortedItems, grid, type);
                 } else if (type === 'watchlist') {
-                    this.elements.watchlistCount.textContent = `(${sortedItems.length})`;
                     this.renderCards(sortedItems, grid, type);
                 }
                 this.renderDiversificationChart();
                 this.renderHistoryChart();
-                if (sortedItems.length === 0 && type !== 'stock' && type !== 'watchlist') {
+                if (sortedItems.length === 0 && type !== 'stock') {
                      grid.innerHTML = `<div class="loading" style="grid-column: 1 / -1;">Your ${type} list is empty.</div>`;
                 }
                 this.restoreScrollPosition();
             }
 
             async saveData() {
-                if (!db || this.userId === 'guest-user-id') return;
+                if (!this.userId) return;
                 const userDocRef = doc(db, "users", this.userId);
                 const data = {
                     stocks: this.stocks, mutualFunds: this.mutualFunds, watchlist: this.watchlist,
@@ -1845,11 +1795,7 @@
                 await setDoc(userDocRef, data);
             }
             async loadData() {
-                if (!db || this.userId === 'guest-user-id') {
-                    // Load dummy data for guest/placeholder mode if needed, but for now we rely on empty init arrays.
-                    this.renderContent();
-                    return;
-                }
+                if (!this.userId) return;
                 const userDocRef = doc(db, "users", this.userId);
                 const docSnap = await getDoc(userDocRef);
                 
@@ -1878,30 +1824,6 @@
                     this.watchlist = (data.watchlist || []).map(item => item.id ? item : {...item, id: Date.now().toString() + Math.random().toString(36).substring(2, 9)});
                     this.portfolioHistory = data.portfolioHistory || [];
                     this.priceAlerts = data.priceAlerts || [];
-                    
-                    // Cleanup old simple alerts if new range alerts exist for the same symbol.
-                    // This migration logic simplifies the structure to the new RangeAlert only.
-                    // NOTE: This migration logic is necessary to handle the shift from simple alerts (in the old code) 
-                    // to the new range alerts structure.
-                    this.priceAlerts = (data.priceAlerts || []).map(alert => {
-                        // If it's the old single-alert structure
-                        if (alert.condition && alert.price) {
-                            return {
-                                id: alert.id,
-                                symbol: alert.symbol,
-                                maxPrice: alert.condition === 'above' ? alert.price : null,
-                                maxAction: alert.condition === 'above' ? `Target reached (Price > ${this.formatNumber(alert.price)})` : null,
-                                minPrice: alert.condition === 'below' ? alert.price : null,
-                                minAction: alert.condition === 'below' ? `Target reached (Price < ${this.formatNumber(alert.price)})` : null,
-                                triggeredMax: alert.condition === 'above' ? alert.triggered : false,
-                                triggeredMin: alert.condition === 'below' ? alert.triggered : false,
-                                date: alert.date
-                            };
-                        }
-                        // If it's already the new range structure, or invalid, pass through
-                        return alert;
-                    }).filter(a => a.minPrice || a.maxPrice); // Filter out any completely empty/unnecessary alerts
-
 
                     if (migrationNeeded) {
                         console.log("Data migration performed. Saving updated structure.");
@@ -2527,12 +2449,12 @@
                                     <button class="add-btn edit-btn">Edit Details</button>
                                 </div>
                                 <div class="card-actions" style="grid-template-columns: 1fr; margin-top: 8px;">
-                                    <button class="transaction-btn set-alert-btn" style="background-color: #9b59b6;">🔔 Set Alert Range</button>
+                                    <button class="transaction-btn set-alert-btn" style="background-color: #9b59b6;">🔔 Set Alert</button>
                                 </div>`;
                     } else if (type === 'watchlist') {
                         transactionDetailsHTML = `<div class="card-actions" style="grid-template-columns: 1fr; gap: 8px;">
                             <button class="add-btn move-to-portfolio-btn">Move to Portfolio</button>
-                            <button class="transaction-btn set-alert-btn" style="background-color: #9b59b6;">🔔 Set Alert Range</button>
+                            <button class="transaction-btn set-alert-btn" style="background-color: #9b59b6;">🔔 Set Alert</button>
                         </div>`;
                     }
                     
@@ -2801,155 +2723,120 @@
                 createList('Watchlist', this.watchlist);
                 if (contentDiv.innerHTML === '') contentDiv.innerHTML = '<p>No saved symbols.</p>';
             }
+            // MODIFICATION: Updated to handle new Min/Max alert modal
             openPriceAlertModal(symbol) {
                 this.elements.alertMaxPrice.value = '';
-                this.elements.alertMaxAction.value = '';
                 this.elements.alertMinPrice.value = '';
-                this.elements.alertMinAction.value = '';
-                
-                // Find existing range alert
-                const existingRangeAlert = this.priceAlerts.find(a => a.symbol === symbol);
 
-                if (existingRangeAlert) {
-                    this.elements.alertMaxPrice.value = existingRangeAlert.maxPrice || '';
-                    this.elements.alertMaxAction.value = existingRangeAlert.maxAction || '';
-                    this.elements.alertMinPrice.value = existingRangeAlert.minPrice || '';
-                    this.elements.alertMinAction.value = existingRangeAlert.minAction || '';
-                    this.elements.saveAlertBtn.textContent = 'Update Alerts';
-                } else {
-                    this.elements.saveAlertBtn.textContent = 'Save Range Alerts';
+                const existingAlerts = this.priceAlerts.find(a => a.symbol === symbol);
+
+                if (existingAlerts) {
+                    if (existingAlerts.maxPrice) {
+                        this.elements.alertMaxPrice.value = existingAlerts.maxPrice;
+                    }
+                    if (existingAlerts.minPrice) {
+                        this.elements.alertMinPrice.value = existingAlerts.minPrice;
+                    }
                 }
+                
                 this.elements.priceAlertModal.style.display = 'flex';
                 this.elements.alertSymbol.textContent = symbol;
                 this.elements.saveAlertBtn.dataset.symbol = symbol;
             }
             closePriceAlertModal() { this.elements.priceAlertModal.style.display = 'none'; }
-            
+            // MODIFICATION: Updated to save Min/Max alerts
             async savePriceAlert() {
                 const { symbol } = this.elements.saveAlertBtn.dataset;
-                const maxPrice = parseFloat(this.elements.alertMaxPrice.value);
-                const maxAction = this.elements.alertMaxAction.value.trim() || `Price above $${this.formatNumber(maxPrice, 2)}`;
-                const minPrice = parseFloat(this.elements.alertMinPrice.value);
-                const minAction = this.elements.alertMinAction.value.trim() || `Price below $${this.formatNumber(minPrice, 2)}`;
-                
-                const hasMax = !isNaN(maxPrice) && maxPrice > 0;
-                const hasMin = !isNaN(minPrice) && minPrice > 0;
+                const maxPrice = parseFloat(this.elements.alertMaxPrice.value) || null;
+                const minPrice = parseFloat(this.elements.alertMinPrice.value) || null;
 
-                if (!hasMax && !hasMin) { 
-                    this.showError("You must set at least one valid price target (High or Low)."); 
-                    return; 
+                if (!symbol) { this.showError("Symbol not found."); return; }
+                if ((maxPrice !== null && (isNaN(maxPrice) || maxPrice <= 0)) || (minPrice !== null && (isNaN(minPrice) || minPrice <= 0))) {
+                    this.showError("Invalid price. Please enter a positive number.");
+                    return;
                 }
-
-                if (hasMax && hasMin && maxPrice <= minPrice) {
-                    this.showError("High Price Alert must be greater than Low Price Alert.");
+                if (maxPrice !== null && minPrice !== null && maxPrice <= minPrice) {
+                    this.showError("Max price must be greater than min price.");
                     return;
                 }
 
-                // Remove existing alert for this symbol (it is replaced by the new range alert)
-                this.priceAlerts = this.priceAlerts.filter(a => a.symbol !== symbol);
+                let alertForSymbol = this.priceAlerts.find(a => a.symbol === symbol);
 
-                const newAlert = {
-                    id: Date.now().toString() + Math.random().toString(36).substring(2, 9),
-                    symbol,
-                    maxPrice: hasMax ? maxPrice : null,
-                    maxAction: hasMax ? maxAction : null,
-                    minPrice: hasMin ? minPrice : null,
-                    minAction: hasMin ? minAction : null,
-                    triggeredMax: false,
-                    triggeredMin: false,
-                    date: new Date().toISOString()
-                };
-
-                this.priceAlerts.push(newAlert);
-                
-                let successMsg = `Alerts set for ${symbol}: `;
-                if (hasMax) successMsg += `High @ $${this.formatNumber(maxPrice, 2)} (${maxAction}). `;
-                if (hasMin) successMsg += `Low @ $${this.formatNumber(minPrice, 2)} (${minAction}). `;
+                if (maxPrice === null && minPrice === null) {
+                    if (alertForSymbol) {
+                        this.priceAlerts = this.priceAlerts.filter(a => a.symbol !== symbol);
+                        this.showSuccess(`Cleared all alerts for ${symbol}.`);
+                    }
+                } else {
+                    if (alertForSymbol) {
+                        alertForSymbol.maxPrice = maxPrice;
+                        alertForSymbol.minPrice = minPrice;
+                        alertForSymbol.maxPriceTriggered = false;
+                        alertForSymbol.minPriceTriggered = false;
+                    } else {
+                        alertForSymbol = {
+                            id: Date.now().toString() + Math.random().toString(36).substring(2, 9),
+                            symbol,
+                            maxPrice: maxPrice,
+                            minPrice: minPrice,
+                            maxPriceTriggered: false,
+                            minPriceTriggered: false,
+                            date: new Date().toISOString()
+                        };
+                        this.priceAlerts.push(alertForSymbol);
+                    }
+                    this.showSuccess(`Alerts updated for ${symbol}!`);
+                }
 
                 await this.saveData();
                 this.closePriceAlertModal();
-                this.showSuccess(`✅ ${successMsg}`);
             }
+            // MODIFICATION: Updated to display new alert structure
             openAlertsSummaryModal() {
                 this.elements.alertsSummaryModal.style.display = 'flex';
                 const contentDiv = this.elements.alertsSummaryContent;
                 contentDiv.innerHTML = '';
-                
-                // Sort to show triggered alerts first
-                const allAlerts = this.priceAlerts.slice().sort((a, b) => {
-                    const aTriggered = a.triggeredMin || a.triggeredMax;
-                    const bTriggered = b.triggeredMin || b.triggeredMax;
-                    return (aTriggered === bTriggered) ? 0 : aTriggered ? -1 : 1;
-                });
 
-                if (allAlerts.length === 0) {
-                    contentDiv.innerHTML = `<p style="text-align: center; color: var(--text-secondary); margin-top: 20px;">No range alerts currently set.</p>`;
+                if (this.priceAlerts.length === 0) {
+                    contentDiv.innerHTML = `<p style="text-align: center; color: var(--text-secondary); margin-top: 20px;">No alerts currently set.</p>`;
                     return;
                 }
 
                 let html = '<ul style="list-style-type: none; padding: 0;">';
-                allAlerts.forEach(alert => {
+                this.priceAlerts.forEach(alert => {
+                    let alertsHtml = '';
+                    if (alert.minPrice) {
+                        const triggered = alert.minPriceTriggered ? '✔️' : '';
+                        alertsHtml += `
+                            <span style="color: var(--text-secondary);">
+                                Alert: Price <span class="negative">drops below ${this.formatCurrency(alert.minPrice)}</span> ${triggered}
+                            </span><br>`;
+                    }
+                    if (alert.maxPrice) {
+                        const triggered = alert.maxPriceTriggered ? '✔️' : '';
+                        alertsHtml += `
+                            <span style="color: var(--text-secondary);">
+                                Alert: Price <span class="positive">rises above ${this.formatCurrency(alert.maxPrice)}</span> ${triggered}
+                            </span><br>`;
+                    }
+
+                    if (alertsHtml === '') return;
+
                     const alertDate = new Date(alert.date || new Date());
                     const formattedDate = alertDate.toLocaleDateString();
-                    const formattedTime = alertDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                    
-                    const isTriggered = alert.triggeredMin || alert.triggeredMax;
-                    const alertClass = isTriggered ? 'triggered-alert' : '';
-                    
-                    let alertDetails = '';
-                    let actionButtons = '';
-                    let statusIcon = isTriggered ? '⚠️' : '';
-                    
-                    // High Price Alert (Max)
-                    if (alert.maxPrice) {
-                        const maxClass = 'positive';
-                        alertDetails += `
-                            <div style="margin-bottom: 5px;">
-                                <span style="color: var(--text-secondary);">
-                                    High Alert (Price $\gt$ <span class="${maxClass}">${this.formatCurrency(alert.maxPrice)}</span>): 
-                                    <strong>${alert.maxAction}</strong>
-                                </span>
-                                ${alert.triggeredMax ? ' <span class="positive" style="font-weight: 700;">(TRIGGERED)</span>' : ''}
-                            </div>
-                        `;
-                        if (alert.triggeredMax) {
-                            actionButtons += `<button onclick="window.stockTracker.dismissRangeAlertSide('${alert.id}', 'max')" class="edit-transaction-btn" style="background-color: var(--color-positive); color: white; margin-right: 5px;">Dismiss High</button>`;
-                        }
-                    }
-                    
-                    // Low Price Alert (Min)
-                    if (alert.minPrice) {
-                        const minClass = 'negative';
-                        alertDetails += `
-                            <div>
-                                <span style="color: var(--text-secondary);">
-                                    Low Alert (Price $\lt$ <span class="${minClass}">${this.formatCurrency(alert.minPrice)}</span>): 
-                                    <strong>${alert.minAction}</strong>
-                                </span>
-                                ${alert.triggeredMin ? ' <span class="negative" style="font-weight: 700;">(TRIGGERED)</span>' : ''}
-                            </div>
-                        `;
-                        if (alert.triggeredMin) {
-                             actionButtons += `<button onclick="window.stockTracker.dismissRangeAlertSide('${alert.id}', 'min')" class="edit-transaction-btn" style="background-color: var(--color-negative); color: white;">Dismiss Low</button>`;
-                        }
-                    }
-                    
-                    // Permanent Delete Button
-                    actionButtons += `<button onclick="window.stockTracker.removePriceAlertById('${alert.id}')" class="delete-transaction-btn" style="margin-left: 10px;">&times;</button>`;
-
 
                     html += `
-                        <li class="${alertClass}" style="padding: 10px; border-bottom: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 8px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <strong style="font-size: 1.1rem;">${alert.symbol} ${statusIcon}</strong>
-                                <button onclick="window.stockTracker.openPriceAlertModal('${alert.symbol}')" class="edit-transaction-btn">Edit Range</button>
+                        <li style="padding: 10px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong style="font-size: 1.1rem;">${alert.symbol}</strong><br>
+                                ${alertsHtml}
+                                <span style="font-size: 0.8rem; color: #aaa;">
+                                    Set on: ${formattedDate}
+                                </span>
                             </div>
-                            ${alertDetails}
-                            <div style="font-size: 0.8rem; color: #aaa;">
-                                Set on: ${formattedDate} at ${formattedTime}
-                            </div>
-                            <div style="display:flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; padding-top: 5px;">
-                                ${actionButtons}
+                            <div style="display:flex; gap: 5px;">
+                               <button onclick="window.stockTracker.openPriceAlertModal('${alert.symbol}')" class="edit-transaction-btn">Edit</button>
+                               <button onclick="window.stockTracker.removePriceAlertsForSymbol('${alert.symbol}')" class="delete-transaction-btn">&times;</button>
                             </div>
                         </li>
                     `;
@@ -2957,91 +2844,57 @@
                 html += '</ul>';
                 contentDiv.innerHTML = html;
             }
-            dismissRangeAlertSide(alertId, type) {
-                const alert = this.priceAlerts.find(a => a.id === alertId);
-                if (alert) {
-                    if (type === 'max') {
-                        alert.triggeredMax = false;
-                    } else if (type === 'min') {
-                        alert.triggeredMin = false;
-                    }
-                    // If both sides are cleared, we can remove the alert
-                    if (!alert.triggeredMax && !alert.triggeredMin && alert.maxPrice === null && alert.minPrice === null) {
-                        this.priceAlerts = this.priceAlerts.filter(a => a.id !== alertId);
-                    }
-                    this.saveData();
-                    this.openAlertsSummaryModal();
-                    this.showSuccess(`Alert dismissed: ${type.toUpperCase()} side for ${alert.symbol}.`);
-                }
-            }
-            removePriceAlertById(alertId) {
+             // MODIFICATION: New function to remove all alerts for a symbol
+            removePriceAlertsForSymbol(symbol) {
                 const onCancel = () => this.openAlertsSummaryModal();
-                 this.openConfirmModal(`Are you sure you want to delete this entire price range alert?`,
-                     async () => {
-                         this.priceAlerts = this.priceAlerts.filter(a => a.id !== alertId);
-                         await this.saveData();
-                         this.showSuccess(`🗑️ Deleted price range alert.`);
-                         this.openAlertsSummaryModal();
-                     },
-                     onCancel
+                this.openConfirmModal(`Are you sure you want to delete all price alerts for ${symbol}?`,
+                    async () => {
+                        this.priceAlerts = this.priceAlerts.filter(a => a.symbol !== symbol);
+                        await this.saveData();
+                        this.showSuccess(`🗑️ Deleted price alerts for ${symbol}.`);
+                        this.openAlertsSummaryModal(); // Refresh the modal content
+                    },
+                    onCancel
                 );
             }
+            // MODIFICATION: Updated to check for both Min and Max price alerts
             checkPriceAlerts() {
                 if(this.priceAlerts.length === 0) return;
                 const allItems = [...this.stocks, ...this.mutualFunds, ...this.watchlist];
+                let alertsUpdated = false;
+
                 this.priceAlerts.forEach(alert => {
                     const item = allItems.find(i => i.symbol === alert.symbol);
-                    if (!item) return;
+                    if (!item || !item.price) return;
 
-                    let alertTriggered = false;
-
-                    // Check Low Price Alert (price is BELOW minPrice)
-                    if (alert.minPrice && !alert.triggeredMin && item.price < alert.minPrice) {
-                        alert.triggeredMin = true;
-                        this.showAlertNotification(item, alert, 'min');
-                        alertTriggered = true;
+                    // Check max price alert
+                    if (alert.maxPrice && !alert.maxPriceTriggered && item.price > alert.maxPrice) {
+                        alert.maxPriceTriggered = true;
+                        this.showAlertNotification(item, { condition: 'above', price: alert.maxPrice });
+                        alertsUpdated = true;
                     }
 
-                    // Check High Price Alert (price is ABOVE maxPrice)
-                    if (alert.maxPrice && !alert.triggeredMax && item.price > alert.maxPrice) {
-                        alert.triggeredMax = true;
-                        this.showAlertNotification(item, alert, 'max');
-                        alertTriggered = true;
-                    }
-                    
-                    if (alertTriggered) {
-                         this.saveData();
+                    // Check min price alert
+                    if (alert.minPrice && !alert.minPriceTriggered && item.price < alert.minPrice) {
+                        alert.minPriceTriggered = true;
+                        this.showAlertNotification(item, { condition: 'below', price: alert.minPrice });
+                        alertsUpdated = true;
                     }
                 });
-            }
-            showAlertNotification(item, alert, type) {
-                const price = this.formatNumber(item.price);
-                let targetPrice, condition, actionMessage;
-
-                if (type === 'min') {
-                    targetPrice = this.formatNumber(alert.minPrice);
-                    condition = 'below';
-                    actionMessage = alert.minAction;
-                } else if (type === 'max') {
-                    targetPrice = this.formatNumber(alert.maxPrice);
-                    condition = 'above';
-                    actionMessage = alert.maxAction;
-                } else {
-                    return; // Should not happen with new structure
+                if (alertsUpdated) {
+                    this.saveData();
                 }
-                
-                const message = `🔔 ALERT: ${item.symbol} reached $${price}! It is ${condition} your target of $${targetPrice}. Action: ${actionMessage}.`;
+            }
+            showAlertNotification(item, alert) {
+                const message = `🔔 ALERT: ${item.symbol} reached $${this.formatNumber(item.price)}! It is ${alert.condition} your target of $${this.formatNumber(alert.price)}.`;
                 
                 // In-app notification
                 const alertDiv = this.elements.alertNotification;
                 alertDiv.classList.remove('positive', 'negative');
-                alertDiv.classList.add('active');
-                // Use custom colors for in-app alert notification
-                alertDiv.style.backgroundColor = type === 'max' ? '#17A589' : '#E74C3C'; // Positive/Negative colors
+                alertDiv.classList.add('active', alert.condition === 'above' ? 'positive' : 'negative');
                 alertDiv.innerHTML = `<h4>Price Alert Triggered</h4><p>${message}</p>`;
                 setTimeout(() => {
                     alertDiv.classList.remove('active');
-                    alertDiv.style.backgroundColor = 'var(--accent-primary)'; // Reset to default theme color
                 }, 10000);
 
                 // Browser push notification
