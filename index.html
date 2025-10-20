@@ -1226,7 +1226,7 @@
         import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         const firebaseConfig = {
-  apiKey: "AIzaSyDQq5O5IwTqTPnUPMqx5Aztpr2sr0Qahjc",
+  apiKey: "YOUR_API_KEY", // Placeholder for actual API Key
   authDomain: "stocks-etfs-mutual-funds-live.firebaseapp.com",
   projectId: "stocks-etfs-mutual-funds-live",
   storageBucket: "stocks-etfs-mutual-funds-live.firebasestorage.app",
@@ -1239,6 +1239,21 @@
             app = initializeApp(firebaseConfig);
             auth = getAuth(app);
             db = getFirestore(app);
+        } else {
+             // Added check for the placeholder key and display warning
+             const errorDiv = document.getElementById('firebase-auth-error');
+             if (errorDiv) {
+                errorDiv.style.display = 'block';
+                errorDiv.style.marginTop = '20px';
+                errorDiv.innerHTML = `
+                    <h4 style="color: var(--color-negative); font-size: 1.1rem; margin-bottom: 10px;">Authentication Disabled</h4>
+                    <p style="color: var(--text-secondary); font-size: 0.95rem;">
+                        Firebase is running in **placeholder mode**. To enable sign-in and save data, you must replace 
+                        <code style="background-color: var(--bg-tertiary); padding: 2px 4px; border-radius: var(--radius-sm);">"YOUR_API_KEY"</code> 
+                        with your actual **Firebase Web API Key** in the <code style="background-color: var(--bg-tertiary); padding: 2px 4px; border-radius: var(--radius-sm);">firebaseConfig</code> object (around line 1358).
+                    </p>
+                `;
+             }
         }
 
         class ApiService {
@@ -1357,12 +1372,30 @@
                 this.setupEventListeners();
                 this.applyTheme();
                 this.applyPrivacyMode();
-                if (!db) {
+                
+                // Check if the API key is the placeholder, if so, disable auth logic but allow UI to run
+                if (!db && firebaseConfig.apiKey !== "YOUR_API_KEY") {
                      this.showError("Firebase is not configured. Please add your firebaseConfig object to the script tag.");
                     this.elements.loginContainer.style.display = 'block';
                     return;
                 }
-                this.handleAuthentication();
+                
+                if (db) {
+                    this.handleAuthentication();
+                } else {
+                    // If running without a valid key (placeholder mode), bypass auth and show the app
+                    this.userId = 'guest-user-id';
+                    this.elements.loginContainer.style.display = 'none';
+                    this.elements.appContainer.style.display = 'block';
+                    this.elements.userInfo.style.display = 'flex';
+                    this.elements.userName.textContent = `Welcome, Guest (Data not saved)`;
+                    this.elements.signOutBtn.textContent = 'Auth Required';
+                    this.elements.signOutBtn.disabled = true;
+                    this.showError("Data persistence is disabled. Replace YOUR_API_KEY in the code to enable sign-in and saving.");
+                    this.loadData();
+                    this.startLiveUpdate();
+                }
+
             }
             formatCurrency(num) {
                 if (typeof num !== 'number') return num;
@@ -1393,26 +1426,23 @@
                 });
             }
             signIn() {
+                if (firebaseConfig.apiKey === "YOUR_API_KEY") {
+                    this.showError("Cannot sign in. Please replace 'YOUR_API_KEY' with your actual Firebase Web API Key in the code to enable authentication.");
+                    return;
+                }
                 const provider = new GoogleAuthProvider();
                 signInWithPopup(auth, provider).catch(error => {
                     console.error("Google sign-in error", error);
-                    if (error.code === 'auth/unauthorized-domain') {
-                        const errorDiv = document.getElementById('firebase-auth-error');
-                        errorDiv.style.display = 'block';
-                        errorDiv.innerHTML = `
-                            <h4>Authentication Error: Unauthorized Domain</h4>
-                            <p>This application's domain is not authorized for sign-in with your Firebase project.</p>
-                            <p><b>To fix this, you must add the domain to the authorized list in your Firebase console:</b></p>
-                            <ol>
-                                <li>Go to the <a href="https://console.firebase.google.com/" target="_blank">Firebase Console</a> and select your project.</li>
-                                <li>Navigate to <b>Authentication</b> > <b>Settings</b> tab.</li>
-                                <li>Under the <b>Authorized domains</b> section, click <b>Add domain</b>.</li>
-                                <li>Enter the domain where this app is hosted and click Add.</li>
-                            </ol>
-                        `;
-                    } else {
-                        this.showError("Could not sign in with Google. Please try again.");
+                    let displayMessage = "Could not sign in with Google. Please try again.";
+                    
+                    if (error.code === 'auth/api-key-not-valid') {
+                        displayMessage = "Authentication Failed: API Key is invalid. Please check your Firebase Console and update the `firebaseConfig` object with the correct Web API Key.";
+                    } else if (error.code === 'auth/unauthorized-domain') {
+                        // This block is already detailed in the HTML, but also show in the popup
+                        displayMessage = `Authentication Error: Unauthorized Domain. Please add the domain this app is running on (e.g., localhost or the Canvas domain) to the **Authorized Domains** list in your Firebase Console > Authentication > Settings tab.`;
                     }
+                    
+                    this.showError(displayMessage);
                 });
             }
             signOut() {
@@ -1805,7 +1835,7 @@
             }
 
             async saveData() {
-                if (!this.userId) return;
+                if (!db || this.userId === 'guest-user-id') return;
                 const userDocRef = doc(db, "users", this.userId);
                 const data = {
                     stocks: this.stocks, mutualFunds: this.mutualFunds, watchlist: this.watchlist,
@@ -1814,7 +1844,11 @@
                 await setDoc(userDocRef, data);
             }
             async loadData() {
-                if (!this.userId) return;
+                if (!db || this.userId === 'guest-user-id') {
+                    // Load dummy data for guest/placeholder mode if needed, but for now we rely on empty init arrays.
+                    this.renderContent();
+                    return;
+                }
                 const userDocRef = doc(db, "users", this.userId);
                 const docSnap = await getDoc(userDocRef);
                 
