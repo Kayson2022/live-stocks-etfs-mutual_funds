@@ -1250,7 +1250,7 @@
                     <p style="color: var(--text-secondary); font-size: 0.95rem;">
                         Firebase is running in **placeholder mode**. To enable sign-in and save data, you must replace 
                         <code style="background-color: var(--bg-tertiary); padding: 2px 4px; border-radius: var(--radius-sm);">"YOUR_API_KEY"</code> 
-                        with your actual **Firebase Web API Key** in the <code style="background-color: var(--bg-tertiary); padding: 2px 4px; border-radius: var(--radius-sm);">firebaseConfig</code> object (around line 1358).
+                        with your actual **Firebase Web API Key** in the <code style="background-color: var(--bg-tertiary); padding: 2px 4px; border-radius: var(--radius-sm);">firebaseConfig</code> object.
                     </p>
                 `;
              }
@@ -1454,6 +1454,7 @@
                 const userFmpKey = localStorage.getItem('fmpApiKey');
                 this.config = {
                     refreshIntervalMs: parseInt(localStorage.getItem('refreshIntervalMs')) || 90000,
+                    // Note: Placeholder keys below are for demonstration only and will likely fail in a live environment.
                     finnhubApiKey: userFinnhubKey || "d316lc1r01qnu2r0opjgd316lc1r01qnu2r0opk0",
                     alphaVantageKey: userAlphaVantageKey || "0ZPH51BZ2N5O9G8Q",
                     fmpApiKey: userFmpKey || "vOqUU3gDIDYWghK8m4ZlsVQwLDnhfYMS"
@@ -1519,7 +1520,7 @@
                     listAllModal: document.getElementById('listAllModal'),
                     listAllContent: document.getElementById('list-all-content'),
                     closeListAllBtn: document.getElementById('closeListAllBtn'),
-                    // UPDATED Alert elements
+                    // UPDATED Alert elements for Range Alert
                     priceAlertModal: document.getElementById('priceAlertModal'),
                     alertSymbol: document.getElementById('alert-symbol'),
                     alertMaxPrice: document.getElementById('alert-max-price'),
@@ -1878,14 +1879,28 @@
                     this.portfolioHistory = data.portfolioHistory || [];
                     this.priceAlerts = data.priceAlerts || [];
                     
-                    // Cleanup old single alerts if new range alerts exist for the same symbol.
+                    // Cleanup old simple alerts if new range alerts exist for the same symbol.
                     // This migration logic simplifies the structure to the new RangeAlert only.
-                    const existingSymbols = new Set(this.priceAlerts.map(a => a.symbol));
-                    this.priceAlerts = this.priceAlerts.filter(a => a.minPrice || a.maxPrice); // Filter out old simple alerts
-                    
-                    if (data.priceAlerts && data.priceAlerts.some(a => !a.minPrice && !a.maxPrice && existingSymbols.has(a.symbol))) {
-                        migrationNeeded = true;
-                    }
+                    // NOTE: This migration logic is necessary to handle the shift from simple alerts (in the old code) 
+                    // to the new range alerts structure.
+                    this.priceAlerts = (data.priceAlerts || []).map(alert => {
+                        // If it's the old single-alert structure
+                        if (alert.condition && alert.price) {
+                            return {
+                                id: alert.id,
+                                symbol: alert.symbol,
+                                maxPrice: alert.condition === 'above' ? alert.price : null,
+                                maxAction: alert.condition === 'above' ? `Target reached (Price > ${this.formatNumber(alert.price)})` : null,
+                                minPrice: alert.condition === 'below' ? alert.price : null,
+                                minAction: alert.condition === 'below' ? `Target reached (Price < ${this.formatNumber(alert.price)})` : null,
+                                triggeredMax: alert.condition === 'above' ? alert.triggered : false,
+                                triggeredMin: alert.condition === 'below' ? alert.triggered : false,
+                                date: alert.date
+                            };
+                        }
+                        // If it's already the new range structure, or invalid, pass through
+                        return alert;
+                    }).filter(a => a.minPrice || a.maxPrice); // Filter out any completely empty/unnecessary alerts
 
 
                     if (migrationNeeded) {
@@ -2612,8 +2627,6 @@
                         this.stocks = data.stocks || this.stocks;
                         this.mutualFunds = data.mutualFunds || this.mutualFunds;
                         this.watchlist = data.watchlist || this.watchlist;
-                        // For imported data, ensure priceAlerts is structured for the new system if present
-                        this.priceAlerts = (data.priceAlerts || []).filter(a => a.minPrice || a.maxPrice);
                         await this.saveData();
                         this.renderContent();
                         this.showSuccess(`✅ Data successfully imported!`);
@@ -2880,22 +2893,13 @@
                     const formattedDate = alertDate.toLocaleDateString();
                     const formattedTime = alertDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                     
-                    const isFullyTriggered = (alert.maxPrice && alert.minPrice && alert.triggeredMax && alert.triggeredMin) ||
-                                              (alert.maxPrice && !alert.minPrice && alert.triggeredMax) ||
-                                              (alert.minPrice && !alert.maxPrice && alert.triggeredMin);
-
-                    const alertClass = (alert.triggeredMin || alert.triggeredMax) ? 'triggered-alert' : '';
+                    const isTriggered = alert.triggeredMin || alert.triggeredMax;
+                    const alertClass = isTriggered ? 'triggered-alert' : '';
                     
                     let alertDetails = '';
                     let actionButtons = '';
-                    let statusIcon = '';
+                    let statusIcon = isTriggered ? '⚠️' : '';
                     
-                    if (isFullyTriggered) {
-                        statusIcon = '✔️';
-                    } else if (alert.triggeredMin || alert.triggeredMax) {
-                        statusIcon = '⚠️';
-                    }
-
                     // High Price Alert (Max)
                     if (alert.maxPrice) {
                         const maxClass = 'positive';
@@ -2908,12 +2912,9 @@
                                 ${alert.triggeredMax ? ' <span class="positive" style="font-weight: 700;">(TRIGGERED)</span>' : ''}
                             </div>
                         `;
-                        actionButtons += `
-                            ${alert.triggeredMax 
-                                ? `<button onclick="window.stockTracker.dismissRangeAlertSide('${alert.id}', 'max')" class="edit-transaction-btn" style="background-color: var(--color-positive); color: white; margin-right: 5px;">Dismiss High</button>`
-                                : ''
-                            }
-                        `;
+                        if (alert.triggeredMax) {
+                            actionButtons += `<button onclick="window.stockTracker.dismissRangeAlertSide('${alert.id}', 'max')" class="edit-transaction-btn" style="background-color: var(--color-positive); color: white; margin-right: 5px;">Dismiss High</button>`;
+                        }
                     }
                     
                     // Low Price Alert (Min)
@@ -2928,12 +2929,9 @@
                                 ${alert.triggeredMin ? ' <span class="negative" style="font-weight: 700;">(TRIGGERED)</span>' : ''}
                             </div>
                         `;
-                        actionButtons += `
-                            ${alert.triggeredMin 
-                                ? `<button onclick="window.stockTracker.dismissRangeAlertSide('${alert.id}', 'min')" class="edit-transaction-btn" style="background-color: var(--color-negative); color: white;">Dismiss Low</button>`
-                                : ''
-                            }
-                        `;
+                        if (alert.triggeredMin) {
+                             actionButtons += `<button onclick="window.stockTracker.dismissRangeAlertSide('${alert.id}', 'min')" class="edit-transaction-btn" style="background-color: var(--color-negative); color: white;">Dismiss Low</button>`;
+                        }
                     }
                     
                     // Permanent Delete Button
@@ -2967,8 +2965,8 @@
                     } else if (type === 'min') {
                         alert.triggeredMin = false;
                     }
-                    // If neither side is active, we can optionally remove the whole alert for cleanup
-                    if (!alert.triggeredMax && !alert.triggeredMin && (!alert.maxPrice && !alert.minPrice)) {
+                    // If both sides are cleared, we can remove the alert
+                    if (!alert.triggeredMax && !alert.triggeredMin && alert.maxPrice === null && alert.minPrice === null) {
                         this.priceAlerts = this.priceAlerts.filter(a => a.id !== alertId);
                     }
                     this.saveData();
