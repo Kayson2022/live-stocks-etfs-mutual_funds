@@ -1,3 +1,6 @@
+
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -892,9 +895,13 @@
     <div id="refresh-status-popup" class="refresh-status-popup"></div>
     <div id="alert-notification" class="alert-notification" style="display: none;"></div>
 
-    <div id="login-container" class="container" style="display: none;">
+    <div id="login-container" class="container">
         <h1>💰 Live Portfolio Tracker</h1>
-        <p style="text-align: center; margin-bottom: 30px; font-size: 1.2rem; color: var(--text-secondary);">You have been signed out. Please refresh the page to sign back in.</p>
+        <p style="text-align: center; margin-bottom: 30px; font-size: 1.2rem; color: var(--text-secondary);">Sign in to continue</p>
+        <button id="google-signin-btn" class="add-btn" style="margin: 0 auto; display: flex; align-items: center; gap: 10px; width: auto;">
+            <svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 0 24 24" width="24" fill="white"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/><path d="M1 1h22v22H1z" fill="none"/></svg>
+            Sign in with Google
+        </button>
         <div id="firebase-auth-error" style="display: none;"></div>
     </div>
     
@@ -1157,23 +1164,22 @@
             </div>
         </div>
     </div>
-    <!-- MODIFICATION: Updated price alert modal for Min/Max/Range -->
     <div id="priceAlertModal" class="modal" style="display: none;">
         <div class="modal-content">
             <button class="close-modal-btn" onclick="window.stockTracker.closePriceAlertModal()">&times;</button>
-            <h3 class="modal-title">Set Price Alerts for <span id="alert-symbol"></span></h3>
-            <p style="text-align: center; color: var(--text-secondary); margin-top: -16px; margin-bottom: 24px;">
-                Set price targets to receive notifications. Leave a field blank to disable that alert.
-            </p>
+            <h3 class="modal-title">Set Price Alert for <span id="alert-symbol"></span></h3>
             <div class="transaction-input-group">
-                <label for="alert-max-price">Alert when price RISES ABOVE (Max Price):</label>
-                <input type="number" class="search-input" id="alert-max-price" placeholder="e.g., 120 (for profit taking)" min="0">
+                <label for="alert-condition">Condition:</label>
+                <select id="alert-condition">
+                    <option value="above">Price is above</option>
+                    <option value="below">Price is below</option>
+                </select>
             </div>
             <div class="transaction-input-group">
-                <label for="alert-min-price">Alert when price DROPS BELOW (Min Price):</label>
-                <input type="number" class="search-input" id="alert-min-price" placeholder="e.g., 90 (for loss prevention)" min="0">
+                <label for="alert-price">Price:</label>
+                <input type="number" class="search-input" id="alert-price" placeholder="Target price" min="0">
             </div>
-            <button class="add-btn" id="save-alert-btn">Save Alerts</button>
+            <button class="add-btn" id="save-alert-btn">Save Alert</button>
         </div>
     </div>
     <div id="alertsSummaryModal" class="modal" style="display: none;">
@@ -1194,14 +1200,32 @@
 
     <!-- 
     ==================================================================
+    ==      YOUR JAVASCRIPT WITH IMPROVEMENTS                     ==
+    ==================================================================
+    This is your full JavaScript block with the Firebase library
+    version updated for better performance and stability.
     -->
     <script type="module">
         // RECOMMENDATION: Updated Firebase to a newer, more stable version.
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, onAuthStateChanged, signOut, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
+        const firebaseConfig = {
+            apiKey: "AIzaSyB3SIrzA5Y3nZhjZXvzKiW3irJubfNdD7g",
+            authDomain: "live-stocks-etfs-mutual-funds.firebaseapp.com",
+            projectId: "live-stocks-etfs-mutual-funds",
+            storageBucket: "live-stocks-etfs-mutual-funds.appspot.com",
+            messagingSenderId: "148439147431",
+            appId: "1:148439147431:web:06d34e54a4e12af7cd8c82"
+        };
+        
         let app, auth, db;
+        if (firebaseConfig.apiKey !== "YOUR_API_KEY") {
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+        }
 
         class ApiService {
             constructor(config) { this.config = config; }
@@ -1300,15 +1324,12 @@
                 this.groupCollapseState = {};
                 this.diversificationChartInstance = null;
                 this.historyChartInstance = null;
-                this.appId = 'default-app-id';
                 this.init();
             }
             init() {
                 document.addEventListener('DOMContentLoaded', this.runInitialization.bind(this));
             }
-            async runInitialization() {
-                this.appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-                this.cacheDOMElements(); // Moved up to prevent initialization errors
+            runInitialization() {
                 this.loadConfig();
                 try {
                     const storedState = sessionStorage.getItem('groupCollapseState');
@@ -1317,48 +1338,17 @@
                     console.error("Could not parse group collapse state from sessionStorage", e);
                     this.groupCollapseState = {};
                 }
-
-                if (typeof __firebase_config !== 'undefined') {
-                    try {
-                        const firebaseConfig = JSON.parse(__firebase_config);
-                        app = initializeApp(firebaseConfig);
-                        auth = getAuth(app);
-                        db = getFirestore(app);
-                    } catch (e) {
-                        console.error("Failed to initialize Firebase:", e);
-                        this.showError("Critical Error: Could not initialize Firebase from configuration.");
-                        return;
-                    }
-                } else {
-                    this.showError("Firebase is not configured. App cannot function without it.");
-                    document.body.innerHTML = '<div class="error" style="display: block;">Firebase is not configured. Cannot load app.</div>';
-                    return;
-                }
-
                 this.apiService = new ApiService(this.config);
+                this.cacheDOMElements();
                 this.setupEventListeners();
                 this.applyTheme();
                 this.applyPrivacyMode();
-                
-                this.handleAuthentication(); // Sets up the listener
-
-                try {
-                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                        await signInWithCustomToken(auth, __initial_auth_token);
-                    } else {
-                        // Fallback for environments without a provided token
-                        await signInAnonymously(auth);
-                    }
-                } catch (error) {
-                    console.error("Authentication error:", error);
-                    this.showError(`Authentication failed: ${error.message}`);
-                    const errorDiv = document.getElementById('firebase-auth-error');
-                    if (errorDiv) {
-                        errorDiv.style.display = 'block';
-                        errorDiv.innerHTML = `<h4>Authentication Failed</h4><p>${error.message}</p><p>Please try refreshing the page.</p>`;
-                        document.getElementById('login-container').style.display = 'block';
-                    }
+                if (!db) {
+                     this.showError("Firebase is not configured. Please add your firebaseConfig object to the script tag.");
+                    this.elements.loginContainer.style.display = 'block';
+                    return;
                 }
+                this.handleAuthentication();
             }
             formatCurrency(num) {
                 if (typeof num !== 'number') return num;
@@ -1429,6 +1419,7 @@
                 this.elements = {
                     loginContainer: document.getElementById('login-container'),
                     appContainer: document.getElementById('app-container'),
+                    googleSignInBtn: document.getElementById('google-signin-btn'),
                     userInfo: document.getElementById('user-info'),
                     userName: document.getElementById('user-name'),
                     signOutBtn: document.getElementById('sign-out-btn'),
@@ -1486,9 +1477,8 @@
                     closeListAllBtn: document.getElementById('closeListAllBtn'),
                     priceAlertModal: document.getElementById('priceAlertModal'),
                     alertSymbol: document.getElementById('alert-symbol'),
-                    // MODIFICATION: Changed alert inputs
-                    alertMaxPrice: document.getElementById('alert-max-price'),
-                    alertMinPrice: document.getElementById('alert-min-price'),
+                    alertCondition: document.getElementById('alert-condition'),
+                    alertPrice: document.getElementById('alert-price'),
                     saveAlertBtn: document.getElementById('save-alert-btn'),
                     alertNotification: document.getElementById('alert-notification'),
                     newsTab: document.getElementById('news-tab'),
@@ -1514,6 +1504,7 @@
                 if (this.elements.historyChartContainer) this.elements.resizeObserver.observe(this.elements.historyChartContainer);
             }
             setupEventListeners() {
+                this.elements.googleSignInBtn.addEventListener('click', () => this.signIn());
                 this.elements.signOutBtn.addEventListener('click', () => this.signOut());
                 this.elements.addBtn.addEventListener('click', () => this.addItemFromInput('stock'));
                 this.elements.stockInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') this.addItemFromInput('stock'); });
@@ -1797,7 +1788,7 @@
 
             async saveData() {
                 if (!this.userId) return;
-                const userDocRef = doc(db, "artifacts", this.appId, "users", this.userId, "tracker_data", "user_portfolio");
+                const userDocRef = doc(db, "users", this.userId);
                 const data = {
                     stocks: this.stocks, mutualFunds: this.mutualFunds, watchlist: this.watchlist,
                     portfolioHistory: this.portfolioHistory, priceAlerts: this.priceAlerts,
@@ -1806,7 +1797,7 @@
             }
             async loadData() {
                 if (!this.userId) return;
-                const userDocRef = doc(db, "artifacts", this.appId, "users", this.userId, "tracker_data", "user_portfolio");
+                const userDocRef = doc(db, "users", this.userId);
                 const docSnap = await getDoc(userDocRef);
                 
                 let migrationNeeded = false;
@@ -2733,120 +2724,87 @@
                 createList('Watchlist', this.watchlist);
                 if (contentDiv.innerHTML === '') contentDiv.innerHTML = '<p>No saved symbols.</p>';
             }
-            // MODIFICATION: Updated to handle new Min/Max alert modal
             openPriceAlertModal(symbol) {
-                this.elements.alertMaxPrice.value = '';
-                this.elements.alertMinPrice.value = '';
-
-                const existingAlerts = this.priceAlerts.find(a => a.symbol === symbol);
-
-                if (existingAlerts) {
-                    if (existingAlerts.maxPrice) {
-                        this.elements.alertMaxPrice.value = existingAlerts.maxPrice;
-                    }
-                    if (existingAlerts.minPrice) {
-                        this.elements.alertMinPrice.value = existingAlerts.minPrice;
-                    }
+                this.elements.alertPrice.value = '';
+                this.elements.alertCondition.value = 'above';
+                const existingAlert = this.priceAlerts.find(a => a.symbol === symbol && !a.triggered);
+                if (existingAlert) {
+                    this.elements.alertPrice.value = existingAlert.price;
+                    this.elements.alertCondition.value = existingAlert.condition;
+                    this.elements.saveAlertBtn.textContent = 'Update Alert';
+                } else {
+                    this.elements.saveAlertBtn.textContent = 'Save Alert';
                 }
-                
                 this.elements.priceAlertModal.style.display = 'flex';
                 this.elements.alertSymbol.textContent = symbol;
                 this.elements.saveAlertBtn.dataset.symbol = symbol;
             }
             closePriceAlertModal() { this.elements.priceAlertModal.style.display = 'none'; }
-            // MODIFICATION: Updated to save Min/Max alerts
             async savePriceAlert() {
                 const { symbol } = this.elements.saveAlertBtn.dataset;
-                const maxPrice = parseFloat(this.elements.alertMaxPrice.value) || null;
-                const minPrice = parseFloat(this.elements.alertMinPrice.value) || null;
-
-                if (!symbol) { this.showError("Symbol not found."); return; }
-                if ((maxPrice !== null && (isNaN(maxPrice) || maxPrice <= 0)) || (minPrice !== null && (isNaN(minPrice) || minPrice <= 0))) {
-                    this.showError("Invalid price. Please enter a positive number.");
-                    return;
-                }
-                if (maxPrice !== null && minPrice !== null && maxPrice <= minPrice) {
-                    this.showError("Max price must be greater than min price.");
-                    return;
-                }
-
-                let alertForSymbol = this.priceAlerts.find(a => a.symbol === symbol);
-
-                if (maxPrice === null && minPrice === null) {
-                    if (alertForSymbol) {
-                        this.priceAlerts = this.priceAlerts.filter(a => a.symbol !== symbol);
-                        this.showSuccess(`Cleared all alerts for ${symbol}.`);
-                    }
+                const price = parseFloat(this.elements.alertPrice.value);
+                if (!symbol || isNaN(price) || price <= 0) { this.showError("Invalid alert data."); return; }
+                const existingAlertIndex = this.priceAlerts.findIndex(
+                    a => a.symbol === symbol &&
+                     a.price === price &&
+                    a.condition === this.elements.alertCondition.value &&
+                    !a.triggered
+                );
+                if (existingAlertIndex === -1) {
+                    const newAlert = {
+                         id: Date.now().toString() + Math.random().toString(36).substring(2, 9),
+                        symbol,
+                         condition: this.elements.alertCondition.value,
+                         price,
+                         triggered: false,
+                         date: new Date().toISOString()
+                    };
+                    this.priceAlerts.push(newAlert);
+                    this.showSuccess(`Alert set for ${symbol} at $${this.formatNumber(price, 2)}!`);
                 } else {
-                    if (alertForSymbol) {
-                        alertForSymbol.maxPrice = maxPrice;
-                        alertForSymbol.minPrice = minPrice;
-                        alertForSymbol.maxPriceTriggered = false;
-                        alertForSymbol.minPriceTriggered = false;
-                    } else {
-                        alertForSymbol = {
-                            id: Date.now().toString() + Math.random().toString(36).substring(2, 9),
-                            symbol,
-                            maxPrice: maxPrice,
-                            minPrice: minPrice,
-                            maxPriceTriggered: false,
-                            minPriceTriggered: false,
-                            date: new Date().toISOString()
-                        };
-                        this.priceAlerts.push(alertForSymbol);
-                    }
-                    this.showSuccess(`Alerts updated for ${symbol}!`);
+                     this.showSuccess(`Alert for ${symbol} was already set and has been updated.`);
                 }
-
                 await this.saveData();
                 this.closePriceAlertModal();
             }
-            // MODIFICATION: Updated to display new alert structure
             openAlertsSummaryModal() {
                 this.elements.alertsSummaryModal.style.display = 'flex';
                 const contentDiv = this.elements.alertsSummaryContent;
                 contentDiv.innerHTML = '';
+                const allAlerts = this.priceAlerts.slice().sort((a, b) => (a.triggered === b.triggered) ? 0 : a.triggered ? -1 : 1);
 
-                if (this.priceAlerts.length === 0) {
+                if (allAlerts.length === 0) {
                     contentDiv.innerHTML = `<p style="text-align: center; color: var(--text-secondary); margin-top: 20px;">No alerts currently set.</p>`;
                     return;
                 }
 
                 let html = '<ul style="list-style-type: none; padding: 0;">';
-                this.priceAlerts.forEach(alert => {
-                    let alertsHtml = '';
-                    if (alert.minPrice) {
-                        const triggered = alert.minPriceTriggered ? '✔️' : '';
-                        alertsHtml += `
-                            <span style="color: var(--text-secondary);">
-                                Alert: Price <span class="negative">drops below ${this.formatCurrency(alert.minPrice)}</span> ${triggered}
-                            </span><br>`;
-                    }
-                    if (alert.maxPrice) {
-                        const triggered = alert.maxPriceTriggered ? '✔️' : '';
-                        alertsHtml += `
-                            <span style="color: var(--text-secondary);">
-                                Alert: Price <span class="positive">rises above ${this.formatCurrency(alert.maxPrice)}</span> ${triggered}
-                            </span><br>`;
-                    }
-
-                    if (alertsHtml === '') return;
-
+                allAlerts.forEach(alert => {
+                    const priceClass = alert.condition === 'above' ? 'positive' : 'negative';
+                    const targetPrice = this.formatCurrency(alert.price);
                     const alertDate = new Date(alert.date || new Date());
                     const formattedDate = alertDate.toLocaleDateString();
+                    const formattedTime = alertDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    const triggeredClass = alert.triggered ? 'triggered-alert' : '';
+                    const actionButtons = alert.triggered 
+                        ? `<button onclick="window.stockTracker.dismissPriceAlertById('${alert.id}')" class="edit-transaction-btn" style="background-color: var(--color-positive); color: white;">Dismiss</button>`
+                        : `<button onclick="window.stockTracker.openPriceAlertModal('${alert.symbol}')" class="edit-transaction-btn">Edit</button>
+                           <button onclick="window.stockTracker.removePriceAlertById('${alert.id}')" class="delete-transaction-btn">&times;</button>`;
 
                     html += `
-                        <li style="padding: 10px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                        <li class="${triggeredClass}" style="padding: 10px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
                             <div>
-                                <strong style="font-size: 1.1rem;">${alert.symbol}</strong><br>
-                                ${alertsHtml}
+                                <strong style="font-size: 1.1rem;">${alert.symbol} ${alert.triggered ? '✔️' : ''}</strong><br>
+                                <span style="color: var(--text-secondary);">
+                                    Alert: Price is
+                                     <span class="${priceClass}">${alert.condition} ${targetPrice}</span>
+                                </span><br>
                                 <span style="font-size: 0.8rem; color: #aaa;">
-                                    Set on: ${formattedDate}
+                                    Set on: ${formattedDate} at ${formattedTime}
                                 </span>
                             </div>
                             <div style="display:flex; gap: 5px;">
-                               <button onclick="window.stockTracker.openPriceAlertModal('${alert.symbol}')" class="edit-transaction-btn">Edit</button>
-                               <button onclick="window.stockTracker.removePriceAlertsForSymbol('${alert.symbol}')" class="delete-transaction-btn">&times;</button>
+                                ${actionButtons}
                             </div>
                         </li>
                     `;
@@ -2854,46 +2812,39 @@
                 html += '</ul>';
                 contentDiv.innerHTML = html;
             }
-             // MODIFICATION: New function to remove all alerts for a symbol
-            removePriceAlertsForSymbol(symbol) {
+            dismissPriceAlertById(alertId) {
+                this.priceAlerts = this.priceAlerts.filter(a => a.id !== alertId);
+                this.saveData();
+                this.openAlertsSummaryModal();
+                this.showSuccess('Alert dismissed.');
+            }
+            removePriceAlertById(alertId) {
                 const onCancel = () => this.openAlertsSummaryModal();
-                this.openConfirmModal(`Are you sure you want to delete all price alerts for ${symbol}?`,
-                    async () => {
-                        this.priceAlerts = this.priceAlerts.filter(a => a.symbol !== symbol);
-                        await this.saveData();
-                        this.showSuccess(`🗑️ Deleted price alerts for ${symbol}.`);
-                        this.openAlertsSummaryModal(); // Refresh the modal content
-                    },
-                    onCancel
+                 this.openConfirmModal(`Are you sure you want to delete this specific price alert?`,
+                     async () => {
+                         this.priceAlerts = this.priceAlerts.filter(a => a.id !== alertId);
+                         await this.saveData();
+                         this.showSuccess(`🗑️ Deleted price alert.`);
+                         this.openAlertsSummaryModal();
+                     },
+                     onCancel
                 );
             }
-            // MODIFICATION: Updated to check for both Min and Max price alerts
             checkPriceAlerts() {
                 if(this.priceAlerts.length === 0) return;
                 const allItems = [...this.stocks, ...this.mutualFunds, ...this.watchlist];
-                let alertsUpdated = false;
-
                 this.priceAlerts.forEach(alert => {
+                    if (alert.triggered) return;
                     const item = allItems.find(i => i.symbol === alert.symbol);
-                    if (!item || !item.price) return;
-
-                    // Check max price alert
-                    if (alert.maxPrice && !alert.maxPriceTriggered && item.price > alert.maxPrice) {
-                        alert.maxPriceTriggered = true;
-                        this.showAlertNotification(item, { condition: 'above', price: alert.maxPrice });
-                        alertsUpdated = true;
-                    }
-
-                    // Check min price alert
-                    if (alert.minPrice && !alert.minPriceTriggered && item.price < alert.minPrice) {
-                        alert.minPriceTriggered = true;
-                        this.showAlertNotification(item, { condition: 'below', price: alert.minPrice });
-                        alertsUpdated = true;
+                    if (!item) return;
+                    const trigger = (alert.condition === 'above' && item.price > alert.price) ||
+                                      (alert.condition === 'below' && item.price < alert.price);
+                    if (trigger) {
+                        alert.triggered = true;
+                        this.showAlertNotification(item, alert);
+                         this.saveData();
                     }
                 });
-                if (alertsUpdated) {
-                    this.saveData();
-                }
             }
             showAlertNotification(item, alert) {
                 const message = `🔔 ALERT: ${item.symbol} reached $${this.formatNumber(item.price)}! It is ${alert.condition} your target of $${this.formatNumber(alert.price)}.`;
@@ -3022,6 +2973,4 @@
     </script>
 </body>
 </html>
-
-
 
