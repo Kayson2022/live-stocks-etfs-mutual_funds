@@ -1308,6 +1308,7 @@
             }
             async runInitialization() {
                 this.appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+                this.cacheDOMElements(); // Moved up to prevent initialization errors
                 this.loadConfig();
                 try {
                     const storedState = sessionStorage.getItem('groupCollapseState');
@@ -1335,7 +1336,6 @@
                 }
 
                 this.apiService = new ApiService(this.config);
-                this.cacheDOMElements();
                 this.setupEventListeners();
                 this.applyTheme();
                 this.applyPrivacyMode();
@@ -3022,5 +3022,6 @@
     </script>
 </body>
 </html>
+
 
 
