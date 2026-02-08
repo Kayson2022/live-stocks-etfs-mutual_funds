@@ -1,5 +1,4 @@
 
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -477,17 +476,9 @@
         const ALPHA_VANTAGE_API_KEY_STORAGE = 'myPortfolioAlphaVantageKey_v4';
         const FMP_API_KEY_STORAGE = 'myPortfolioFmpKey_v4';
         const REFRESH_INTERVAL_KEY = 'myPortfolioRefreshInterval_v4';
-        const FINNHUB_PROXY = "https://finnhub-proxy.giolamchieu1975.workers.dev";
-		const CORS_PROXY = "https://api.allorigins.win/raw?url=";
+        const CORS_PROXY = "https://corsproxy.io/?";
 
-
-
-        
-        // Helper: AllOrigins requires the *target* URL to be URL-encoded; otherwise any "&token=" / "&apikey=" gets stripped.
-        function viaCORS(targetUrl) {
-            return `${CORS_PROXY}${encodeURIComponent(targetUrl)}`;
-        }
-// --- API & Fetching Configuration ---
+        // --- API & Fetching Configuration ---
         const API_THROTTLE_DELAY = 250; // ms to wait between API calls
         const CACHE_STALE_TIME_FAST = 300 * 1000; // 5 minutes for Stocks, ETFs
         const CACHE_STALE_TIME_SLOW = 12 * 60 * 60 * 1000; // 12 hours for Mutual Funds, etc.
@@ -1656,7 +1647,7 @@
         async function fetchPriceFromFinnhub(symbol) {
             if (!FINNHUB_API_KEY) return { currentPrice: null, previousClosePrice: null };
             try {
-                const url = `https://finnhub-proxy.giolamchieu1975.workers.dev/quote?symbol=${encodeURIComponent(symbol)}`;
+                const url = `${CORS_PROXY}https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_API_KEY}`;
                 const r = await fetch(url);
 
                 if (!r.ok) {
@@ -1808,7 +1799,7 @@
                     const isManualOverride = cached && cached.manualPrice != null;
                     const isStale = !cached || (Date.now() - (cached.lastFetchTimestamp || 0)) > staleTime;
                     
-                    return forceRefresh || (!isManualOverride && isStale);
+                    return forceRefresh || (!isManualOverride);
                 });
                 
                 refreshStats.total = fastAssetsToFetch.length;
@@ -2005,10 +1996,8 @@
                     }
                     isSymbolValidated = true;
                 } else {
-                    statusEl.textContent = '❌';
-                    statusEl.title = `Not found: ${symbol}`;
-                    isSymbolValidated = false;
-                    return;
+                    // If Finnhub fails to find it, try Alpha Vantage (especially for Mutual Funds)
+                    await validateWithAlphaVantage(symbol);
                 }
             } catch (error) {
                 console.error("Alpha Vantage validation error:", error);
@@ -2030,25 +2019,6 @@
                     statusEl.title = '';
                     return;
                 }
-
-                // --- NEW: Custom asset fast-path (manual pricing, no network) ---
-                if (symbol.startsWith('CUST:')) {
-                    statusEl.textContent = '✅';
-                    statusEl.title = 'Custom Asset (Manual Pricing)';
-                    // Auto-select Manual to prevent any price fetching
-                    const typeEl = document.getElementById('type');
-                    if (typeEl) typeEl.value = 'Manual';
-                    // If name is blank, derive a friendly name from the symbol
-                    const nameEl = document.getElementById('name');
-                    if (nameEl && !nameEl.value.trim()) {
-                        const friendly = symbol.replace(/^CUST:/, '').replace(/[_-]+/g, ' ').trim();
-                        nameEl.value = friendly ? friendly.split(' ').map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(' ') : 'Custom Asset';
-                    }
-                    isSymbolValidated = true;
-                    return;
-                }
-                // --- END custom asset fast-path ---
-
                 statusEl.textContent = '...';
                 statusEl.title = 'Validating...';
 
@@ -2066,8 +2036,7 @@
                 }
 
                 try {
-                    const targetUrl = `https://finnhub.io/api/v1/search?q=${encodeURIComponent(symbol)}&token=${FINNHUB_API_KEY}`;
-                    const url = viaCORS(targetUrl);
+                    const url = `${CORS_PROXY}https://finnhub.io/api/v1/search?q=${symbol}&token=${FINNHUB_API_KEY}`;
                     const response = await fetch(url);
 
                     if (!response.ok) {
@@ -2912,17 +2881,26 @@
                 if (!isInitialDataLoaded) return;
                 const currentHoldings = calculateHoldingsAndCash(); // Gets ALL holdings
 
-                let mainHistory = [];
-                let volatilityHistory = [];
-                
-                if (fetchHistorical) {
-                    mainHistory = await buildPortfolioHistoryFromTransactions(); // Unfiltered history for main chart
-                    volatilityHistory = await buildVolatilityHistoryFromTransactions(); // Filtered history for volatility stat
-                } else {
-                    // If not fetching new prices, re-use/recalculate based on existing data
-                    mainHistory = await buildPortfolioHistoryFromTransactions(); 
-                    volatilityHistory = await buildVolatilityHistoryFromTransactions(); 
-                }
+                // Detect whether transactions changed; if so, rebuild history even during auto-refresh.
+        const _txSig = JSON.stringify((portfolioData && portfolioData.transactions) ? portfolioData.transactions : []);
+        const _txChanged = (window.__lastTxSig !== _txSig);
+        window.__lastTxSig = _txSig;
+
+        let mainHistory = [];
+        let volatilityHistory = [];
+
+        const _haveCached = Array.isArray(window.__cachedMainHistory) && Array.isArray(window.__cachedVolatilityHistory);
+        const _shouldRebuildHistory = fetchHistorical || _txChanged || !_haveCached;
+
+        if (_shouldRebuildHistory) {
+            mainHistory = await buildPortfolioHistoryFromTransactions();
+            volatilityHistory = await buildVolatilityHistoryFromTransactions();
+            window.__cachedMainHistory = mainHistory;
+            window.__cachedVolatilityHistory = volatilityHistory;
+        } else {
+            mainHistory = window.__cachedMainHistory;
+            volatilityHistory = window.__cachedVolatilityHistory;
+        }
 
                 // Pass ALL holdings and FILTERED history for volatility stat
                 const stats = calculateOverallStats(currentHoldings, volatilityHistory);
@@ -4047,5 +4025,3 @@
     </div>
 </body>
 </html>
-
-
