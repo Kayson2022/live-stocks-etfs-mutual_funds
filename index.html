@@ -483,13 +483,10 @@
 
 
         
-
-        // Helper: AllOrigins requires the *target* URL to be URL-encoded, otherwise any '&token='/'&apikey='
-        // is treated as an AllOrigins param and stripped from the proxied request.
+        // Helper: AllOrigins requires the *target* URL to be URL-encoded; otherwise any "&token=" / "&apikey=" gets stripped.
         function viaCORS(targetUrl) {
             return `${CORS_PROXY}${encodeURIComponent(targetUrl)}`;
         }
-
 // --- API & Fetching Configuration ---
         const API_THROTTLE_DELAY = 250; // ms to wait between API calls
         const CACHE_STALE_TIME_FAST = 300 * 1000; // 5 minutes for Stocks, ETFs
@@ -1966,8 +1963,7 @@
                 return;
             }
             try {
-                const targetUrl = `https://www.alphavantage.co/query?function=SYMBOL_SEARCH&keywords=${encodeURIComponent(symbol)}&apikey=${ALPHA_VANTAGE_API_KEY}`;
-                const url = viaCORS(targetUrl);
+                const url = `${CORS_PROXY}https://www.alphavantage.co/query?function=SYMBOL_SEARCH&keywords=${symbol}&apikey=${ALPHA_VANTAGE_API_KEY}`;
                 const response = await fetch(url);
                 
                 // Check for non-OK status
@@ -2034,6 +2030,25 @@
                     statusEl.title = '';
                     return;
                 }
+
+                // --- NEW: Custom asset fast-path (manual pricing, no network) ---
+                if (symbol.startsWith('CUST:')) {
+                    statusEl.textContent = '✅';
+                    statusEl.title = 'Custom Asset (Manual Pricing)';
+                    // Auto-select Manual to prevent any price fetching
+                    const typeEl = document.getElementById('type');
+                    if (typeEl) typeEl.value = 'Manual';
+                    // If name is blank, derive a friendly name from the symbol
+                    const nameEl = document.getElementById('name');
+                    if (nameEl && !nameEl.value.trim()) {
+                        const friendly = symbol.replace(/^CUST:/, '').replace(/[_-]+/g, ' ').trim();
+                        nameEl.value = friendly ? friendly.split(' ').map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(' ') : 'Custom Asset';
+                    }
+                    isSymbolValidated = true;
+                    return;
+                }
+                // --- END custom asset fast-path ---
+
                 statusEl.textContent = '...';
                 statusEl.title = 'Validating...';
 
