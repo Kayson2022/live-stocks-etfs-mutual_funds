@@ -480,15 +480,17 @@
         const FINNHUB_PROXY = "https://finnhub-proxy.giolamchieu1975.workers.dev";
 		const CORS_PROXY = "https://api.allorigins.win/raw?url=";
 
-		// Helper: AllOrigins requires the target URL to be URL-encoded (otherwise &apikey= / &token= get stripped)
-		function viaCORS(targetUrl) {
-			return `${CORS_PROXY}${encodeURIComponent(targetUrl)}`;
-		}
 
 
+        
 
+        // Helper: AllOrigins requires the *target* URL to be URL-encoded, otherwise any '&token='/'&apikey='
+        // is treated as an AllOrigins param and stripped from the proxied request.
+        function viaCORS(targetUrl) {
+            return `${CORS_PROXY}${encodeURIComponent(targetUrl)}`;
+        }
 
-        // --- API & Fetching Configuration ---
+// --- API & Fetching Configuration ---
         const API_THROTTLE_DELAY = 250; // ms to wait between API calls
         const CACHE_STALE_TIME_FAST = 300 * 1000; // 5 minutes for Stocks, ETFs
         const CACHE_STALE_TIME_SLOW = 12 * 60 * 60 * 1000; // 12 hours for Mutual Funds, etc.
@@ -1296,8 +1298,7 @@
                     await delay(API_THROTTLE_DELAY * 2.5); 
                     try {
                         const outputSize = 'compact'; 
-                        const targetUrl = `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${encodeURIComponent(symbol)}&outputsize=${outputSize}&apikey=${ALPHA_VANTAGE_API_KEY}`;
-                        const url = viaCORS(targetUrl);
+                        const url = `${CORS_PROXY}https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${symbol}&outputsize=${outputSize}&apikey=${ALPHA_VANTAGE_API_KEY}`;
                         const response = await fetch(url);
                         
                         // Error handling is complex here, keeping robust checks
@@ -1685,8 +1686,7 @@
         async function fetchPriceFromFMP(symbol) {
              if (!FMP_API_KEY) return { currentPrice: null, previousClosePrice: null };
              try {
-                 const targetUrl = `https://financialmodelingprep.com/api/v3/historical-price-full/${encodeURIComponent(symbol)}?timeseries=2&apikey=${FMP_API_KEY}`;
-                 const historyUrl = viaCORS(targetUrl);
+                 const historyUrl = `${CORS_PROXY}https://financialmodelingprep.com/api/v3/historical-price-full/${symbol}?timeseries=2&apikey=${FMP_API_KEY}`;
                  const historyRes = await fetch(historyUrl);
                  
                  if (!historyRes.ok) {
@@ -1716,8 +1716,7 @@
         async function fetchPriceFromAlphaVantage(symbol) {
             if (!ALPHA_VANTAGE_API_KEY) return { currentPrice: null, previousClosePrice: null };
             try {
-                const targetUrl = `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol=${encodeURIComponent(symbol)}&apikey=${ALPHA_VANTAGE_API_KEY}`;
-                const url = viaCORS(targetUrl);
+                const url = `${CORS_PROXY}https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol=${symbol}&apikey=${ALPHA_VANTAGE_API_KEY}`;
                 const r = await fetch(url);
                 
                 // --- Check for non-OK status ---
@@ -2030,116 +2029,68 @@
                 const statusEl = document.getElementById('symbolValidationStatus');
                 isSymbolValidated = false;
 
-                const setOk = (title) => {
-                    statusEl.textContent = '✅';
-                    statusEl.title = title || `Validated: ${symbol}`;
-                    isSymbolValidated = true;
-                };
-                const setNo = (title) => {
-                    statusEl.textContent = '❌';
-                    statusEl.title = title || `Not found: ${symbol}`;
-                    isSymbolValidated = false;
-                };
-                const setWarn = (title) => {
-                    statusEl.textContent = '⚠️';
-                    statusEl.title = title || 'Validation warning';
-                    isSymbolValidated = false;
-                };
-
                 if (!symbol) {
                     statusEl.textContent = '';
                     statusEl.title = '';
                     return;
                 }
-
                 statusEl.textContent = '...';
                 statusEl.title = 'Validating...';
 
-                // Money-market style symbols (e.g., VMFXX)
                 const mmRegex = /^[A-Z]{3,5}XX$/;
                 if (mmRegex.test(symbol)) {
+                    statusEl.textContent = '✅';
                     document.getElementById('type').value = 'Money Market';
-                    setOk(`Validated (money market pattern): ${symbol}`);
+                    isSymbolValidated = true;
+                    return;
+                }
+                if (!FINNHUB_API_KEY) {
+                    statusEl.textContent = '⚠️';
+                    statusEl.title = 'Finnhub API Key is missing.';
                     return;
                 }
 
-                // 1) Try Finnhub search via AllOrigins (Option B: URL-encoded)
-                if (FINNHUB_API_KEY) {
-                    try {
-                        const targetUrl = `https://finnhub.io/api/v1/search?q=${encodeURIComponent(symbol)}&token=${FINNHUB_API_KEY}`;
-                        const url = viaCORS(targetUrl);
-                        const res = await fetch(url, { cache: "no-store" });
-
-                        if (res.ok) {
-                            // AllOrigins sometimes returns non-JSON bodies; parse defensively
-                            const text = await res.text();
-                            let data;
-                            try { data = JSON.parse(text); } catch (e) { data = null; }
-
-                            const list = data?.result || [];
-                            const match = list.find(item =>
-                                (item.symbol || '').toUpperCase() === symbol ||
-                                (item.displaySymbol || '').toUpperCase() === symbol
-                            );
-
-                            if (match) {
-                                const desc = match.description || symbol;
-                                statusEl.title = `Validated: ${desc}`;
-                                document.getElementById('name').value = (desc || '').split(' ').slice(0, 3).join(' ');
-                                if ((desc || '').toUpperCase().includes('MONEY MARKET')) {
-                                    document.getElementById('type').value = 'Money Market';
-                                }
-                                setOk(`Validated (Finnhub search): ${desc}`);
-                                return;
-                            }
-                            // If no match, fall through to quote-based validation
-                        } else if (res.status === 429) {
-                            // Rate limit: fall through to quote-based validation instead of hard-failing
-                            console.warn("Finnhub search rate-limited (429); trying quote fallback.");
-                        } else {
-                            // Non-OK (403/5xx etc): fall through to quote-based validation
-                            console.warn("Finnhub search failed:", res.status, await res.text());
-                        }
-                    } catch (e) {
-                        console.warn("Finnhub search error; trying quote fallback:", e);
-                    }
-                } else {
-                    // No key available: still try quote fallback (uses your Worker endpoint)
-                    console.warn("FINNHUB_API_KEY missing; trying quote fallback.");
-                }
-
-                // 2) Quote-based validation (uses your Cloudflare Worker /quote endpoint; no AllOrigins)
                 try {
-                    const q = await fetchPriceFromFinnhub(symbol); // returns { currentPrice, previousClosePrice }
-                    const c = q?.currentPrice;
-                    const pc = q?.previousClosePrice;
+                    const targetUrl = `https://finnhub.io/api/v1/search?q=${encodeURIComponent(symbol)}&token=${FINNHUB_API_KEY}`;
+                    const url = viaCORS(targetUrl);
+                    const response = await fetch(url);
 
-                    // If we got a real-looking quote, treat as valid
-                    if ((typeof c === 'number' && c > 0) || (typeof pc === 'number' && pc > 0)) {
-                        setOk(`Validated (Finnhub quote via Worker): ${symbol}`);
+                    if (!response.ok) {
+                        if (response.status === 429) {
+                            statusEl.textContent = '⚠️';
+                            statusEl.title = 'Finnhub API limit reached. Please wait a moment and try again, or use a premium key.';
+                        } else {
+                            const errorText = await response.text();
+                            console.error("CORS/Network Error:", errorText);
+                            statusEl.textContent = '⚠️';
+                            statusEl.title = `Network Error: ${response.statusText}. The proxy service may be down.`;
+                        }
+                        isSymbolValidated = false;
                         return;
                     }
-                } catch (e) {
-                    console.warn("Quote validation error:", e);
-                }
 
-                // 3) Last resort: Alpha Vantage search (still via AllOrigins)
-                if (ALPHA_VANTAGE_API_KEY) {
-                    try {
+                    const data = await response.json();
+                    const match = data.result?.find(item => item.symbol === symbol);
+                    if (match) {
+                        statusEl.textContent = '✅';
+                        statusEl.title = `Validated: ${match.description}`;
+                        document.getElementById('name').value = match.description.split(' ').slice(0, 3).join(' ');
+                       if (match.description.toUpperCase().includes('MONEY MARKET')) {
+                            document.getElementById('type').value = 'Money Market';
+                        }
+                        isSymbolValidated = true;
+                    } else {
+                        // If Finnhub fails to find it, try Alpha Vantage (especially for Mutual Funds)
                         await validateWithAlphaVantage(symbol);
-                        // validateWithAlphaVantage sets the UI + isSymbolValidated itself
-                        return;
-                    } catch (e) {
-                        console.warn("Alpha Vantage fallback failed:", e);
                     }
+                } catch (error) {
+                    console.error("Symbol validation error:", error);
+                    statusEl.textContent = '⚠️';
+                    statusEl.title = 'API Error during validation. Check the browser console for details.';
+                    isSymbolValidated = false;
                 }
-
-                // If we reach here, we couldn't validate
-                setNo(`Unable to validate symbol: ${symbol}. (Proxy/API may be blocked or rate-limited.)`);
             }, 750);
         }
-
-
         // --- End API & Price Fetching ---
 
         // --- Form Interaction Logic (Unchanged from uploaded file) ---
