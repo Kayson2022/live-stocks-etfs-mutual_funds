@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -2009,8 +2010,10 @@
                     }
                     isSymbolValidated = true;
                 } else {
-                    // If Finnhub fails to find it, try Alpha Vantage (especially for Mutual Funds)
-                    await validateWithAlphaVantage(symbol);
+                    statusEl.textContent = '❌';
+                    statusEl.title = `Not found: ${symbol}`;
+                    isSymbolValidated = false;
+                    return;
                 }
             } catch (error) {
                 console.error("Alpha Vantage validation error:", error);
@@ -2057,14 +2060,15 @@
                         if (response.status === 429) {
                             statusEl.textContent = '⚠️';
                             statusEl.title = 'Finnhub API limit reached. Please wait a moment and try again, or use a premium key.';
+                            isSymbolValidated = false;
+                            return;
                         } else {
+                            // Finnhub via proxy often fails with 403/5xx; fall back to Alpha Vantage
                             const errorText = await response.text();
-                            console.error("CORS/Network Error:", errorText);
-                            statusEl.textContent = '⚠️';
-                            statusEl.title = `Network Error: ${response.statusText}. The proxy service may be down.`;
+                            console.error("Finnhub validation failed; falling back to Alpha Vantage. Response:", response.status, errorText);
+                            await validateWithAlphaVantage(symbol);
+                            return;
                         }
-                        isSymbolValidated = false;
-                        return;
                     }
 
                     const data = await response.json();
@@ -2078,9 +2082,11 @@
                         }
                         isSymbolValidated = true;
                     } else {
-                        // If Finnhub fails to find it, try Alpha Vantage (especially for Mutual Funds)
-                        await validateWithAlphaVantage(symbol);
-                    }
+                    statusEl.textContent = '❌';
+                    statusEl.title = `Not found: ${symbol}`;
+                    isSymbolValidated = false;
+                    return;
+                }
                 } catch (error) {
                     console.error("Symbol validation error:", error);
                     statusEl.textContent = '⚠️';
