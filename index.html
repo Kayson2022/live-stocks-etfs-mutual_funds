@@ -2001,7 +2001,10 @@
                     isSymbolValidated = true;
                 } else {
                     // If Finnhub fails to find it, try Alpha Vantage (especially for Mutual Funds)
-                    await validateWithAlphaVantage(symbol);
+                    statusEl.textContent = '❌';
+                    statusEl.title = `Not found: ${symbol}`;
+                    isSymbolValidated = false;
+                    return;
                 }
             } catch (error) {
                 console.error("Alpha Vantage validation error:", error);
@@ -2023,59 +2026,61 @@
                     statusEl.title = '';
                     return;
                 }
-                statusEl.textContent = '...';
-                statusEl.title = 'Validating...';
 
-                const mmRegex = /^[A-Z]{3,5}XX$/;
-                if (mmRegex.test(symbol)) {
+                // --- CUSTOM ASSET FAST-PATH (manual pricing) ---
+                if (symbol.startsWith('CUST:')) {
                     statusEl.textContent = '✅';
-                    document.getElementById('type').value = 'Money Market';
+                    statusEl.title = 'Custom Asset (Manual Pricing)';
+                    const typeEl = document.getElementById('type');
+                    if (typeEl) typeEl.value = 'Manual';
                     isSymbolValidated = true;
                     return;
                 }
-                if (!FINNHUB_API_KEY) {
-                    statusEl.textContent = '⚠️';
-                    statusEl.title = 'Finnhub API Key is missing.';
+
+                statusEl.textContent = '...';
+                statusEl.title = 'Validating...';
+
+                // Money Market fast-path (e.g., SWVXX)
+                const mmRegex = /^[A-Z]{3,5}XX$/;
+                if (mmRegex.test(symbol)) {
+                    statusEl.textContent = '✅';
+                    statusEl.title = 'Money Market';
+                    const typeEl = document.getElementById('type');
+                    if (typeEl) typeEl.value = 'Money Market';
+                    isSymbolValidated = true;
                     return;
                 }
 
+                // --- PRIMARY: validate STOCKS via your Cloudflare Worker /quote endpoint ---
+                // This avoids AllOrigins/Finnhub search flakiness and rate-limit UI hangs.
                 try {
-                    const url = `${CORS_PROXY}https://finnhub.io/api/v1/search?q=${symbol}&token=${FINNHUB_API_KEY}`;
-                    const response = await fetch(url);
+                    const quoteUrl = `https://finnhub-proxy.giolamchieu1975.workers.dev/quote?symbol=${encodeURIComponent(symbol)}`;
+                    const r = await fetch(quoteUrl, { cache: 'no-store' });
+                    if (!r.ok) throw new Error(`Quote HTTP ${r.status}`);
+                    const d = await r.json();
 
-                    if (!response.ok) {
-                        if (response.status === 429) {
-                            statusEl.textContent = '⚠️';
-                            statusEl.title = 'Finnhub API limit reached. Please wait a moment and try again, or use a premium key.';
-                        } else {
-                            const errorText = await response.text();
-                            console.error("CORS/Network Error:", errorText);
-                            statusEl.textContent = '⚠️';
-                            statusEl.title = `Network Error: ${response.statusText}. The proxy service may be down.`;
-                        }
-                        isSymbolValidated = false;
+                    const ok = d && typeof d.c === 'number' && d.c > 0 && typeof d.t === 'number' && d.t > 0;
+                    if (ok) {
+                        statusEl.textContent = '✅';
+                        statusEl.title = `Validated via quote: ${symbol}`;
+                        isSymbolValidated = true;
                         return;
                     }
 
-                    const data = await response.json();
-                    const match = data.result?.find(item => item.symbol === symbol);
-                    if (match) {
-                        statusEl.textContent = '✅';
-                        statusEl.title = `Validated: ${match.description}`;
-                        document.getElementById('name').value = match.description.split(' ').slice(0, 3).join(' ');
-                       if (match.description.toUpperCase().includes('MONEY MARKET')) {
-                            document.getElementById('type').value = 'Money Market';
-                        }
-                        isSymbolValidated = true;
-                    } else {
-                        // If Finnhub fails to find it, try Alpha Vantage (especially for Mutual Funds)
-                        await validateWithAlphaVantage(symbol);
-                    }
-                } catch (error) {
-                    console.error("Symbol validation error:", error);
-                    statusEl.textContent = '⚠️';
-                    statusEl.title = 'API Error during validation. Check the browser console for details.';
+                    // Quote responded but looks empty => treat as not found
+                    statusEl.textContent = '❌';
+                    statusEl.title = `Not found (quote empty): ${symbol}`;
                     isSymbolValidated = false;
+                    return;
+                } catch (e) {
+                    console.error('Quote validation failed:', e);
+
+                    // IMPORTANT: do not block Buy/Sell.
+                    // Leave isSymbolValidated=false so your existing "log anyway" flow can still proceed.
+                    statusEl.textContent = '⚠️';
+                    statusEl.title = 'Validation unavailable (API/proxy issue). You can still add manually.';
+                    isSymbolValidated = false;
+                    return;
                 }
             }, 750);
         }
