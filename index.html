@@ -528,6 +528,9 @@ let portfolioData = {
         let validationTimeout = null;
         let lastEditedField = 'shares';
         let userNameUpdateTimeout = null;
+        let saveInFlight = false;
+        let saveQueued = false;
+
         let isInitialDataLoaded = false;
         let hasRecurringCheckRun = false;
         let activeTab = 'investments';
@@ -540,6 +543,17 @@ let historyBuildInFlight = false;
 let historyBuildQueued = false;
 let historyFetchBlockedUntilClose = true; // user preference: only fetch daily history after market close
 const failedHistoricalSymbols = new Set();
+let uiRefreshTimer = null;
+function scheduleUiRefresh(isFirst = false) {
+    clearTimeout(uiRefreshTimer);
+    // Use a tiny delay to coalesce rapid Firestore updates (but keep first paint instant)
+    const delay = isFirst ? 0 : 75;
+    uiRefreshTimer = setTimeout(() => {
+        // fetchHistorical=false so we never block UI by rebuilding history on every update
+        Promise.resolve(updateDisplay(false)).catch(err => console.warn("updateDisplay error:", err));
+    }, delay);
+}
+
 
 function toISODate(d) {
     return new Date(d).toISOString().slice(0, 10);
@@ -1022,16 +1036,19 @@ await signOut(auth);
 
             // --- Portfolio, UI State, Price Cache Listeners (Unchanged from uploaded file) ---
              const portfolioDocRef = doc(portfolioColRef, FIRESTORE_DATA_DOC);
-            unsubscribePortfolio = onSnapshot(portfolioDocRef, async (docSnap) => {
+            unsubscribePortfolio = onSnapshot(portfolioDocRef, (docSnap) => {
+                // IMPORTANT: First paint must be fast. Do NOT await network writes or heavy work here.
                 let needsSave = false;
+
                 if (docSnap.exists()) {
-                    portfolioData = docSnap.data();
-                     // Backwards compatibility for new features
-                    if (!portfolioData.recurringTransactions) {
+                    portfolioData = docSnap.data() || {};
+                    if (!Array.isArray(portfolioData.transactions)) portfolioData.transactions = [];
+                    // Backwards compatibility for new features
+                    if (!Array.isArray(portfolioData.recurringTransactions)) {
                         portfolioData.recurringTransactions = [];
                         needsSave = true;
                     }
-                    if (!portfolioData.activityLog) {
+                    if (!Array.isArray(portfolioData.activityLog)) {
                         portfolioData.activityLog = [];
                         needsSave = true;
                     }
@@ -1039,45 +1056,45 @@ await signOut(auth);
                     portfolioData = { username: '', transactions: [], recurringTransactions: [], activityLog: [] };
                     needsSave = true;
                 }
-                
-                if(cleanUpActivityLog()) {
+
+                if (cleanUpActivityLog()) {
                     needsSave = true;
                 }
 
-                if (!hasRecurringCheckRun) {
-                    const processed = await checkAndProcessRecurringTransactions();
-                    if(processed) needsSave = true;
-                    hasRecurringCheckRun = true;
-                }
-                
-                if (needsSave) {
-                    await saveDataToFirestore();
-                } 
-
+                // --- FAST FIRST RENDER ---
                 if (!isInitialDataLoaded) {
                     isInitialDataLoaded = true;
-                    
-                        scheduleEodSnapshotChecks();
-await updateDisplay();
+
+                    // Start EOD snapshot checks (auto-run only after market close, when app is open)
+                    scheduleEodSnapshotChecks();
+
+                    // Render immediately WITHOUT triggering background history rebuild
+                    // (history loads from Firestore historyDocRef listener if present)
+                    scheduleUiRefresh(true);
                 } else {
-                    await updateDisplay(false); // Subsequent updates won't re-fetch historical data
+                    scheduleUiRefresh(false);
                 }
 
-                if (isAutoRefreshEnabled && !isRefreshing) { // Check if not already refreshing
-                     startAutoRefresh(); 
-                } else {
-                    updateAutoRefreshButton();
-                }
-            }, (error) => console.error("Error listening to portfolio:", error));
+                // --- BACKGROUND MAINTENANCE (non-blocking) ---
+                setTimeout(async () => {
+                    try {
+                        let saveNow = needsSave;
 
-            const uiStateDocRef = doc(portfolioColRef, FIRESTORE_UI_STATE_DOC);
-            unsubscribeUiState = onSnapshot(uiStateDocRef, (docSnap) => {
-                if (docSnap.exists()) {
-                    uiState = docSnap.data();
-                }
+                        if (!hasRecurringCheckRun) {
+                            const processed = await checkAndProcessRecurringTransactions();
+                            if (processed) saveNow = true;
+                            hasRecurringCheckRun = true;
+                        }
+
+                        if (saveNow) {
+                            await saveDataToFirestore();
+                        }
+                    } catch (err) {
+                        console.warn("Background portfolio maintenance failed:", err);
+                    }
+                }, 0);
             });
-
-            const priceCacheDocRef = doc(portfolioColRef, FIRESTORE_PRICE_CACHE_DOC);
+const priceCacheDocRef = doc(portfolioColRef, FIRESTORE_PRICE_CACHE_DOC);
             const historyDocRef = doc(portfolioColRef, FIRESTORE_HISTORY_DOC);
             unsubscribePriceCache = onSnapshot(priceCacheDocRef, (docSnap) => {
                 if (docSnap.exists()) {
@@ -1795,6 +1812,11 @@ await updateDisplay();
                 console.warn("Data not fully loaded yet. Save operation skipped.");
                 return;
             }
+            if (saveInFlight) {
+                saveQueued = true;
+                return;
+            }
+            saveInFlight = true;
             try {
                 const userDocRef = doc(db, 'users', userId);
                 const portfolioColRef = collection(userDocRef, 'data');
@@ -1810,6 +1832,12 @@ await updateDisplay();
             } catch(e) {
                 console.error("Error saving to Firestore:", e);
                 updateDataStatus('error', "Save Failed");
+            } finally {
+                saveInFlight = false;
+                if (saveQueued) {
+                    saveQueued = false;
+                    setTimeout(() => saveDataToFirestore(), 0);
+                }
             }
         }
 
