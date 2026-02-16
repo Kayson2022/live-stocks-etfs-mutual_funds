@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -526,6 +527,86 @@
         let activeTab = 'investments';
         let historicalPriceCache = {}; // Session cache for historical price data
         let isUpdatingDisplay = false;
+let cachedMainHistory = null;
+let cachedVolatilityHistory = null;
+let historyBuildToken = 0;
+let historyBuildInFlight = false;
+let historyBuildQueued = false;
+let historyFetchBlockedUntilClose = true; // user preference: only fetch daily history after market close
+const failedHistoricalSymbols = new Set();
+
+function toISODate(d) {
+    return new Date(d).toISOString().slice(0, 10);
+}
+
+// US market close is 4:00pm ET = 1:00pm PT. Add a small buffer (15 min).
+function isUsMarketClosedNow() {
+    try {
+        const now = new Date();
+        const day = now.getDay(); // 0 Sun ... 6 Sat
+        if (day === 0 || day === 6) return true; // weekend
+        // Convert to America/Los_Angeles-like local time (this page runs in user's browser timezone)
+        const hours = now.getHours();
+        const minutes = now.getMinutes();
+        // after 13:15 local (PT) treat as closed (covers early closes imperfectly but ok)
+        return (hours > 13) || (hours === 13 && minutes >= 15);
+    } catch (e) {
+        return true;
+    }
+}
+
+function getPlaceholderHistory(currentHoldings) {
+    const today = toISODate(new Date());
+    let totalValue = 0;
+    for (const h of currentHoldings) {
+        // Exclude WATCHLIST items from portfolio totals
+        if ((h.accountType || '').toUpperCase() === WATCHLIST_ACCOUNT_TYPE) continue;
+        const shares = Number(h.totalShares || 0);
+        const price = Number(h.currentPrice || 0);
+        totalValue += shares * price;
+    }
+    return [{ date: today, value: totalValue }];
+}
+
+function requestHistoryBuild(reason = "") {
+    // Debounce / coalesce
+    if (historyBuildInFlight) { historyBuildQueued = true; return; }
+    historyBuildInFlight = true;
+    const token = ++historyBuildToken;
+
+    const runner = async () => {
+        try {
+            // Build portfolio history WITHOUT blocking the UI
+            const main = await buildPortfolioHistoryFromTransactions({ mode: "background", token });
+            if (token !== historyBuildToken) return;
+            cachedMainHistory = main;
+
+            // Refresh main chart with real history
+            await filterChart(activeChartFilter || "All", cachedMainHistory);
+
+            // Build volatility history (also deferred)
+            const vol = await buildVolatilityHistoryFromTransactions();
+            if (token !== historyBuildToken) return;
+            cachedVolatilityHistory = vol;
+
+            // Refresh stats once volatility is ready
+            const holdingsNow = calculateHoldingsAndCash();
+            const statsNow = calculateOverallStats(holdingsNow, cachedVolatilityHistory);
+            updateStats(statsNow);
+        } catch (err) {
+            console.warn("Background history build failed:", err);
+        } finally {
+            historyBuildInFlight = false;
+            if (historyBuildQueued) { historyBuildQueued = false; requestHistoryBuild("queued"); }
+        }
+    };
+
+    if ("requestIdleCallback" in window) {
+        requestIdleCallback(() => runner(), { timeout: 2000 });
+    } else {
+        setTimeout(() => runner(), 0);
+    }
+}
         
         // --- NEW STATE FOR REFRESH LOGIC ---
         let isRefreshing = false; 
@@ -1258,150 +1339,142 @@
         // --- END NEW FUNCTION ---
         
         // --- MODIFIED FUNCTION: Builds Unfiltered History for Main Chart ---
-        async function buildPortfolioHistoryFromTransactions() {
-            // This function now builds history for ALL holdings (used for the main historical chart).
-            
-            const transactions = (portfolioData.transactions || []).filter(t => t.accountType !== WATCHLIST_ACCOUNT_TYPE);
-            
-            if (transactions.length === 0) return [];
+        async function buildPortfolioHistoryFromTransactions(options = {}) {
+    // Goal: fast + non-blocking. No external history fetch here.
+    // We approximate using last-known prices and cash-equivalent transactions (price=1).
+    const sorted = [...portfolioData.transactions].sort((a, b) => new Date(a.date) - new Date(b.date));
+    if (sorted.length === 0) return [];
 
-            const sorted = [...transactions].sort((a, b) => new Date(a.date) - new Date(b.date) || a.id - b.id);
-            if (sorted.length === 0) return [];
-            
-            // Filter relevant transactions for price fetching (all non-cash, non-manual)
-            const relevantTransactions = sorted.filter(t => t.symbol && !isCashEquivalentType(t.type) && t.type !== 'Manual');
-            const allSymbols = [...new Set(relevantTransactions.map(t => t.symbol))];
+    // Determine date range
+    const firstDate = new Date(sorted[0].date);
+    const today = new Date();
+    const todayISO = toISODate(today);
 
-            // NOTE: Historical Price Fetching uses ALPHA VANTAGE and is not optimized for daily limits.
-            // We only fetch if prices are completely missing from session cache.
-            const symbolsToFetch = allSymbols.filter(s => historicalPriceCache[s] === undefined);
-            
-            if (symbolsToFetch.length > 0 && ALPHA_VANTAGE_API_KEY) {
-                 const MAX_AV_HISTORICAL_CALLS = 10; 
-                 const symbolsToFetchLimited = symbolsToFetch.slice(0, MAX_AV_HISTORICAL_CALLS);
-                
-                console.log(`Attempting to fetch historical data for ${symbolsToFetchLimited.length} of ${symbolsToFetch.length} symbols using Alpha Vantage...`);
-                
-                if (symbolsToFetch.length > MAX_AV_HISTORICAL_CALLS) {
-                    console.warn(`NOTE: Skipped historical fetch for ${symbolsToFetch.length - MAX_AV_HISTORICAL_CALLS} symbols to conserve Alpha Vantage limit.`);
-                }
-                
-                for (const symbol of symbolsToFetchLimited) {
-                    await delay(API_THROTTLE_DELAY * 2.5); 
-                    try {
-                        const outputSize = 'compact'; 
-                        const url = `${CORS_PROXY}https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${symbol}&outputsize=${outputSize}&apikey=${ALPHA_VANTAGE_API_KEY}`;
-                        const response = await fetch(url);
-                        
-                        // Error handling is complex here, keeping robust checks
-                        if (!response.ok) {
-                             console.warn(`Alpha Vantage failed historical fetch for ${symbol}: ${response.status}`);
-                             historicalPriceCache[symbol] = {}; 
-                             continue;
-                        }
-                        const text = await response.text();
-                        let data;
-                        try {
-                            data = JSON.parse(text);
-                        } catch (e) {
-                            console.error(`Alpha Vantage historical fetch error for ${symbol}: Non-JSON response received.`, e);
-                            historicalPriceCache[symbol] = {}; 
-                            continue;
-                        }
-                        
-                        if (data.Information || data.Note) {
-                            console.warn(`Alpha Vantage API limit likely reached for historical fetch of ${symbol}.`);
-                            historicalPriceCache[symbol] = {}; 
-                        } else if (data['Time Series (Daily)']) {
-                            historicalPriceCache[symbol] = data['Time Series (Daily)'];
-                        } else {
-                            console.warn(`No historical data returned for ${symbol}.`);
-                            historicalPriceCache[symbol] = {}; 
-                        }
-                    } catch (e) {
-                        console.error(`Network or JSON parse error fetching historical data for ${symbol}:`, e);
-                        historicalPriceCache[symbol] = {}; 
-                    }
-                }
-                
-                symbolsToFetch.slice(MAX_AV_HISTORICAL_CALLS).forEach(s => {
-                    historicalPriceCache[s] = {};
-                });
-            } else if (symbolsToFetch.length > 0 && !ALPHA_VANTAGE_API_KEY) {
-                 console.warn("Alpha Vantage API key is missing. Cannot fetch historical data for chart.");
-            }
+    // Resolution based on span (keeps long histories cheap)
+    const totalDays = Math.max(1, Math.ceil((today - firstDate) / (1000 * 60 * 60 * 24)));
+    let stepDays = 1;
+    if (totalDays > 3650) stepDays = 30;      // >10y -> monthly
+    else if (totalDays > 730) stepDays = 7;   // >2y  -> weekly
 
-            const dailySnapshots = {};
-            const firstDate = new Date(sorted[0].date);
-            const today = new Date();
-            const lastKnownPrices = {};
+    // Build a map of "position key" -> shares and lastKnownPrice
+    const positions = new Map(); // key => { symbol, name, type, accountType, platform, shares, lastPrice }
+    const setPos = (key, obj) => { positions.set(key, obj); return obj; };
+    const getPosKey = (t) => `${t.symbol}||${t.accountType}||${t.platform}||${t.type}`;
 
-            for (let d = new Date(firstDate); d <= today; d.setDate(d.getDate() + 1)) {
-                const dateString = d.toISOString().split('T')[0];
-                const transactionsUpToDate = sorted.filter(t => new Date(t.date) <= d);
-
-                let dailyTotalValue = 0;
-                const tempHoldings = {};
-
-                transactionsUpToDate.forEach(t => {
-                    const shares = parseFloat(t.shares) || 0;
-                    const price = parseFloat(t.price) || 0;
-                    const type = t.transactionType.toUpperCase();
-                    if (!t.symbol) return;
-                    const symbol = t.symbol.toUpperCase();
-
-                    if (!tempHoldings[symbol]) tempHoldings[symbol] = { totalShares: 0, totalCost: 0, type: t.type };
-
-                    if (type === 'BUY') {
-                        tempHoldings[symbol].totalShares += shares;
-                        tempHoldings[symbol].totalCost += shares * price;
-                    } else if (type === 'SELL') {
-                        if (tempHoldings[symbol].totalShares > 0) {
-                            const avgCost = tempHoldings[symbol].totalCost / tempHoldings[symbol].totalShares;
-                            tempHoldings[symbol].totalCost -= shares * avgCost;
-                        }
-                        tempHoldings[symbol].totalShares -= shares;
-                    }
-                });
-
-                Object.entries(tempHoldings).forEach(([symbol, holding]) => {
-                    if (holding.totalShares <= 0) return;
-
-                    if (isCashEquivalentType(holding.type)) {
-                        dailyTotalValue += holding.totalShares;
-                        return;
-                    }
-                    
-                    let priceForDate = lastKnownPrices[symbol]; 
-
-                    const symbolHistory = historicalPriceCache[symbol];
-                    if (symbolHistory && symbolHistory[dateString]) {
-                        priceForDate = parseFloat(symbolHistory[dateString]['4. close']);
-                    }
-                    
-                    if (priceForDate === undefined || priceForDate === null || priceForDate <= 0) {
-                        if (dateString === today.toISOString().split('T')[0] && priceCache[symbol]?.currentPrice) {
-                            priceForDate = priceCache[symbol].currentPrice;
-                        } 
-                        else if (priceCache[symbol]?.currentPrice) {
-                            priceForDate = priceCache[symbol].currentPrice;
-                        }
-                        else if (holding.totalShares > 0) { 
-                            priceForDate = (holding.totalCost / holding.totalShares) || 0;
-                        } else {
-                            priceForDate = 0;
-                        }
-                    }
-                    
-                    dailyTotalValue += holding.totalShares * priceForDate;
-                    lastKnownPrices[symbol] = priceForDate; 
-                });
-
-                dailySnapshots[dateString] = dailyTotalValue;
-            }
-
-            return Object.entries(dailySnapshots).map(([date, value]) => ({ date, value }));
+    // Helper: last known price fallback (current cache or last transaction price)
+    function getLastKnownPrice(symbol, fallback = 0) {
+        if (currentPriceCache && currentPriceCache[symbol] && isFinite(currentPriceCache[symbol].price)) {
+            return Number(currentPriceCache[symbol].price);
         }
+        return fallback;
+    }
+
+    // Apply transactions up to a given date using a moving index (O(n))
+    let txIndex = 0;
+    function applyTx(t) {
+        const key = getPosKey(t);
+        const shares = Number(t.shares || 0);
+        const price = Number(t.price || 0);
+        const isCashEq = isCashEquivalentType(t.type);
+
+        const existing = positions.get(key) || setPos(key, {
+            symbol: t.symbol,
+            name: t.name || t.symbol,
+            type: t.type,
+            accountType: t.accountType,
+            platform: t.platform,
+            shares: 0,
+            lastPrice: isCashEq ? 1 : getLastKnownPrice(t.symbol, price || 0)
+        });
+
+        if (t.transactionType === 'BUY') {
+            existing.shares += shares;
+            if (!isCashEq && price > 0) existing.lastPrice = price;
+        } else if (t.transactionType === 'SELL') {
+            existing.shares -= shares;
+            if (!isCashEq && price > 0) existing.lastPrice = price;
+        }
+        if (isCashEq) existing.lastPrice = 1;
+
+        // Clean near-zero
+        if (Math.abs(existing.shares) < 1e-9) {
+            positions.delete(key);
+        } else {
+            positions.set(key, existing);
+        }
+    }
+
+    function updatePricesForDate(dateISO) {
+        // If we ever have historicalPriceCache data, let it update lastPrice, otherwise keep lastPrice.
+        for (const [key, pos] of positions) {
+            if (isCashEquivalentType(pos.type)) { pos.lastPrice = 1; continue; }
+
+            // Historical close if available
+            const hp = historicalPriceCache && historicalPriceCache[pos.symbol] && historicalPriceCache[pos.symbol][dateISO];
+            if (hp && hp['4. close']) {
+                const close = Number(hp['4. close']);
+                if (isFinite(close) && close > 0) pos.lastPrice = close;
+            } else if (dateISO === todayISO) {
+                // Use latest cached price for today
+                pos.lastPrice = getLastKnownPrice(pos.symbol, pos.lastPrice || 0);
+            }
+        }
+    }
+
+    const history = [];
+    let current = new Date(firstDate);
+    // Align to midnight to avoid DST / time drift
+    current.setHours(0, 0, 0, 0);
+
+    const end = new Date(today);
+    end.setHours(0, 0, 0, 0);
+
+    let pointsBuilt = 0;
+
+    while (current <= end) {
+        const dateISO = toISODate(current);
+
+        // Apply all transactions with date <= current (inclusive)
+        while (txIndex < sorted.length && new Date(sorted[txIndex].date) <= current) {
+            applyTx(sorted[txIndex]);
+            txIndex += 1;
+        }
+
+        updatePricesForDate(dateISO);
+
+        // Compute total value (exclude WATCHLIST)
+        let totalValue = 0;
+        for (const pos of positions.values()) {
+            if ((pos.accountType || '').toUpperCase() === WATCHLIST_ACCOUNT_TYPE) continue;
+            totalValue += (Number(pos.shares || 0) * Number(pos.lastPrice || 0));
+        }
+
+        history.push({ date: dateISO, value: totalValue });
+
+        // Yield occasionally so UI stays responsive
+        pointsBuilt += 1;
+        if (pointsBuilt % 200 === 0) {
+            await new Promise(r => setTimeout(r, 0));
+        }
+
+        // Step forward
+        current.setDate(current.getDate() + stepDays);
+    }
+
+    // Ensure last point is today (in case stepDays skipped it)
+    if (history.length && history[history.length - 1].date !== todayISO) {
+        updatePricesForDate(todayISO);
+        let totalValue = 0;
+        for (const pos of positions.values()) {
+            if ((pos.accountType || '').toUpperCase() === WATCHLIST_ACCOUNT_TYPE) continue;
+            totalValue += (Number(pos.shares || 0) * Number(pos.lastPrice || 0));
+        }
+        history.push({ date: todayISO, value: totalValue });
+    }
+
+    return history;
+}
+
         // --- END MODIFIED FUNCTION ---
 
         // --- NEW FUNCTION: Builds Filtered History for Volatility Stat ONLY ---
@@ -2885,19 +2958,19 @@
                 if (!isInitialDataLoaded) return;
                 const currentHoldings = calculateHoldingsAndCash(); // Gets ALL holdings
 
-                let mainHistory = [];
-                let volatilityHistory = [];
-                
-                if (fetchHistorical) {
-                    mainHistory = await buildPortfolioHistoryFromTransactions(); // Unfiltered history for main chart
-                    volatilityHistory = await buildVolatilityHistoryFromTransactions(); // Filtered history for volatility stat
-                } else {
-                    // If not fetching new prices, re-use/recalculate based on existing data
-                    mainHistory = await buildPortfolioHistoryFromTransactions(); 
-                    volatilityHistory = await buildVolatilityHistoryFromTransactions(); 
+                let mainHistory = cachedMainHistory;
+                let volatilityHistory = cachedVolatilityHistory || [];
+
+                // Never block first paint: show a placeholder chart immediately if we don't have cached history yet.
+                if (!mainHistory || mainHistory.length === 0) {
+                    mainHistory = getPlaceholderHistory(currentHoldings);
                 }
 
-                // Pass ALL holdings and FILTERED history for volatility stat
+                // Option 2: build history later, after UI is usable
+                if (fetchHistorical && (!cachedMainHistory || cachedMainHistory.length === 0)) {
+                    requestHistoryBuild("updateDisplay");
+                }
+
                 const stats = calculateOverallStats(currentHoldings, volatilityHistory);
                 updateUserNameDisplay();
                 updateStats(stats);
