@@ -1,5 +1,4 @@
 
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -480,7 +479,7 @@ const _idle = (fn, timeout = 1200) => {
         import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
         // Import getDoc for the new session logic
-        import { getFirestore, doc, setDoc, onSnapshot, collection, writeBatch, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, onSnapshot, collection, writeBatch, getDoc, getDocs, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
         // --- GLOBAL APP STATE ---
         const FIRESTORE_DATA_DOC = 'portfolioData';
@@ -513,7 +512,23 @@ const _idle = (fn, timeout = 1200) => {
         let firebaseApp, db, auth, userId;
         let unsubscribePortfolio, unsubscribeUiState, unsubscribePriceCache, unsubscribeSession; 
 
-        let portfolioData = {
+        
+        // ===== BUILD / LAG-KILLER GUARD =====
+        // Hard block any accidental AlphaVantage / allorigins fetches (they cause long hangs/timeouts)
+        (function installFetchBlocker(){
+            const _fetch = window.fetch ? window.fetch.bind(window) : null;
+            if (!_fetch) return;
+            window.fetch = (input, init) => {
+                const url = (typeof input === "string") ? input : (input && input.url) ? input.url : "";
+                if (url.includes("alphavantage.co") || url.includes("api.allorigins.win")) {
+                    console.warn("[LagKiller] Blocked external fetch:", url);
+                    return Promise.reject(new Error("LagKiller blocked external fetch: " + url));
+                }
+                return _fetch(input, init);
+            };
+        })();
+
+let portfolioData = {
              username: '',
              transactions: [],
              recurringTransactions: [],
@@ -684,6 +699,9 @@ let __historyBuildPromise = null;
                         try {
                             const userDocRef = doc(db, 'users', userId);
                             const portfolioColRef = collection(userDocRef, 'data');
+
+            const historyColRef = collection(userDocRef, 'portfolioHistory');
+
                             const sessionDocRef = doc(portfolioColRef, FIRESTORE_SESSION_DOC);
                             const docSnap = await getDoc(sessionDocRef);
                             if (docSnap.exists() && docSnap.data().invalidationToken) {
@@ -700,6 +718,7 @@ let __historyBuildPromise = null;
                         // --- END INTEGRATED SESSION LOGIC ---
 
                         await setupFirestoreListeners(); // Setup listeners, including the session listener
+                        scheduleAfterCloseSnapshot();
                         updateDataStatus(true); // Call updateDataStatus here - FIXED
                     } else {
                         userId = user?.uid; // Keep anonymous ID if exists
@@ -801,9 +820,10 @@ let __historyBuildPromise = null;
 
                 if (!isInitialDataLoaded) {
                     isInitialDataLoaded = true;
-                    await updateDisplay();
-                } else {
-                    await updateDisplay(false); // Subsequent updates won't re-fetch historical data
+                    updateDisplay(false).catch(err=>console.error("updateDisplay error", err));
+} else {
+                    updateDisplay(false).catch(err=>console.error("updateDisplay error", err));
+// Subsequent updates won't re-fetch historical data
                 }
 
                 if (isAutoRefreshEnabled && !isRefreshing) { // Check if not already refreshing
@@ -812,6 +832,28 @@ let __historyBuildPromise = null;
                     updateAutoRefreshButton();
                 }
             }, (error) => console.error("Error listening to portfolio:", error));
+
+
+
+            // --- Portfolio History Snapshots (FAST) ---
+            if (unsubscribeHistory) unsubscribeHistory();
+            try {
+                const qHist = query(historyColRef, orderBy("date", "asc"), limit(1200));
+                unsubscribeHistory = onSnapshot(qHist, (snap) => {
+                    const rows = [];
+                    snap.forEach(d => {
+                        const data = d.data() || {};
+                        if (data.date && isFinite(data.value)) rows.push({ date: String(data.date), value: Number(data.value) });
+                    });
+                    cachedMainHistory = rows;
+                    // Update chart only (non-blocking) once we have history.
+                    if (isInitialDataLoaded) {
+                        updateDisplay(false).catch(err=>console.error("updateDisplay error", err));
+                    }
+                }, (error) => console.error("Error listening to portfolioHistory:", error));
+            } catch(e) {
+                console.warn("portfolioHistory listener skipped:", e);
+            }
 
             const uiStateDocRef = doc(portfolioColRef, FIRESTORE_UI_STATE_DOC);
             unsubscribeUiState = onSnapshot(uiStateDocRef, (docSnap) => {
@@ -1345,94 +1387,75 @@ let __historyBuildPromise = null;
 
         // --- NEW FUNCTION: Builds Filtered History for Volatility Stat ONLY ---
         async function buildVolatilityHistoryFromTransactions() {
-             // Requirement: Stocks, ETFs, Mutual Funds, but EXCLUDE 401(k) and 529. Also include Cash.
-            const typesToInclude = ['Stock', 'ETF', 'Mutual Fund'];
-            const accountsToExclude = ['401(k)', '529 College Saving'];
-            
-            const transactions = (portfolioData.transactions || []).filter(t => 
-                t.accountType !== WATCHLIST_ACCOUNT_TYPE && 
-                !accountsToExclude.includes(t.accountType) &&
-                (typesToInclude.includes(t.type) || isCashEquivalentType(t.type))
-            );
-            
-            if (transactions.length === 0) return [];
+    // High-performance volatility history builder (local-only).
+    // Uses Firestore snapshots (historicalPriceCache) when available, and falls back to current priceCache.
+    const typesToInclude = ['Stock', 'ETF', 'Mutual Fund'];
+    const accountsToExclude = ['401(k)', '529 College Saving'];
 
-            const sorted = [...transactions].sort((a, b) => new Date(a.date) - new Date(b.date) || a.id - b.id);
-            if (sorted.length === 0) return [];
-            
-            // Re-use all cached historical data (no need to refetch if not in main history)
-            const dailySnapshots = {};
-            const firstDate = new Date(sorted[0].date);
-            const today = new Date();
-            const lastKnownPrices = {};
+    const transactions = (portfolioData.transactions || []).filter(t =>
+        (t.accountType || '') !== WATCHLIST_ACCOUNT_TYPE &&
+        !accountsToExclude.includes(t.accountType) &&
+        (typesToInclude.includes(t.type) || isCashEquivalentType(t.type))
+    );
 
-            for (let d = new Date(firstDate); d <= today; d.setDate(d.getDate() + 1)) {
-                const dateString = d.toISOString().split('T')[0];
-                const transactionsUpToDate = sorted.filter(t => new Date(t.date) <= d);
+    if (transactions.length === 0) return [];
 
-                let dailyTotalValue = 0;
-                const tempHoldings = {};
+    const sorted = [...transactions].sort((a, b) => new Date(a.date) - new Date(b.date));
 
-                transactionsUpToDate.forEach(t => {
-                    const shares = parseFloat(t.shares) || 0;
-                    const price = parseFloat(t.price) || 0;
-                    const type = t.transactionType.toUpperCase();
-                    if (!t.symbol) return;
-                    const symbol = t.symbol.toUpperCase();
+    const history = [];
+    const positions = new Map();
+    let txIndex = 0;
 
-                    if (!tempHoldings[symbol]) tempHoldings[symbol] = { totalShares: 0, totalCost: 0, type: t.type };
+    let current = new Date(sorted[0].date);
+    current.setHours(0, 0, 0, 0);
 
-                    if (type === 'BUY') {
-                        tempHoldings[symbol].totalShares += shares;
-                        tempHoldings[symbol].totalCost += shares * price;
-                    } else if (type === 'SELL') {
-                        if (tempHoldings[symbol].totalShares > 0) {
-                            const avgCost = tempHoldings[symbol].totalCost / tempHoldings[symbol].totalShares;
-                            tempHoldings[symbol].totalCost -= shares * avgCost;
-                        }
-                        tempHoldings[symbol].totalShares -= shares;
-                    }
-                });
+    const end = new Date();
+    end.setHours(0, 0, 0, 0);
 
-                Object.entries(tempHoldings).forEach(([symbol, holding]) => {
-                    if (holding.totalShares <= 0) return;
+    while (current <= end) {
+        const dateISO = toISODate(current);
 
-                    if (isCashEquivalentType(holding.type)) {
-                        dailyTotalValue += holding.totalShares;
-                        return;
-                    }
-                    
-                    let priceForDate = lastKnownPrices[symbol]; 
+        // Incrementally apply transactions up to "current" day (O(n) overall, not O(n^2))
+        while (txIndex < sorted.length && new Date(sorted[txIndex].date) <= current) {
+            const t = sorted[txIndex];
+            const symbol = (t.symbol || '').toUpperCase();
+            if (!symbol) { txIndex++; continue; }
 
-                    // Use price from historical price cache (which was populated by main history builder)
-                    const symbolHistory = historicalPriceCache[symbol];
-                    if (symbolHistory && symbolHistory[dateString]) {
-                        priceForDate = parseFloat(symbolHistory[dateString]['4. close']);
-                    }
-                    
-                    if (priceForDate === undefined || priceForDate === null || priceForDate <= 0) {
-                        if (dateString === today.toISOString().split('T')[0] && priceCache[symbol]?.currentPrice) {
-                            priceForDate = priceCache[symbol].currentPrice;
-                        } 
-                        else if (priceCache[symbol]?.currentPrice) {
-                            priceForDate = priceCache[symbol].currentPrice;
-                        }
-                        else if (holding.totalShares > 0) { 
-                            priceForDate = (holding.totalCost / holding.totalShares) || 0;
-                        } else {
-                            priceForDate = 0;
-                        }
-                    }
-                    
-                    dailyTotalValue += holding.totalShares * priceForDate;
-                    lastKnownPrices[symbol] = priceForDate; 
-                });
+            const existing = positions.get(symbol) || { shares: 0, type: t.type };
+            const shares = Number(t.shares || 0);
 
-                dailySnapshots[dateString] = dailyTotalValue;
-            }
+            if ((t.transactionType || '').toUpperCase() === 'BUY') existing.shares += shares;
+            else if ((t.transactionType || '').toUpperCase() === 'SELL') existing.shares -= shares;
 
-            return Object.entries(dailySnapshots).map(([date, value]) => ({ date, value }));
+            positions.set(symbol, existing);
+            txIndex++;
         }
+
+        let dayValue = 0;
+        for (const [symbol, pos] of positions) {
+            // Snapshot first
+            const hp = historicalPriceCache && historicalPriceCache[symbol] && historicalPriceCache[symbol][dateISO];
+            const snapPrice = hp ? Number(hp['4. close']) : null;
+
+            // Fallback to current priceCache
+            const curPrice = (priceCache && priceCache[symbol] && isFinite(priceCache[symbol].currentPrice))
+                ? Number(priceCache[symbol].currentPrice)
+                : 0;
+
+            const price = isCashEquivalentType(pos.type) ? 1 : (isFinite(snapPrice) ? snapPrice : curPrice);
+            dayValue += (Number(pos.shares || 0) * price);
+        }
+
+        history.push({ date: dateISO, value: dayValue });
+
+        current.setDate(current.getDate() + 1);
+
+        // Yield to UI periodically
+        if (history.length % 500 === 0) await new Promise(r => setTimeout(r, 0));
+    }
+
+    return history;
+}
         // --- END NEW FUNCTION ---
 
         // --- Data Persistence Functions (Unchanged from uploaded file, except clearAllData modified) ---
@@ -1800,7 +1823,8 @@ let __historyBuildPromise = null;
                 updateRefreshProgress('completed', refreshStats.total, totalFetched, null, refreshStats.gained, refreshStats.lost, refreshStats.failed);
                 logActivity(`Refreshed prices for ${totalFetched} Stocks/ETFs.`);
                 await saveDataToFirestore(); // Save updated price cache
-                await updateDisplay(false); // Update UI with new prices (don't refetch history)
+                updateDisplay(false).catch(err=>console.error("updateDisplay error", err));
+// Update UI with new prices (don't refetch history)
             
             } catch (error) {
                  // --- Catch block for errors during the refresh loop or subsequent saves ---
@@ -2816,7 +2840,93 @@ let __historyBuildPromise = null;
         // --- End Calculation/Rendering ---
 
         // --- Main Update Function (MODIFIED to include volatility calculation) ---
-        async function updateDisplay(fetchHistorical = false) {
+        
+
+        // ===== SNAPSHOTS (after market close) =====
+        const SNAPSHOT_TZ = "America/New_York"; // market close reference
+        const SNAPSHOT_HOUR_ET = 16; // 4:00pm ET close
+        const SNAPSHOT_MIN_ET = 10;  // wait 10 mins after close
+
+        function _getNowInTZ(tz) {
+            // Returns parts in the target timezone (year, month, day, hour, minute, weekday)
+            const fmt = new Intl.DateTimeFormat("en-US", {
+                timeZone: tz,
+                year: "numeric", month: "2-digit", day: "2-digit",
+                hour: "2-digit", minute: "2-digit", hour12: false,
+                weekday: "short"
+            });
+            const parts = Object.fromEntries(fmt.formatToParts(new Date()).map(p => [p.type, p.value]));
+            return {
+                year: Number(parts.year),
+                month: Number(parts.month),
+                day: Number(parts.day),
+                hour: Number(parts.hour),
+                minute: Number(parts.minute),
+                weekday: parts.weekday
+            };
+        }
+
+        function _tzDateISO(tz) {
+            const p = _getNowInTZ(tz);
+            const mm = String(p.month).padStart(2, "0");
+            const dd = String(p.day).padStart(2, "0");
+            return `${p.year}-${mm}-${dd}`;
+        }
+
+        async function takeDailySnapshot(reason = "auto_after_close") {
+            if (!userId) throw new Error("Not signed in");
+            const holdings = calculateHoldingsAndCash();
+            const dateISO = _tzDateISO(SNAPSHOT_TZ); // align to market date
+            const userDocRef = doc(db, "users", userId);
+            const snapRef = doc(collection(userDocRef, "portfolioHistory"), dateISO);
+
+            const payload = {
+                date: dateISO,
+                value: Number(holdings.totalValue || 0),
+                reason,
+                updatedAt: serverTimestamp(),
+            };
+
+            await setDoc(snapRef, payload, { merge: true });
+            console.log("[Snapshot] saved", payload);
+        }
+
+        function manualSnapshot() {
+            takeDailySnapshot("manual_button")
+                .then(() => alert("Snapshot saved for today."))
+                .catch(err => alert("Snapshot failed: " + (err?.message || err)));
+        }
+
+        function scheduleAfterCloseSnapshot() {
+            // Holiday handling later; for now: weekdays only, 10 minutes after close.
+            const key = "lastSnapshotDateISO";
+            const tick = async () => {
+                try {
+                    if (!userId) return;
+                    const p = _getNowInTZ(SNAPSHOT_TZ);
+                    const weekday = (p.weekday || "").toLowerCase();
+                    const isWeekend = weekday.startsWith("sat") || weekday.startsWith("sun");
+                    if (isWeekend) return;
+
+                    const dateISO = _tzDateISO(SNAPSHOT_TZ);
+                    const last = localStorage.getItem(key);
+                    if (last === dateISO) return;
+
+                    const afterClose = (p.hour > SNAPSHOT_HOUR_ET) || (p.hour === SNAPSHOT_HOUR_ET && p.minute >= SNAPSHOT_MIN_ET);
+                    if (!afterClose) return;
+
+                    await takeDailySnapshot("auto_after_close");
+                    localStorage.setItem(key, dateISO);
+                } catch (e) {
+                    console.warn("[Snapshot] auto tick error", e);
+                }
+            };
+
+            // Run now (in case app opens after close) and then every minute.
+            tick();
+            setInterval(tick, 60 * 1000);
+        }
+async function updateDisplay(fetchHistorical = false) {
     // Goal: show "today's" values ASAP, then do heavy stuff later.
     if (isUpdatingDisplay) return;
     isUpdatingDisplay = true;
@@ -3751,7 +3861,7 @@ let __historyBuildPromise = null;
                 <select id="recurringFrequency" required>
                     <option value="weekly">Weekly</option>
                     <option value="bi-weekly">Every 2 Weeks</option>
-                    <option valueF="monthly">Monthly</option>
+                    <option value="monthly">Monthly</option>
                 </select>
             </div>
             <div class="form-group">
@@ -3850,7 +3960,8 @@ let __historyBuildPromise = null;
             <button type="button" class="btn" id="toggleAutoRefreshBtn" onclick="toggleAutoRefresh()">Pause Auto-Refresh</button>
             <!-- MODIFICATION: Renamed button back to original -->
             <button type="button" class="btn btn-secondary" id="refreshMFBtn" onclick="refreshMutualFunds()">Refresh Mutual Funds</button>
-            <button type="button" class="btn" onclick="refreshAllPrices(true)">Refresh Now</button>
+                        <button type="button" class="btn btn-secondary" id="manualSnapshotBtn" onclick="manualSnapshot()">Manual Snapshot</button>
+<button type="button" class="btn" onclick="refreshAllPrices(true)">Refresh Now</button>
         </div>
         <div class="charts-section">
             <div class="chart-container">
