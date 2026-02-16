@@ -3197,42 +3197,60 @@ const priceCacheDocRef = doc(portfolioColRef, FIRESTORE_PRICE_CACHE_DOC);
         // --- End Calculation/Rendering ---
 
         // --- Main Update Function (MODIFIED to include volatility calculation) ---
-        async function updateDisplay(fetchHistorical = true) {
-            if (isUpdatingDisplay) return; 
-            isUpdatingDisplay = true;
+        async function updateDisplay(fetchHistorical = false) {
+    if (isUpdatingDisplay) return;
+    isUpdatingDisplay = true;
 
+    try {
+        if (!isInitialDataLoaded) return;
+
+        // 1) Fast: compute current state from local caches
+        const currentHoldings = calculateHoldingsAndCash();
+
+        // 2) Fast: render critical UI immediately (no network, no heavy loops)
+        updateUserNameDisplay();
+
+        // Use snapshot/cached history if available; otherwise show a tiny placeholder chart first.
+        const mainHistory = (cachedMainHistory && cachedMainHistory.length) 
+            ? cachedMainHistory 
+            : getPlaceholderHistory(currentHoldings);
+
+        const volatilityHistory = cachedVolatilityHistory || [];
+        const stats = calculateOverallStats(currentHoldings, volatilityHistory);
+        updateStats(stats);
+
+        // 3) Fast: render holdings list (keeps app usable right away)
+        populatePlatformFilter();
+        renderInvestments(currentHoldings);
+
+        // 4) Defer heavy UI work (transactions table) to idle time to avoid "database load lag"
+        const defer = (fn) => {
             try {
-                if (!isInitialDataLoaded) return;
-                const currentHoldings = calculateHoldingsAndCash(); // Gets ALL holdings
-
-                let mainHistory = cachedMainHistory;
-                let volatilityHistory = cachedVolatilityHistory || [];
-
-                // Never block first paint: show a placeholder chart immediately if we don't have cached history yet.
-                if (!mainHistory || mainHistory.length === 0) {
-                    mainHistory = getPlaceholderHistory(currentHoldings);
+                if (window.requestIdleCallback) {
+                    requestIdleCallback(() => { try { fn(); } catch (e) { console.warn(e); } }, { timeout: 2000 });
+                } else {
+                    setTimeout(() => { try { fn(); } catch (e) { console.warn(e); } }, 0);
                 }
-
-                // Option 2: build history later, after UI is usable
-                if (fetchHistorical && (!cachedMainHistory || cachedMainHistory.length === 0)) {
-                    requestHistoryBuild("updateDisplay");
-                }
-
-                const stats = calculateOverallStats(currentHoldings, volatilityHistory);
-                updateUserNameDisplay();
-                updateStats(stats);
-                
-                // Use UNFILTERED history for the main chart visualization
-                await filterChart(activeChartFilter, mainHistory); 
-                
-                populatePlatformFilter();
-                renderInvestments(currentHoldings); // Use ALL holdings for list
-                renderAllTransactions();
-            } finally {
-                isUpdatingDisplay = false;
+            } catch (e) {
+                console.warn(e);
             }
+        };
+        defer(() => renderAllTransactions());
+
+        // 5) Chart update should NOT block first paint
+        Promise.resolve()
+            .then(() => filterChart(activeChartFilter, mainHistory))
+            .catch(err => console.warn("filterChart error:", err));
+
+        // 6) Optional: only request a background history build if explicitly asked AND we have zero cached history
+        if (fetchHistorical && (!cachedMainHistory || cachedMainHistory.length === 0)) {
+            defer(() => requestHistoryBuild("background_init"));
         }
-        // --- End Main Update ---
+    } finally {
+        isUpdatingDisplay = false;
+    }
+}
+// --- End Main Update ---
 
         // --- MODAL Functions for Editing Data (MODIFIED for G/L) ---
         function openEditModal(transactionId) {
