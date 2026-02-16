@@ -462,13 +462,14 @@
         import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
         // Import getDoc for the new session logic
-        import { getFirestore, doc, setDoc, onSnapshot, collection, writeBatch, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, serverTimestamp, onSnapshot, collection, writeBatch, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
         // --- GLOBAL APP STATE ---
         const FIRESTORE_DATA_DOC = 'portfolioData';
         const FIRESTORE_UI_STATE_DOC = 'uiState';
         const FIRESTORE_PRICE_CACHE_DOC = 'priceCache';
         const FIRESTORE_SESSION_DOC = 'sessionManagement'; // Document for session control - ADDED
+        const FIRESTORE_HISTORY_DOC = 'portfolioHistory';
 
         const THEME_KEY = 'myPortfolioTheme_v4';
         const AUTO_REFRESH_STATE_KEY = 'myPortfolioAutoRefreshState_v4';
@@ -478,7 +479,10 @@
         const FMP_API_KEY_STORAGE = 'myPortfolioFmpKey_v4';
         const REFRESH_INTERVAL_KEY = 'myPortfolioRefreshInterval_v4';
         const FINNHUB_PROXY = "https://finnhub-proxy.giolamchieu1975.workers.dev";
-		const CORS_PROXY = "https://api.allorigins.win/raw?url=";
+		const CORS_PROXY = ""; // leave blank unless you run your own proxy
+const ENABLE_ALPHA_VANTAGE = false; // set true only if you have a working proxy
+const ENABLE_FINNHUB_SEARCH = false; // finnhub search endpoint often blocks CORS; enable only if proxied
+
 
 
 
@@ -488,14 +492,16 @@
         const CACHE_STALE_TIME_SLOW = 12 * 60 * 60 * 1000; // 12 hours for Mutual Funds, etc.
 
         let FINNHUB_API_KEY = 'd316lc1r01qnu2r0opjgd316lc1r01qnu2r0opk0';
-        let ALPHA_VANTAGE_API_KEY = '0ZPH51BZ2N5O9G8Q';
+        let ALPHA_VANTAGE_API_KEY = '';
         let FMP_API_KEY = 'vOqUU3gDIDYWghK8m4ZlsVQwLDnhfYMS';
         const WATCHLIST_ACCOUNT_TYPE = 'Yahoo Finance';
 
         let firebaseApp, db, auth, userId;
-        let unsubscribePortfolio, unsubscribeUiState, unsubscribePriceCache, unsubscribeSession; 
-
-        let portfolioData = {
+        let unsubscribePortfolio, unsubscribeUiState, unsubscribePriceCache, unsubscribeHistory, unsubscribeSession; 
+        let cachedHistoryMeta = { lastSnapshotDate: null };
+        let snapshotInFlight = false;
+        let snapshotCheckTimer = null;
+let portfolioData = {
              username: '',
              transactions: [],
              recurringTransactions: [],
@@ -540,18 +546,54 @@ function toISODate(d) {
 }
 
 // US market close is 4:00pm ET = 1:00pm PT. Add a small buffer (15 min).
+function _getTzParts(timeZone) {
+    const dtf = new Intl.DateTimeFormat('en-US', {
+        timeZone,
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+        weekday: 'short',
+        hour12: false
+    });
+    const parts = dtf.formatToParts(new Date());
+    const out = {};
+    for (const p of parts) {
+        if (p.type !== 'literal') out[p.type] = p.value;
+    }
+    return {
+        year: Number(out.year),
+        month: Number(out.month),
+        day: Number(out.day),
+        hour: Number(out.hour),
+        minute: Number(out.minute),
+        second: Number(out.second),
+        weekday: out.weekday // 'Mon', 'Tue', ...
+    };
+}
+
+function _nyDateId() {
+    const p = _getTzParts('America/New_York');
+    const mm = String(p.month).padStart(2,'0');
+    const dd = String(p.day).padStart(2,'0');
+    return `${p.year}-${mm}-${dd}`;
+}
+
+// Basic (non-holiday / non-early-close) market-closed check:
+// - Weekend => closed
+// - Mon–Fri => closed after 4:10pm ET (buffer after close)
 function isUsMarketClosedNow() {
     try {
-        const now = new Date();
-        const day = now.getDay(); // 0 Sun ... 6 Sat
-        if (day === 0 || day === 6) return true; // weekend
-        // Convert to America/Los_Angeles-like local time (this page runs in user's browser timezone)
-        const hours = now.getHours();
-        const minutes = now.getMinutes();
-        // after 13:15 local (PT) treat as closed (covers early closes imperfectly but ok)
-        return (hours > 13) || (hours === 13 && minutes >= 15);
+        const p = _getTzParts('America/New_York');
+        const wd = (p.weekday || '').toLowerCase();
+        if (wd.startsWith('sat') || wd.startsWith('sun')) return true;
+
+        const closeHour = 16;
+        const closeMinute = 10; // buffer after close for stable "closing" price
+        if (p.hour > closeHour) return true;
+        if (p.hour < closeHour) return false;
+        return p.minute >= closeMinute;
     } catch (e) {
-        return true;
+        // Fallback: assume open (safer to avoid running snapshots early)
+        return false;
     }
 }
 
@@ -607,6 +649,161 @@ function requestHistoryBuild(reason = "") {
         setTimeout(() => runner(), 0);
     }
 }
+
+
+// ------------------------------
+// Daily EOD Snapshot (Firestore)
+// ------------------------------
+// Goal: After market close, write ONE snapshot for the day into Firestore so next-day startup loads history instantly.
+// Holidays / early closes can be handled later (this uses a simple weekday + 4:10pm ET rule).
+
+async function _writeDailySnapshotToFirestore({ dateId, totalValue, totalCostBasis, totalCash, positionsCount, note = "" }) {
+    if (!auth.currentUser) throw new Error("Not signed in.");
+    const userDocRef = doc(db, 'users', auth.currentUser.uid);
+    const portfolioColRef = collection(userDocRef, 'data');
+    const historyDocRef = doc(portfolioColRef, FIRESTORE_HISTORY_DOC);
+
+    // Read-modify-write (small doc; simplest and reliable)
+    const snap = await getDoc(historyDocRef);
+    let main = [];
+    let volatility = [];
+    let lastSnapshotDate = null;
+    if (snap.exists()) {
+        const h = snap.data() || {};
+        if (Array.isArray(h.main)) main = h.main.slice();
+        if (Array.isArray(h.volatility)) volatility = h.volatility.slice();
+        lastSnapshotDate = h.lastSnapshotDate || null;
+    }
+
+    // Replace today's point (idempotent)
+    main = main.filter(p => p && p.date !== dateId);
+    main.push({
+        date: dateId,
+        value: Number(totalValue || 0),
+        costBasis: Number(totalCostBasis || 0),
+        cash: Number(totalCash || 0),
+        positions: Number(positionsCount || 0),
+        note: note || "",
+        clientTs: Date.now()
+    });
+    main.sort((a,b) => String(a.date).localeCompare(String(b.date)));
+
+    await setDoc(historyDocRef, {
+        main,
+        volatility,
+        lastSnapshotDate: dateId,
+        updatedAt: serverTimestamp()
+    }, { merge: true });
+
+    // Update in-memory cache immediately (so chart updates without reload)
+    cachedMainHistory = main;
+    cachedHistoryMeta.lastSnapshotDate = dateId;
+}
+
+
+function _escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, (m) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+    }[m]));
+}
+
+function _showStatusCard(messageHtml, autoHideMs = 5000) {
+    const box = document.getElementById('refreshStatusBox');
+    const card = document.getElementById('refreshMessageCard');
+    if (!box || !card) return;
+    box.style.display = 'block';
+    card.innerHTML = messageHtml;
+    if (autoHideMs && autoHideMs > 0) {
+        setTimeout(() => { box.style.display = 'none'; }, autoHideMs);
+    }
+}
+
+async function takeDailySnapshot({ force = false, note = "" } = {}) {
+    if (snapshotInFlight) return;
+    snapshotInFlight = true;
+
+    try {
+        if (!auth.currentUser) throw new Error("Please sign in first.");
+
+        const marketClosed = isUsMarketClosedNow();
+        if (!marketClosed && !force) {
+            _showStatusCard(`⚠️ Snapshot skipped: market is still open. (Use the 📸 button again if you want to force it.)`, 7000);
+            return;
+        }
+
+        const todayId = _nyDateId();
+        if (!force && cachedHistoryMeta.lastSnapshotDate === todayId) {
+            _showStatusCard(`✅ Snapshot already exists for <b>${todayId}</b>.`, 4000);
+            return;
+        }
+
+        _showStatusCard(`📸 Taking snapshot for <b>${todayId}</b>...`, 0);
+
+        // Ensure we have up-to-date prices first (fast; uses your normal quote sources)
+        await refreshAllPrices();
+
+        const agg = calculateHoldingsAndCash();
+        const totalValue = (agg?.totals?.totalValue ?? agg?.totals?.totalHoldingsValue ?? 0) + (agg?.totals?.totalCash ?? 0);
+        const totalCostBasis = agg?.totals?.totalCostBasis ?? 0;
+        const totalCash = agg?.totals?.totalCash ?? 0;
+        const positionsCount = Array.isArray(agg?.holdings) ? agg.holdings.length : 0;
+
+        await _writeDailySnapshotToFirestore({
+            dateId: todayId,
+            totalValue,
+            totalCostBasis,
+            totalCash,
+            positionsCount,
+            note
+        });
+
+        _showStatusCard(`✅ Snapshot saved for <b>${todayId}</b>.`, 5000);
+    } catch (e) {
+        console.error("Snapshot failed:", e);
+        _showStatusCard(`❌ Snapshot failed: ${_escapeHtml(String(e?.message || e))}`, 9000);
+    } finally {
+        snapshotInFlight = false;
+    }
+}
+
+function scheduleEodSnapshotChecks() {
+    // Clear any existing timer
+    if (snapshotCheckTimer) {
+        clearInterval(snapshotCheckTimer);
+        snapshotCheckTimer = null;
+    }
+
+    // Check soon after load, then every 5 minutes
+    const tick = () => {
+        try {
+            if (!auth.currentUser) return;
+            if (!isInitialDataLoaded) return;
+
+            // Only run automatically after close
+            if (!isUsMarketClosedNow()) return;
+
+            const todayId = _nyDateId();
+            if (cachedHistoryMeta.lastSnapshotDate === todayId) return;
+
+            // Fire and forget (guarded by snapshotInFlight)
+            takeDailySnapshot({ force: false, note: "auto-eod" });
+        } catch (e) {
+            console.warn("EOD snapshot check error:", e);
+        }
+    };
+
+    setTimeout(tick, 30 * 1000); // 30s after load
+    snapshotCheckTimer = setInterval(tick, 5 * 60 * 1000);
+}
+
+function manualEodSnapshot() {
+    takeDailySnapshot({ force: true, note: "manual" });
+}
+
         
         // --- NEW STATE FOR REFRESH LOGIC ---
         let isRefreshing = false; 
@@ -621,28 +818,7 @@ function requestHistoryBuild(reason = "") {
 
         // --- INITIALIZATION ---
         
-        if (document.readyState === 'loading') {
-            window.addEventListener('DOMContentLoaded', startApp);
-        } else {
-            startApp();
-        }
-
-        // --- UI BINDING HELPERS (avoids noisy console errors when an optional element is missing) ---
-        function _bind(id, eventName, handler, { required = false } = {}) {
-            const el = document.getElementById(id);
-            if (el) {
-                el.addEventListener(eventName, handler);
-                return true;
-            }
-            if (required) {
-                console.error(`Required element with ID '${id}' not found.`);
-            } else {
-                console.warn(`Optional element with ID '${id}' not found (feature disabled).`);
-            }
-            return false;
-        }
-        // --- END UI BINDING HELPERS ---
-
+        window.addEventListener('DOMContentLoaded', startApp);
 
         async function startApp() {
             document.getElementById('transactionDate').valueAsDate = new Date();
@@ -652,14 +828,34 @@ function requestHistoryBuild(reason = "") {
             loadAutoRefreshState();
             loadStatsVisibility();
 
-            // --- EVENT LISTENERS (robust binding) ---
-            _bind('sortOptions', 'change', e => { currentSort = e.target.value; updateDisplay(); });
-            _bind('filterPlatform', 'change', e => { currentFilter = e.target.value; updateDisplay(); });
-            _bind('searchInput', 'input', e => { currentSearchTerm = e.target.value; updateDisplay(); });
-            _bind('csvFileInput', 'change', handleCsvImport);
-            _bind('userNameInput', 'input', debouncedUpdateUserName);
-            _bind('signInBtn', 'click', signInWithGoogle);
-            _bind('signOutBtn', 'click', signOutUser);
+            // --- EVENT LISTENERS (Moved button functions outside startApp) ---
+            const sortOptionsEl = document.getElementById('sortOptions');
+            if (sortOptionsEl) sortOptionsEl.addEventListener('change', e => { currentSort = e.target.value; updateDisplay(); });
+            else console.error("Element with ID 'sortOptions' not found!");
+
+            const filterPlatformEl = document.getElementById('filterPlatform');
+            if (filterPlatformEl) filterPlatformEl.addEventListener('change', e => { currentFilter = e.target.value; updateDisplay(); });
+             else console.error("Element with ID 'filterPlatform' not found!");
+
+            const searchInputEl = document.getElementById('searchInput');
+            if (searchInputEl) searchInputEl.addEventListener('input', e => { currentSearchTerm = e.target.value; updateDisplay(); });
+             else console.error("Element with ID 'searchInput' not found!");
+
+            const csvFileInputEl = document.getElementById('csvFileInput');
+            if (csvFileInputEl) csvFileInputEl.addEventListener('change', handleCsvImport);
+             else console.error("Element with ID 'csvFileInput' not found!");
+
+            const userNameInputEl = document.getElementById('userNameInput');
+            if (userNameInputEl) userNameInputEl.addEventListener('input', debouncedUpdateUserName); 
+             else console.error("Element with ID 'userNameInput' not found!");
+
+            const signInBtnEl = document.getElementById('signInBtn');
+            if (signInBtnEl) signInBtnEl.addEventListener('click', signInWithGoogle); // Use globally defined function
+             else console.error("Element with ID 'signInBtn' not found!");
+
+            const signOutBtnEl = document.getElementById('signOutBtn');
+            if (signOutBtnEl) signOutBtnEl.addEventListener('click', signOutUser); // Use globally defined function
+             else console.error("Element with ID 'signOutBtn' not found!");
             // --- END EVENT LISTENERS ---
 
             await initializeFirebase();
@@ -679,7 +875,10 @@ function requestHistoryBuild(reason = "") {
         async function signOutUser() {
             try {
                  sessionStorage.removeItem('myAppInvalidationToken'); // Clear local token on sign out - ADDED
-                await signOut(auth);
+                
+                if (snapshotCheckTimer) { clearInterval(snapshotCheckTimer); snapshotCheckTimer = null; }
+                snapshotInFlight = false;
+await signOut(auth);
                 location.reload();
             } catch (error) {
                 console.error("Sign Out Error:", error);
@@ -729,8 +928,8 @@ function requestHistoryBuild(reason = "") {
 
                     if (user && !user.isAnonymous) {
                         userId = user.uid;
-                        if (signInBtn) signInBtn.style.display = 'none';
-                        if (userInfoDiv) userInfoDiv.style.display = 'flex';
+                        signInBtn.style.display = 'none';
+                        userInfoDiv.style.display = 'flex';
                         document.getElementById('userName').textContent = user.displayName || 'User';
                         document.getElementById('userPhoto').src = user.photoURL || 'https://placehold.co/30x30/6D28D9/FFFFFF?text=U';
                         
@@ -758,8 +957,8 @@ function requestHistoryBuild(reason = "") {
                         updateDataStatus(true); // Call updateDataStatus here - FIXED
                     } else {
                         userId = user?.uid; // Keep anonymous ID if exists
-                        if (signInBtn) signInBtn.style.display = 'block';
-                        if (userInfoDiv) userInfoDiv.style.display = 'none';
+                        signInBtn.style.display = 'block';
+                        userInfoDiv.style.display = 'none';
                         
                         // Clear invalidation token on sign-out/anonymous - ADDED
                         sessionStorage.removeItem('myAppInvalidationToken');
@@ -815,6 +1014,7 @@ function requestHistoryBuild(reason = "") {
             if (unsubscribePortfolio) unsubscribePortfolio();
             if (unsubscribeUiState) unsubscribeUiState();
             if (unsubscribePriceCache) unsubscribePriceCache();
+                        if (unsubscribeHistory) unsubscribeHistory();
             if (unsubscribeSession) unsubscribeSession(); // Detach old session listener
 
             const userDocRef = doc(db, 'users', userId);
@@ -856,7 +1056,9 @@ function requestHistoryBuild(reason = "") {
 
                 if (!isInitialDataLoaded) {
                     isInitialDataLoaded = true;
-                    await updateDisplay();
+                    
+                        scheduleEodSnapshotChecks();
+await updateDisplay();
                 } else {
                     await updateDisplay(false); // Subsequent updates won't re-fetch historical data
                 }
@@ -876,9 +1078,23 @@ function requestHistoryBuild(reason = "") {
             });
 
             const priceCacheDocRef = doc(portfolioColRef, FIRESTORE_PRICE_CACHE_DOC);
+            const historyDocRef = doc(portfolioColRef, FIRESTORE_HISTORY_DOC);
             unsubscribePriceCache = onSnapshot(priceCacheDocRef, (docSnap) => {
                 if (docSnap.exists()) {
                     priceCache = docSnap.data();
+                }
+            });
+
+            // Portfolio history snapshots (daily)
+            const historyDocRef = doc(portfolioColRef, FIRESTORE_HISTORY_DOC);
+            unsubscribeHistory = onSnapshot(historyDocRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const h = docSnap.data() || {};
+                    if (Array.isArray(h.main)) cachedMainHistory = h.main;
+                    if (Array.isArray(h.volatility)) cachedVolatilityHistory = h.volatility;
+                    cachedHistoryMeta.lastSnapshotDate = h.lastSnapshotDate || null;
+                } else {
+                    cachedHistoryMeta.lastSnapshotDate = null;
                 }
             });
             // --- End Unchanged Listeners ---
@@ -1611,7 +1827,8 @@ function requestHistoryBuild(reason = "") {
                 await setDoc(doc(portfolioColRef, FIRESTORE_UI_STATE_DOC), uiState);
                 await setDoc(doc(portfolioColRef, FIRESTORE_PRICE_CACHE_DOC), priceCache);
                 
-                // Also clear the invalidation token - ADDED
+                                await setDoc(doc(portfolioColRef, FIRESTORE_HISTORY_DOC), { main: [], volatility: [], lastSnapshotDate: null }, { merge: true });
+// Also clear the invalidation token - ADDED
                 await setDoc(doc(portfolioColRef, FIRESTORE_SESSION_DOC), { invalidationToken: null }, { merge: true });
                 sessionStorage.removeItem('myAppInvalidationToken'); // Clear local token too - ADDED
                 
@@ -1628,7 +1845,7 @@ function requestHistoryBuild(reason = "") {
 
         function loadApiKeys() {
             FINNHUB_API_KEY = localStorage.getItem(FINNHUB_API_KEY_STORAGE) || 'd316lc1r01qnu2r0opjgd316lc1r01qnu2r0opk0';
-            ALPHA_VANTAGE_API_KEY = localStorage.getItem(ALPHA_VANTAGE_API_KEY_STORAGE) || '0ZPH51BZ2N5O9G8Q';
+            ALPHA_VANTAGE_API_KEY = localStorage.getItem(ALPHA_VANTAGE_API_KEY_STORAGE) || '';
             FMP_API_KEY = localStorage.getItem(FMP_API_KEY_STORAGE) || 'vOqUU3gDIDYWghK8m4ZlsVQwLDnhfYMS';
         }
 
@@ -1779,6 +1996,7 @@ function requestHistoryBuild(reason = "") {
         }
 
         async function fetchPriceFromAlphaVantage(symbol) {
+    if (!ENABLE_ALPHA_VANTAGE) return { currentPrice: null, previousClosePrice: null };
             if (!ALPHA_VANTAGE_API_KEY) return { currentPrice: null, previousClosePrice: null };
             try {
                 const url = `${CORS_PROXY}https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol=${symbol}&apikey=${ALPHA_VANTAGE_API_KEY}`;
@@ -2113,7 +2331,8 @@ function requestHistoryBuild(reason = "") {
                 }
 
                 try {
-                    const url = `${CORS_PROXY}https://finnhub.io/api/v1/search?q=${symbol}&token=${FINNHUB_API_KEY}`;
+                    if (!ENABLE_FINNHUB_SEARCH) throw new Error("Finnhub search disabled (requires proxy)");
+    const url = `${CORS_PROXY}https://finnhub.io/api/v1/search?q=${symbol}&token=${FINNHUB_API_KEY}`;
                     const response = await fetch(url);
 
                     if (!response.ok) {
@@ -3395,7 +3614,12 @@ function requestHistoryBuild(reason = "") {
             const holdings = calculateHoldingsAndCash();
             
             // Use provided history for the main chart
-            const dataToFilter = history || await buildPortfolioHistoryFromTransactions();
+            let dataToFilter = history || cachedMainHistory;
+            if (!dataToFilter || dataToFilter.length === 0) {
+                dataToFilter = getPlaceholderHistory(holdings);
+                // Kick off a background build so the chart becomes accurate later
+                requestHistoryBuild("filterChart_noCache");
+            }
             
             activeChartFilter = period;
             document.querySelectorAll('.chart-filter-btn').forEach(btn => btn.classList.remove('active'));
@@ -3678,6 +3902,8 @@ function requestHistoryBuild(reason = "") {
         window.saveSettings = saveSettings;
         window.toggleAutoRefresh = toggleAutoRefresh;
         window.refreshAllPrices = refreshAllPrices;
+        window.manualEodSnapshot = manualEodSnapshot;
+        window.takeDailySnapshot = takeDailySnapshot;
         window.filterChart = filterChart;
         window.toggleAddForm = toggleAddForm;
         window.toggleTransactionFields = toggleTransactionFields;
@@ -3917,6 +4143,7 @@ function requestHistoryBuild(reason = "") {
 					<!-- NEW: recurring purchases -->
   					<div class="recurring-toggle header-icon" onclick="openRecurringPurchaseModal()">🔁</div>
                     <div class="settings-toggle header-icon" onclick="openSettingsModal()">⚙️</div>
+                    <div class="snapshot-toggle header-icon" onclick="manualEodSnapshot()" title="Take daily snapshot (manual)">📸</div>
                 </div>
             </div>
             <h1>💰 Investment App <span id="userNameDisplay"></span></h1>
