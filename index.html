@@ -458,6 +458,24 @@
 <body>
 
     <script type="module">
+// ✅ BUILD ID (to verify you are running the latest file)
+const BUILD_ID = 'lagkiller_20260216T083309Z';
+console.log('✅ Running BUILD_ID:', BUILD_ID, 'at', new Date().toISOString());
+window.__BUILD_ID = BUILD_ID;
+
+// Small helper: run heavy work when the browser is idle (keeps UI snappy)
+const _idle = (fn, timeout = 1200) => {
+  try {
+    if (typeof requestIdleCallback === "function") {
+      requestIdleCallback(() => { try { fn(); } catch (e) { console.warn(e); } }, { timeout });
+    } else {
+      setTimeout(() => { try { fn(); } catch (e) { console.warn(e); } }, 0);
+    }
+  } catch (e) {
+    console.warn(e);
+  }
+};
+
         // Firebase App (the core Firebase SDK) is always required and must be listed first
         import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
@@ -533,6 +551,7 @@ let __historyBuildPromise = null;
         let activeTab = 'investments';
         let historicalPriceCache = {}; // Session cache for historical price data
         let isUpdatingDisplay = false;
+        let isHistoryBuilding = false;
         
         // --- NEW STATE FOR REFRESH LOGIC ---
         let isRefreshing = false; 
@@ -1265,7 +1284,7 @@ let __historyBuildPromise = null;
         // --- END NEW FUNCTION ---
         
         // --- MODIFIED FUNCTION: Builds Unfiltered History for Main Chart ---
-        async async function buildPortfolioHistoryFromTransactions(options = {}) {
+        async function buildPortfolioHistoryFromTransactions(options = {}) {
     // RULE: No external network calls on startup.
     // This uses local snapshots (historicalPriceCache if present) and your existing priceCache as fallback.
     const sorted = [...(portfolioData.transactions || [])].sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -2797,62 +2816,73 @@ let __historyBuildPromise = null;
         // --- End Calculation/Rendering ---
 
         // --- Main Update Function (MODIFIED to include volatility calculation) ---
-        async async function updateDisplay(fetchHistorical = false) { // Default false to prevent lag
+        async function updateDisplay(fetchHistorical = false) {
+    // Goal: show "today's" values ASAP, then do heavy stuff later.
     if (isUpdatingDisplay) return;
     isUpdatingDisplay = true;
 
     try {
         if (!isInitialDataLoaded) return;
 
-        // 1) Fast current-state render (NO history needed)
+        // 1) Fast path: compute holdings from local data + priceCache
         const currentHoldings = calculateHoldingsAndCash();
 
+        // 2) Render the important UI immediately (no history, no big loops)
         updateUserNameDisplay();
 
-        // Render stats immediately with minimal history so UI is usable
-        const quickStats = calculateOverallStats(currentHoldings, cachedVolatilityHistory || []);
-        updateStats(quickStats);
+        // Use cached volatility if we have it, otherwise keep it empty for the first paint
+        const volatilityHistory = (Array.isArray(cachedVolatilityHistory) ? cachedVolatilityHistory : []);
+        const stats = calculateOverallStats(currentHoldings, volatilityHistory);
+        updateStats(stats);
 
         populatePlatformFilter();
         renderInvestments(currentHoldings);
-        renderAllTransactions();
 
-        // 2) Background: build/refresh history + chart without blocking initial render
-        if (!__historyBuildPromise) {
-            const run = async () => {
-                try {
-                    // Build main history (local only, no network)
-                    const mainHistory = await buildPortfolioHistoryFromTransactions({ reason: "background" });
-                    cachedMainHistory = mainHistory;
+        // 3) Defer heavy DOM work (transactions table) so it never blocks first paint
+        _idle(() => {
+            try { renderAllTransactions(); }
+            catch (e) { console.warn("renderAllTransactions deferred error:", e); }
+        }, 1500);
 
-                    // Volatility history depends on historicalPriceCache; keep best-effort
+        // 4) Defer chart rendering (and any history builds)
+        const mainHistory = (Array.isArray(cachedMainHistory) ? cachedMainHistory : []);
+        _idle(() => {
+            try { filterChart(activeChartFilter, mainHistory); }
+            catch (e) { console.warn("filterChart deferred error:", e); }
+        }, 1200);
+
+        // 5) Only build history in the background if explicitly requested
+        //    OR if we have zero cached history (first-time user)
+        if (fetchHistorical || mainHistory.length === 0) {
+            _idle(() => {
+                // build in background without blocking UI
+                if (isHistoryBuilding) return;
+                isHistoryBuilding = true;
+
+                (async () => {
                     try {
-                        const vol = await buildVolatilityHistoryFromTransactions();
-                        cachedVolatilityHistory = vol;
-                    } catch (e) {
-                        cachedVolatilityHistory = cachedVolatilityHistory || [];
+                        // Build main & volatility series locally (NO external API calls here)
+                        const builtMain = await buildPortfolioHistoryFromTransactions({ mode: "local_only" });
+                        const builtVol = await buildVolatilityHistoryFromTransactions({ mode: "local_only" });
+
+                        cachedMainHistory = Array.isArray(builtMain) ? builtMain : [];
+                        cachedVolatilityHistory = Array.isArray(builtVol) ? builtVol : [];
+
+                        // Update chart + stats once ready
+                        try { filterChart(activeChartFilter, cachedMainHistory); } catch (e) {}
+                        try {
+                            const freshStats = calculateOverallStats(currentHoldings, cachedVolatilityHistory);
+                            updateStats(freshStats);
+                        } catch (e) {}
+                    } finally {
+                        isHistoryBuilding = false;
                     }
-
-                    // Update stats again once we have better history
-                    const stats2 = calculateOverallStats(currentHoldings, cachedVolatilityHistory || []);
-                    updateStats(stats2);
-
-                    // Update chart (do not block UI)
-                    await filterChart(activeChartFilter, cachedMainHistory || []);
-                } catch (e) {
+                })().catch(e => {
                     console.warn("Background history build failed:", e);
-                }
-            };
-
-            __historyBuildPromise = new Promise((resolve) => {
-                if (window.requestIdleCallback) {
-                    requestIdleCallback(async () => { await run(); resolve(); }, { timeout: 3000 });
-                } else {
-                    setTimeout(async () => { await run(); resolve(); }, 0);
-                }
-            }).finally(() => { __historyBuildPromise = null; });
+                    isHistoryBuilding = false;
+                });
+            }, 5000);
         }
-
     } finally {
         isUpdatingDisplay = false;
     }
@@ -3965,5 +3995,4 @@ let __historyBuildPromise = null;
     </div>
 </body>
 </html>
-
 
