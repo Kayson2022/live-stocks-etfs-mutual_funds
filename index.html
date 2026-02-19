@@ -459,9 +459,42 @@
     <script type="module">
 // ✅ BUILD ID (to verify you are running the latest file)
 const BUILD_ID = 'lagkiller_20260216T083309Z';
-console.log('✅ Running BUILD_ID:', BUILD_ID, 'at', new Date().toISOString());
+// 🔎 Visible perf overlay (so you don't need DevTools). Toggle with the ` key.
+function __perfEnsureOverlay() {
+  if (document.getElementById('perfOverlay')) return;
+  const el = document.createElement('div');
+  el.id = 'perfOverlay';
+  el.style.cssText =
+    'position:fixed;z-index:99999;top:10px;right:10px;max-width:420px;max-height:55vh;overflow:auto;' +
+    'background:rgba(0,0,0,0.82);color:#fff;font:12px/1.4 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;' +
+    'padding:10px 12px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.35);';
+  el.innerHTML = '<div style="font-weight:700;margin-bottom:6px;">Perf / DB load (toggle with `)</div>';
+  const target = document.body || document.documentElement;
+  target.appendChild(el);
+  document.addEventListener('keydown', (e) => {
+    if (e.key === '`') el.style.display = (el.style.display === 'none') ? 'block' : 'none';
+  });
+}
+function perf(...args) {
+  const msg = args.map(a => {
+    if (typeof a === 'string') return a;
+    try { return JSON.stringify(a); } catch { return String(a); }
+  }).join(' ');
+  try {
+    __perfEnsureOverlay();
+    const el = document.getElementById('perfOverlay');
+    if (el) {
+      const line = document.createElement('div');
+      line.textContent = msg;
+      el.appendChild(line);
+    }
+  } catch {}
+  console.log(...args);
+}
+
+perf('✅ Running BUILD_ID:', BUILD_ID, 'at', new Date().toISOString());
 window.__PERF_T0 = performance.now();
-console.log('⏱️ PERF_T0 set');
+perf('⏱️ PERF_T0 set');
 window.__BUILD_ID = BUILD_ID;
 
 // Small helper: run heavy work when the browser is idle (keeps UI snappy)
@@ -719,7 +752,7 @@ let __historyBuildPromise = null;
                                     if (!isInitialDataLoaded) isInitialDataLoaded = true;
                                     updateDataStatus('loading', 'cached');
                                     updateDisplay(false).catch(console.warn);
-                                    console.log('⚡ Rendered from local cache in', Math.round(performance.now() - window.__PERF_T0), 'ms');
+                                    perf('⚡ Rendered from local cache in', Math.round(performance.now() - window.__PERF_T0), 'ms');
                                 }
                             }
                         } catch (e) { /* ignore */ }
@@ -855,7 +888,7 @@ let __historyBuildPromise = null;
                         if (!isInitialDataLoaded) isInitialDataLoaded = true;
                         updateDataStatus('loading', 'cache');
                         updateDisplay(false).catch(console.warn);
-                        console.log('⚡ Rendered from Firestore cache in', Math.round(performance.now() - window.__PERF_T0), 'ms');
+                        perf('⚡ Rendered from Firestore cache in', Math.round(performance.now() - window.__PERF_T0), 'ms');
                     }
                 } catch (e) {
                     // No cache yet is normal on first-ever load.
