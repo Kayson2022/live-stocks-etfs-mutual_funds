@@ -2,6 +2,29 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+
+<!-- PERF OVERLAY BOOT (runs even if module script fails) -->
+<style id="__perf_overlay_style">
+#__perf_overlay{position:fixed;top:10px;right:10px;z-index:2147483647;
+font:12px/1.35 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+background:rgba(0,0,0,.82);color:#fff;padding:10px 12px;border-radius:10px;
+max-width:420px;white-space:pre-wrap;box-shadow:0 8px 30px rgba(0,0,0,.35);}
+#__perf_overlay.hidden{display:none;}
+#__perf_overlay .t{font-weight:700;margin-bottom:6px;opacity:.95;}
+#__perf_overlay .hint{opacity:.8;margin-top:6px;font-size:11px;}
+</style>
+<script>
+(function(){
+  const box = document.createElement('div');
+  box.id="__perf_overlay";
+  box.innerHTML = '<div class="t">  };
+  // Backtick toggles overlay
+  window.addEventListener('keydown', (e)=>{ if(e.key==='`'){ window.__perf.toggle(); }});
+  line('⏱️ PERF_T0 set');
+})();
+</script>
+
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Investment App</title>
@@ -458,7 +481,7 @@
 
     <script type="module">
 // ✅ BUILD ID (to verify you are running the latest file)
-const BUILD_ID = 'lagkiller_20260216T083309Z';
+const BUILD_ID = 'lagkiller_20260218T000000Z_FIXED7';
 // 🔎 Visible perf overlay (so you don't need DevTools). Toggle with the ` key.
 function __perfEnsureOverlay() {
   if (document.getElementById('perfOverlay')) return;
@@ -709,7 +732,10 @@ let __historyBuildPromise = null;
             try {
                 // Initialize Firebase only if it hasn't been already
                 if (getApps().length === 0) {
-                    firebaseApp = initializeApp(firebaseConfig);
+                    firebaseApp = initializeApp(
+/* PERF7 hook: build log */
+try{window.__perf&&window.__perf.line&&window.__perf.line('✅ Running BUILD_ID: lagkiller_20260218T000000Z_FIXED7 at '+new Date().toISOString());}catch(e){}
+firebaseConfig);
                 } else {
                     firebaseApp = getApps()[0];
                 }
@@ -728,6 +754,8 @@ let __historyBuildPromise = null;
 
 
                 onAuthStateChanged(auth, async (user) => {
+try{window.__perf&&window.__perf.line&&window.__perf.line('👤 onAuthStateChanged fired at '+Math.round(performance.now()-window.__perf.t0)+' ms');}catch(e){}
+
                     const signInBtn = document.getElementById('signInBtn');
                     const userInfoDiv = document.getElementById('user-info');
                     isInitialDataLoaded = false; // Reset on auth change
@@ -4238,6 +4266,16 @@ async function updateDisplay(fetchHistorical = false) {
         <div id="refreshMessageCard" class="refresh-message-card"></div>
         <div id="nextUpdateTimer" class="next-update-timer"></div>
     </div>
+
+<script>
+window.addEventListener('error', (e)=>{
+  try{window.__perf&&window.__perf.line&&window.__perf.line('❌ JS error: '+(e.message||e.error||'unknown'));}catch(_){}
+});
+window.addEventListener('unhandledrejection', (e)=>{
+  try{window.__perf&&window.__perf.line&&window.__perf.line('❌ Promise rejection: '+(e.reason&&e.reason.message?e.reason.message:String(e.reason)));}catch(_){}
+});
+</script>
+
 </body>
 </html>
 
