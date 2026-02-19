@@ -693,31 +693,12 @@ let __historyBuildPromise = null;
                         if (userInfoDiv) userInfoDiv.style.display = 'flex';
                         document.getElementById('userName').textContent = user.displayName || 'User';
                         document.getElementById('userPhoto').src = user.photoURL || 'https://placehold.co/30x30/6D28D9/FFFFFF?text=U';
-                        
-                        // --- INTEGRATED SESSION LOGIC ON LOGIN ---
-                        // Fetch the current invalidation token and store it locally
-                        try {
-                            const userDocRef = doc(db, 'users', userId);
-                            const portfolioColRef = collection(userDocRef, 'data');
+                        // --- LAGKILLER: Do NOT block initial data load with extra reads.
+                        // Session invalidation token is synced by the session onSnapshot listener in setupFirestoreListeners().
+                        // --- END LAGKILLER ---
+// --- END INTEGRATED SESSION LOGIC ---
 
-            const historyColRef = collection(userDocRef, 'portfolioHistory');
-
-                            const sessionDocRef = doc(portfolioColRef, FIRESTORE_SESSION_DOC);
-                            const docSnap = await getDoc(sessionDocRef);
-                            if (docSnap.exists() && docSnap.data().invalidationToken) {
-                                sessionStorage.setItem('myAppInvalidationToken', docSnap.data().invalidationToken);
-                                console.log('Stored existing invalidation token locally:', docSnap.data().invalidationToken);
-                            } else {
-                                console.log('No invalidation token found in Firestore for this user.');
-                                // Optionally create one here if needed for initial setup,
-                                // but letting the button create it is generally sufficient.
-                            }
-                        } catch (e) {
-                            console.error("Error fetching initial invalidation token:", e);
-                        }
-                        // --- END INTEGRATED SESSION LOGIC ---
-
-                        await setupFirestoreListeners(); // Setup listeners, including the session listener
+                        setupFirestoreListeners(); // Setup listeners, including the session listener
                         scheduleAfterCloseSnapshot();
                         updateDataStatus(true); // Call updateDataStatus here - FIXED
                     } else {
@@ -731,7 +712,7 @@ let __historyBuildPromise = null;
                         if (!user) {
                            await signInAnonymously(auth);
                         } else {
-                           await setupFirestoreListeners(); // Setup listeners for anonymous user (session listener won't attach)
+                           setupFirestoreListeners(); // Setup listeners for anonymous user (session listener won't attach)
                         }
                     }
                 });
@@ -773,6 +754,52 @@ let __historyBuildPromise = null;
             }
         }
         // --- END INTEGRATED FUNCTION ---
+        // --- LAGKILLER: Non-blocking maintenance scheduler (prevents first-load delays) ---
+        let _maintenanceTimer = null;
+        let _maintenanceRunning = false;
+        let _maintenancePendingSave = false;
+        let _maintenancePendingRecurring = false;
+
+        function scheduleMaintenance(opts = {}) {
+            _maintenancePendingSave = _maintenancePendingSave || !!opts.save;
+            _maintenancePendingRecurring = _maintenancePendingRecurring || !!opts.recurring;
+
+            if (_maintenanceTimer) return;
+
+            _maintenanceTimer = setTimeout(async () => {
+                _maintenanceTimer = null;
+                if (_maintenanceRunning) return;
+                _maintenanceRunning = true;
+
+                try {
+                    let didChange = false;
+
+                    // Process recurring purchases using cached prices ONLY (no network on first load)
+                    if (_maintenancePendingRecurring) {
+                        try {
+                            const created = await checkAndProcessRecurringTransactions({ useCacheOnly: true });
+                            if (created) didChange = true;
+                        } catch (e) {
+                            console.warn("[Maintenance] recurring error:", e);
+                        }
+                    }
+
+                    if (_maintenancePendingSave || didChange) {
+                        try {
+                            await saveDataToFirestore();
+                        } catch (e) {
+                            console.warn("[Maintenance] save error:", e);
+                        }
+                    }
+                } finally {
+                    _maintenancePendingSave = false;
+                    _maintenancePendingRecurring = false;
+                    _maintenanceRunning = false;
+                }
+            }, 1200);
+        }
+        // --- END LAGKILLER maintenance scheduler ---
+
 
         async function setupFirestoreListeners() { 
             if (!userId) return;
@@ -786,11 +813,13 @@ let __historyBuildPromise = null;
 
             // --- Portfolio, UI State, Price Cache Listeners (Unchanged from uploaded file) ---
              const portfolioDocRef = doc(portfolioColRef, FIRESTORE_DATA_DOC);
-            unsubscribePortfolio = onSnapshot(portfolioDocRef, async (docSnap) => {
+            unsubscribePortfolio = onSnapshot(portfolioDocRef, (docSnap) => {
                 let needsSave = false;
+
                 if (docSnap.exists()) {
                     portfolioData = docSnap.data();
-                     // Backwards compatibility for new features
+
+                    // Backwards compatibility for new features
                     if (!portfolioData.recurringTransactions) {
                         portfolioData.recurringTransactions = [];
                         needsSave = true;
@@ -803,31 +832,34 @@ let __historyBuildPromise = null;
                     portfolioData = { username: '', transactions: [], recurringTransactions: [], activityLog: [] };
                     needsSave = true;
                 }
-                
-                if(cleanUpActivityLog()) {
+
+                // Cleanup is cheap, but writing is not — schedule any writes in the background.
+                if (cleanUpActivityLog()) {
                     needsSave = true;
                 }
 
+                // IMPORTANT: Never block the first UI paint with network work.
+                // Recurring processing now uses cached prices only and runs deferred.
                 if (!hasRecurringCheckRun) {
-                    const processed = await checkAndProcessRecurringTransactions();
-                    if(processed) needsSave = true;
                     hasRecurringCheckRun = true;
+                    scheduleMaintenance({ recurring: true, save: true });
                 }
-                
+
                 if (needsSave) {
-                    await saveDataToFirestore();
-                } 
+                    scheduleMaintenance({ save: true });
+                }
 
                 if (!isInitialDataLoaded) {
                     isInitialDataLoaded = true;
-                    updateDisplay(false).catch(err=>console.error("updateDisplay error", err));
-} else {
-                    updateDisplay(false).catch(err=>console.error("updateDisplay error", err));
-// Subsequent updates won't re-fetch historical data
                 }
 
-                if (isAutoRefreshEnabled && !isRefreshing) { // Check if not already refreshing
-                     startAutoRefresh(); 
+                // Render UI immediately (no awaits)
+                updateDisplay(false).catch(err => console.error("updateDisplay error", err));
+
+                // Start countdown once (do not restart it on every snapshot)
+                if (isAutoRefreshEnabled) {
+                    if (!isRefreshing && countdownIntervalId === null) startAutoRefresh();
+                    else updateAutoRefreshButton();
                 } else {
                     updateAutoRefreshButton();
                 }
@@ -835,9 +867,11 @@ let __historyBuildPromise = null;
 
 
 
+
             // --- Portfolio History Snapshots (FAST) ---
             if (unsubscribeHistory) unsubscribeHistory();
             try {
+                const historyColRef = collection(userDocRef, 'portfolioHistory');
                 const qHist = query(historyColRef, orderBy("date", "asc"), limit(1200));
                 unsubscribeHistory = onSnapshot(qHist, (snap) => {
                     const rows = [];
@@ -1119,7 +1153,7 @@ let __historyBuildPromise = null;
             });
         }
         
-        async function checkAndProcessRecurringTransactions() {
+        async function checkAndProcessRecurringTransactions(opts = {}) {
             if (!portfolioData.recurringTransactions || portfolioData.recurringTransactions.length === 0) {
                 return false;
             }
@@ -1147,7 +1181,16 @@ let __historyBuildPromise = null;
                 if (nextDate <= today) {
                     console.log(`Processing recurring purchase for ${rule.symbol}`);
                     // Note: fetchPrice is called without a specific type, so it defaults to the priority logic (Finnhub for Stock/ETF, FMP/AV for MF)
-                    const priceData = await fetchPrice({ symbol: rule.symbol, type: 'ETF' }); 
+                    let priceData = null;
+if (opts && opts.useCacheOnly) {
+    const cached = priceCache[rule.symbol] || {};
+    const px = (cached.manualPrice != null) ? cached.manualPrice : cached.currentPrice;
+    const npx = (px != null && isFinite(px)) ? Number(px) : null;
+    priceData = { currentPrice: (npx && npx > 0) ? npx : null, previousClosePrice: null };
+} else {
+    // Network fetch path (manual / explicit refresh only)
+    priceData = await fetchPrice({ symbol: rule.symbol, type: 'ETF', accountType: rule.accountType });
+} 
                     if (priceData && priceData.currentPrice > 0) {
                         const shares = rule.amount / priceData.currentPrice;
 
