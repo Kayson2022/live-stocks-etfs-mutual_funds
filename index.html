@@ -460,6 +460,8 @@
 // ✅ BUILD ID (to verify you are running the latest file)
 const BUILD_ID = 'lagkiller_20260216T083309Z';
 console.log('✅ Running BUILD_ID:', BUILD_ID, 'at', new Date().toISOString());
+window.__PERF_T0 = performance.now();
+console.log('⏱️ PERF_T0 set');
 window.__BUILD_ID = BUILD_ID;
 
 // Small helper: run heavy work when the browser is idle (keeps UI snappy)
@@ -479,13 +481,16 @@ const _idle = (fn, timeout = 1200) => {
         import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
         // Import getDoc for the new session logic
-        import { getFirestore, doc, setDoc, onSnapshot, collection, writeBatch, getDoc, getDocs, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, onSnapshot, collection, writeBatch, getDoc, getDocs, query, orderBy, limit, serverTimestamp, enableIndexedDbPersistence, getDocFromCache } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
         // --- GLOBAL APP STATE ---
         const FIRESTORE_DATA_DOC = 'portfolioData';
         const FIRESTORE_UI_STATE_DOC = 'uiState';
         const FIRESTORE_PRICE_CACHE_DOC = 'priceCache';
         const FIRESTORE_SESSION_DOC = 'sessionManagement'; // Document for session control - ADDED
+
+        const PORTFOLIO_LOCAL_CACHE_KEY = 'portfolioData_localCache_v1';
+
 
         const THEME_KEY = 'myPortfolioTheme_v4';
         const AUTO_REFRESH_STATE_KEY = 'myPortfolioAutoRefreshState_v4';
@@ -678,6 +683,17 @@ let __historyBuildPromise = null;
                 db = getFirestore(firebaseApp);
                 auth = getAuth(firebaseApp);
 
+                // --- LAGKILLER: Enable IndexedDB persistence so Firestore can serve cached data immediately ---
+                try {
+                    await enableIndexedDbPersistence(db);
+                    console.log("✅ Firestore persistence enabled");
+                } catch (e) {
+                    console.warn("⚠️ Firestore persistence not enabled:", e?.code || e);
+                    // Common: failed-precondition (multiple tabs), unimplemented (private mode)
+                }
+                // --- END LAGKILLER ---
+
+
                 onAuthStateChanged(auth, async (user) => {
                     const signInBtn = document.getElementById('signInBtn');
                     const userInfoDiv = document.getElementById('user-info');
@@ -693,6 +709,22 @@ let __historyBuildPromise = null;
                         if (userInfoDiv) userInfoDiv.style.display = 'flex';
                         document.getElementById('userName').textContent = user.displayName || 'User';
                         document.getElementById('userPhoto').src = user.photoURL || 'https://placehold.co/30x30/6D28D9/FFFFFF?text=U';
+                        // --- LAGKILLER: Instant render from local cache (does NOT require network) ---
+                        try {
+                            const raw = localStorage.getItem(PORTFOLIO_LOCAL_CACHE_KEY);
+                            if (raw) {
+                                const cached = JSON.parse(raw);
+                                if (cached && typeof cached === 'object') {
+                                    portfolioData = cached;
+                                    if (!isInitialDataLoaded) isInitialDataLoaded = true;
+                                    updateDataStatus('loading', 'cached');
+                                    updateDisplay(false).catch(console.warn);
+                                    console.log('⚡ Rendered from local cache in', Math.round(performance.now() - window.__PERF_T0), 'ms');
+                                }
+                            }
+                        } catch (e) { /* ignore */ }
+                        // --- END LAGKILLER ---
+
                         // --- LAGKILLER: Do NOT block initial data load with extra reads.
                         // Session invalidation token is synced by the session onSnapshot listener in setupFirestoreListeners().
                         // --- END LAGKILLER ---
@@ -813,7 +845,30 @@ let __historyBuildPromise = null;
 
             // --- Portfolio, UI State, Price Cache Listeners (Unchanged from uploaded file) ---
              const portfolioDocRef = doc(portfolioColRef, FIRESTORE_DATA_DOC);
+
+            // --- LAGKILLER: Try Firestore cache immediately (no network) ---
+            (async () => {
+                try {
+                    const cachedSnap = await getDocFromCache(portfolioDocRef);
+                    if (cachedSnap.exists()) {
+                        portfolioData = cachedSnap.data();
+                        if (!isInitialDataLoaded) isInitialDataLoaded = true;
+                        updateDataStatus('loading', 'cache');
+                        updateDisplay(false).catch(console.warn);
+                        console.log('⚡ Rendered from Firestore cache in', Math.round(performance.now() - window.__PERF_T0), 'ms');
+                    }
+                } catch (e) {
+                    // No cache yet is normal on first-ever load.
+                }
+            })();
+            // --- END LAGKILLER ---
+
             unsubscribePortfolio = onSnapshot(portfolioDocRef, (docSnap) => {
+                if (!window.__FIRST_SNAPSHOT_LOGGED) {
+                    window.__FIRST_SNAPSHOT_LOGGED = true;
+                    console.log('✅ First Firestore snapshot after', Math.round(performance.now() - window.__PERF_T0), 'ms');
+                }
+
                 let needsSave = false;
 
                 if (docSnap.exists()) {
@@ -854,7 +909,10 @@ let __historyBuildPromise = null;
                 }
 
                 // Render UI immediately (no awaits)
-                updateDisplay(false).catch(err => console.error("updateDisplay error", err));
+                
+                // Persist last-known portfolio locally so next load can paint instantly
+                try { localStorage.setItem(PORTFOLIO_LOCAL_CACHE_KEY, JSON.stringify(portfolioData || {})); } catch (e) {}
+updateDisplay(false).catch(err => console.error("updateDisplay error", err));
 
                 // Start countdown once (do not restart it on every snapshot)
                 if (isAutoRefreshEnabled) {
@@ -3544,7 +3602,7 @@ async function updateDisplay(fetchHistorical = false) {
              if (isSaved === true) {
                  el.textContent = '☁️ Synced'; el.classList.add('saved');
              } else if (isSaved === 'loading') {
-                 el.textContent = '🔄 Syncing...'; el.classList.add('loading');
+                 el.textContent = msg ? `🔄 Syncing... (${msg})` : '🔄 Syncing...'; el.classList.add('loading');
              } else if (isSaved === 'error') {
                 el.textContent = `⚠️ Error: ${msg}`; el.classList.add('error');
              } else {
