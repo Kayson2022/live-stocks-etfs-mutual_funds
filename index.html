@@ -1,29 +1,7 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-
-<!-- PERF OVERLAY BOOT (runs even if module script fails) -->
-<style id="__perf_overlay_style">
-#__perf_overlay{position:fixed;top:10px;right:10px;z-index:2147483647;
-font:12px/1.35 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-background:rgba(0,0,0,.82);color:#fff;padding:10px 12px;border-radius:10px;
-max-width:420px;white-space:pre-wrap;box-shadow:0 8px 30px rgba(0,0,0,.35);}
-#__perf_overlay.hidden{display:none;}
-#__perf_overlay .t{font-weight:700;margin-bottom:6px;opacity:.95;}
-#__perf_overlay .hint{opacity:.8;margin-top:6px;font-size:11px;}
-</style>
-<script>
-(function(){
-  const box = document.createElement('div');
-  box.id="__perf_overlay";
-  box.innerHTML = '<div class="t">  };
-  // Backtick toggles overlay
-  window.addEventListener('keydown', (e)=>{ if(e.key==='`'){ window.__perf.toggle(); }});
-  line('⏱️ PERF_T0 set');
-})();
-</script>
-
-
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Investment App</title>
@@ -480,43 +458,8 @@ max-width:420px;white-space:pre-wrap;box-shadow:0 8px 30px rgba(0,0,0,.35);}
 
     <script type="module">
 // ✅ BUILD ID (to verify you are running the latest file)
-const BUILD_ID = 'lagkiller_20260218T000000Z_FIXED7';
-// 🔎 Visible perf overlay (so you don't need DevTools). Toggle with the ` key.
-function __perfEnsureOverlay() {
-  if (document.getElementById('perfOverlay')) return;
-  const el = document.createElement('div');
-  el.id = 'perfOverlay';
-  el.style.cssText =
-    'position:fixed;z-index:99999;top:10px;right:10px;max-width:420px;max-height:55vh;overflow:auto;' +
-    'background:rgba(0,0,0,0.82);color:#fff;font:12px/1.4 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;' +
-    'padding:10px 12px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.35);';
-  el.innerHTML = '<div style="font-weight:700;margin-bottom:6px;">Perf / DB load (toggle with `)</div>';
-  const target = document.body || document.documentElement;
-  target.appendChild(el);
-  document.addEventListener('keydown', (e) => {
-    if (e.key === '`') el.style.display = (el.style.display === 'none') ? 'block' : 'none';
-  });
-}
-function perf(...args) {
-  const msg = args.map(a => {
-    if (typeof a === 'string') return a;
-    try { return JSON.stringify(a); } catch { return String(a); }
-  }).join(' ');
-  try {
-    __perfEnsureOverlay();
-    const el = document.getElementById('perfOverlay');
-    if (el) {
-      const line = document.createElement('div');
-      line.textContent = msg;
-      el.appendChild(line);
-    }
-  } catch {}
-  console.log(...args);
-}
-
-perf('✅ Running BUILD_ID:', BUILD_ID, 'at', new Date().toISOString());
-window.__PERF_T0 = performance.now();
-perf('⏱️ PERF_T0 set');
+const BUILD_ID = 'lagkiller_20260216T083309Z';
+console.log('✅ Running BUILD_ID:', BUILD_ID, 'at', new Date().toISOString());
 window.__BUILD_ID = BUILD_ID;
 
 // Small helper: run heavy work when the browser is idle (keeps UI snappy)
@@ -536,16 +479,13 @@ const _idle = (fn, timeout = 1200) => {
         import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
         // Import getDoc for the new session logic
-        import { getFirestore, doc, setDoc, onSnapshot, collection, writeBatch, getDoc, getDocs, query, orderBy, limit, serverTimestamp, enableIndexedDbPersistence, getDocFromCache } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, onSnapshot, collection, writeBatch, getDoc, getDocs, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
         // --- GLOBAL APP STATE ---
         const FIRESTORE_DATA_DOC = 'portfolioData';
         const FIRESTORE_UI_STATE_DOC = 'uiState';
         const FIRESTORE_PRICE_CACHE_DOC = 'priceCache';
         const FIRESTORE_SESSION_DOC = 'sessionManagement'; // Document for session control - ADDED
-
-        const PORTFOLIO_LOCAL_CACHE_KEY = 'portfolioData_localCache_v1';
-
 
         const THEME_KEY = 'myPortfolioTheme_v4';
         const AUTO_REFRESH_STATE_KEY = 'myPortfolioAutoRefreshState_v4';
@@ -594,6 +534,18 @@ let portfolioData = {
              recurringTransactions: [],
              activityLog: []
         };
+
+        // ===== CACHE-FIRST PORTFOLIO (instant UI even on slow Firestore) =====
+        function _pfCacheKey(uid) { return `pf_cache_${uid}`; }
+        function loadPortfolioCache(uid) {
+            try { return JSON.parse(localStorage.getItem(_pfCacheKey(uid)) || "null"); }
+            catch { return null; }
+        }
+        function savePortfolioCache(uid, data) {
+            try { localStorage.setItem(_pfCacheKey(uid), JSON.stringify(data)); } catch {}
+        }
+        // ================================================================
+
         let uiState = {
             expandedGroups: {},
             expandedTransactions: {}
@@ -731,30 +683,14 @@ let __historyBuildPromise = null;
             try {
                 // Initialize Firebase only if it hasn't been already
                 if (getApps().length === 0) {
-                    firebaseApp = initializeApp(
-/* PERF7 hook: build log */
-try{window.__perf&&window.__perf.line&&window.__perf.line('✅ Running BUILD_ID: lagkiller_20260218T000000Z_FIXED7 at '+new Date().toISOString());}catch(e){}
-firebaseConfig);
+                    firebaseApp = initializeApp(firebaseConfig);
                 } else {
                     firebaseApp = getApps()[0];
                 }
                 db = getFirestore(firebaseApp);
                 auth = getAuth(firebaseApp);
 
-                // --- LAGKILLER: Enable IndexedDB persistence so Firestore can serve cached data immediately ---
-                try {
-                    await enableIndexedDbPersistence(db);
-                    console.log("✅ Firestore persistence enabled");
-                } catch (e) {
-                    console.warn("⚠️ Firestore persistence not enabled:", e?.code || e);
-                    // Common: failed-precondition (multiple tabs), unimplemented (private mode)
-                }
-                // --- END LAGKILLER ---
-
-
                 onAuthStateChanged(auth, async (user) => {
-try{window.__perf&&window.__perf.line&&window.__perf.line('👤 onAuthStateChanged fired at '+Math.round(performance.now()-window.__perf.t0)+' ms');}catch(e){}
-
                     const signInBtn = document.getElementById('signInBtn');
                     const userInfoDiv = document.getElementById('user-info');
                     isInitialDataLoaded = false; // Reset on auth change
@@ -769,26 +705,28 @@ try{window.__perf&&window.__perf.line&&window.__perf.line('👤 onAuthStateChang
                         if (userInfoDiv) userInfoDiv.style.display = 'flex';
                         document.getElementById('userName').textContent = user.displayName || 'User';
                         document.getElementById('userPhoto').src = user.photoURL || 'https://placehold.co/30x30/6D28D9/FFFFFF?text=U';
-                        // --- LAGKILLER: Instant render from local cache (does NOT require network) ---
+                        
+                        // --- INTEGRATED SESSION LOGIC ON LOGIN --- (NON-BLOCKING)
+                        // Fetch the current invalidation token and store it locally (do not block startup)
                         try {
-                            const raw = localStorage.getItem(PORTFOLIO_LOCAL_CACHE_KEY);
-                            if (raw) {
-                                const cached = JSON.parse(raw);
-                                if (cached && typeof cached === 'object') {
-                                    portfolioData = cached;
-                                    if (!isInitialDataLoaded) isInitialDataLoaded = true;
-                                    updateDataStatus('loading', 'cached');
-                                    updateDisplay(false).catch(console.warn);
-                                    perf('⚡ Rendered from local cache in', Math.round(performance.now() - window.__PERF_T0), 'ms');
-                                }
-                            }
-                        } catch (e) { /* ignore */ }
-                        // --- END LAGKILLER ---
+                            const userDocRef = doc(db, 'users', userId);
+                            const portfolioColRef = collection(userDocRef, 'data');
+                            const sessionDocRef = doc(portfolioColRef, FIRESTORE_SESSION_DOC);
 
-                        // --- LAGKILLER: Do NOT block initial data load with extra reads.
-                        // Session invalidation token is synced by the session onSnapshot listener in setupFirestoreListeners().
-                        // --- END LAGKILLER ---
-// --- END INTEGRATED SESSION LOGIC ---
+                            getDoc(sessionDocRef).then((docSnap) => {
+                                if (docSnap.exists() && docSnap.data().invalidationToken) {
+                                    sessionStorage.setItem('myAppInvalidationToken', docSnap.data().invalidationToken);
+                                    console.log('Stored existing invalidation token locally:', docSnap.data().invalidationToken);
+                                } else {
+                                    console.log('No invalidation token found in Firestore for this user. Will create on first sign-in if needed.');
+                                }
+                            }).catch((e) => {
+                                console.error("Error fetching initial invalidation token:", e);
+                            });
+                        } catch (e) {
+                            console.error("Error starting initial invalidation token fetch:", e);
+                        }
+                        // --- END INTEGRATED SESSION LOGIC ---
 
                         setupFirestoreListeners(); // Setup listeners, including the session listener
                         scheduleAfterCloseSnapshot();
@@ -846,52 +784,6 @@ try{window.__perf&&window.__perf.line&&window.__perf.line('👤 onAuthStateChang
             }
         }
         // --- END INTEGRATED FUNCTION ---
-        // --- LAGKILLER: Non-blocking maintenance scheduler (prevents first-load delays) ---
-        let _maintenanceTimer = null;
-        let _maintenanceRunning = false;
-        let _maintenancePendingSave = false;
-        let _maintenancePendingRecurring = false;
-
-        function scheduleMaintenance(opts = {}) {
-            _maintenancePendingSave = _maintenancePendingSave || !!opts.save;
-            _maintenancePendingRecurring = _maintenancePendingRecurring || !!opts.recurring;
-
-            if (_maintenanceTimer) return;
-
-            _maintenanceTimer = setTimeout(async () => {
-                _maintenanceTimer = null;
-                if (_maintenanceRunning) return;
-                _maintenanceRunning = true;
-
-                try {
-                    let didChange = false;
-
-                    // Process recurring purchases using cached prices ONLY (no network on first load)
-                    if (_maintenancePendingRecurring) {
-                        try {
-                            const created = await checkAndProcessRecurringTransactions({ useCacheOnly: true });
-                            if (created) didChange = true;
-                        } catch (e) {
-                            console.warn("[Maintenance] recurring error:", e);
-                        }
-                    }
-
-                    if (_maintenancePendingSave || didChange) {
-                        try {
-                            await saveDataToFirestore();
-                        } catch (e) {
-                            console.warn("[Maintenance] save error:", e);
-                        }
-                    }
-                } finally {
-                    _maintenancePendingSave = false;
-                    _maintenancePendingRecurring = false;
-                    _maintenanceRunning = false;
-                }
-            }, 1200);
-        }
-        // --- END LAGKILLER maintenance scheduler ---
-
 
         async function setupFirestoreListeners() { 
             if (!userId) return;
@@ -905,91 +797,70 @@ try{window.__perf&&window.__perf.line&&window.__perf.line('👤 onAuthStateChang
 
             // --- Portfolio, UI State, Price Cache Listeners (Unchanged from uploaded file) ---
              const portfolioDocRef = doc(portfolioColRef, FIRESTORE_DATA_DOC);
-
-            // --- LAGKILLER: Try Firestore cache immediately (no network) ---
-            (async () => {
-                try {
-                    const cachedSnap = await getDocFromCache(portfolioDocRef);
-                    if (cachedSnap.exists()) {
-                        portfolioData = cachedSnap.data();
-                        if (!isInitialDataLoaded) isInitialDataLoaded = true;
-                        updateDataStatus('loading', 'cache');
-                        updateDisplay(false).catch(console.warn);
-                        perf('⚡ Rendered from Firestore cache in', Math.round(performance.now() - window.__PERF_T0), 'ms');
-                    }
-                } catch (e) {
-                    // No cache yet is normal on first-ever load.
-                }
-            })();
-            // --- END LAGKILLER ---
-
             unsubscribePortfolio = onSnapshot(portfolioDocRef, (docSnap) => {
-                if (!window.__FIRST_SNAPSHOT_LOGGED) {
-                    window.__FIRST_SNAPSHOT_LOGGED = true;
-                    console.log('✅ First Firestore snapshot after', Math.round(performance.now() - window.__PERF_T0), 'ms');
-                }
-
                 let needsSave = false;
 
+                // 1) Parse portfolio immediately
                 if (docSnap.exists()) {
                     portfolioData = docSnap.data();
 
-                    // Backwards compatibility for new features
-                    if (!portfolioData.recurringTransactions) {
-                        portfolioData.recurringTransactions = [];
-                        needsSave = true;
-                    }
-                    if (!portfolioData.activityLog) {
-                        portfolioData.activityLog = [];
-                        needsSave = true;
-                    }
+                    // Ensure backwards compatibility fields exist
+                    if (!portfolioData.transactions) { portfolioData.transactions = []; needsSave = true; }
+                    if (!portfolioData.recurringTransactions) { portfolioData.recurringTransactions = []; needsSave = true; }
+                    if (!portfolioData.activityLog) { portfolioData.activityLog = []; needsSave = true; }
                 } else {
                     portfolioData = { username: '', transactions: [], recurringTransactions: [], activityLog: [] };
                     needsSave = true;
                 }
 
-                // Cleanup is cheap, but writing is not — schedule any writes in the background.
-                if (cleanUpActivityLog()) {
-                    needsSave = true;
-                }
+                // Clean up log (fast)
+                try {
+                    if (cleanUpActivityLog && cleanUpActivityLog()) needsSave = true;
+                } catch (e) { console.warn("cleanUpActivityLog error", e); }
 
-                // IMPORTANT: Never block the first UI paint with network work.
-                // Recurring processing now uses cached prices only and runs deferred.
-                if (!hasRecurringCheckRun) {
-                    hasRecurringCheckRun = true;
-                    scheduleMaintenance({ recurring: true, save: true });
-                }
+                // 2) Cache portfolio for instant next load
+                savePortfolioCache(userId, portfolioData);
 
-                if (needsSave) {
-                    scheduleMaintenance({ save: true });
-                }
-
+                // 3) FIRST PAINT ASAP (do NOT block on network/writes)
                 if (!isInitialDataLoaded) {
                     isInitialDataLoaded = true;
                 }
+                updateDisplay(false).catch(err=>console.error("updateDisplay error", err));
 
-                // Render UI immediately (no awaits)
-                
-                // Persist last-known portfolio locally so next load can paint instantly
-                try { localStorage.setItem(PORTFOLIO_LOCAL_CACHE_KEY, JSON.stringify(portfolioData || {})); } catch (e) {}
-updateDisplay(false).catch(err => console.error("updateDisplay error", err));
+                // 4) Background tasks (never block first render)
+                setTimeout(async () => {
+                    try {
+                        let bgNeedsSave = needsSave;
 
-                // Start countdown once (do not restart it on every snapshot)
-                if (isAutoRefreshEnabled) {
-                    if (!isRefreshing && countdownIntervalId === null) startAutoRefresh();
-                    else updateAutoRefreshButton();
-                } else {
-                    updateAutoRefreshButton();
-                }
+                        // Run recurring processing once, cache-only to avoid fetching prices during initial DB load
+                        if (!hasRecurringCheckRun) {
+                            const processed = await checkAndProcessRecurringTransactions({ cacheOnly: true });
+                            if (processed) bgNeedsSave = true;
+                            hasRecurringCheckRun = true;
+                        }
+
+                        if (bgNeedsSave) {
+                            await saveDataToFirestore();
+                        }
+
+                        // Auto-refresh countdown is OK; price fetch happens when countdown reaches 0
+                        if (isAutoRefreshEnabled && !isRefreshing) {
+                            startAutoRefresh();
+                        } else {
+                            updateAutoRefreshButton();
+                        }
+                    } catch (e) {
+                        console.warn("background post-snapshot work error", e);
+                    }
+                }, 0);
+
             }, (error) => console.error("Error listening to portfolio:", error));
-
 
 
 
             // --- Portfolio History Snapshots (FAST) ---
             if (unsubscribeHistory) unsubscribeHistory();
             try {
-                const historyColRef = collection(userDocRef, 'portfolioHistory');
                 const qHist = query(historyColRef, orderBy("date", "asc"), limit(1200));
                 unsubscribeHistory = onSnapshot(qHist, (snap) => {
                     const rows = [];
@@ -1271,7 +1142,8 @@ updateDisplay(false).catch(err => console.error("updateDisplay error", err));
             });
         }
         
-        async function checkAndProcessRecurringTransactions(opts = {}) {
+        async function checkAndProcessRecurringTransactions(options = {}) {
+            const cacheOnly = !!options.cacheOnly;
             if (!portfolioData.recurringTransactions || portfolioData.recurringTransactions.length === 0) {
                 return false;
             }
@@ -1299,16 +1171,8 @@ updateDisplay(false).catch(err => console.error("updateDisplay error", err));
                 if (nextDate <= today) {
                     console.log(`Processing recurring purchase for ${rule.symbol}`);
                     // Note: fetchPrice is called without a specific type, so it defaults to the priority logic (Finnhub for Stock/ETF, FMP/AV for MF)
-                    let priceData = null;
-if (opts && opts.useCacheOnly) {
-    const cached = priceCache[rule.symbol] || {};
-    const px = (cached.manualPrice != null) ? cached.manualPrice : cached.currentPrice;
-    const npx = (px != null && isFinite(px)) ? Number(px) : null;
-    priceData = { currentPrice: (npx && npx > 0) ? npx : null, previousClosePrice: null };
-} else {
-    // Network fetch path (manual / explicit refresh only)
-    priceData = await fetchPrice({ symbol: rule.symbol, type: 'ETF', accountType: rule.accountType });
-} 
+                    const cachedPx = (typeof getLastKnownPrice === 'function') ? getLastKnownPrice(rule.symbol, 0) : 0;
+                    const priceData = cacheOnly ? { currentPrice: cachedPx } : await fetchPrice({ symbol: rule.symbol, type: 'ETF' });
                     if (priceData && priceData.currentPrice > 0) {
                         const shares = rule.amount / priceData.currentPrice;
 
@@ -3662,7 +3526,7 @@ async function updateDisplay(fetchHistorical = false) {
              if (isSaved === true) {
                  el.textContent = '☁️ Synced'; el.classList.add('saved');
              } else if (isSaved === 'loading') {
-                 el.textContent = msg ? `🔄 Syncing... (${msg})` : '🔄 Syncing...'; el.classList.add('loading');
+                 el.textContent = '🔄 Syncing...'; el.classList.add('loading');
              } else if (isSaved === 'error') {
                 el.textContent = `⚠️ Error: ${msg}`; el.classList.add('error');
              } else {
@@ -4265,16 +4129,6 @@ async function updateDisplay(fetchHistorical = false) {
         <div id="refreshMessageCard" class="refresh-message-card"></div>
         <div id="nextUpdateTimer" class="next-update-timer"></div>
     </div>
-
-<script>
-window.addEventListener('error', (e)=>{
-  try{window.__perf&&window.__perf.line&&window.__perf.line('❌ JS error: '+(e.message||e.error||'unknown'));}catch(_){}
-});
-window.addEventListener('unhandledrejection', (e)=>{
-  try{window.__perf&&window.__perf.line&&window.__perf.line('❌ Promise rejection: '+(e.reason&&e.reason.message?e.reason.message:String(e.reason)));}catch(_){}
-});
-</script>
-
 </body>
 </html>
 
