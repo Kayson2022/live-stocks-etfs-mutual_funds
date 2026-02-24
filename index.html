@@ -1841,6 +1841,10 @@ let __historyBuildPromise = null;
                         refreshStats.failed++;
                         console.warn(`Price fetch failed for ${holding.symbol} during refresh.`);
                     }
+					// ✅ NEW: show live UI/totals updates while scanning
+						if (i === 0 || (i + 1) % 3 === 0 || i === fastAssetsToFetch.length - 1) {
+    					await updateDisplay(false);
+					}
                 } // --- End Fetch Loop ---
                 
                 // --- Post-Loop Actions ---
