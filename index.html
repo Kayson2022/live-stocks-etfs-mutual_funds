@@ -1776,21 +1776,36 @@ let __historyBuildPromise = null;
                 const currentHoldings = calculateHoldingsAndCash();
                 
                 // --- MODIFICATION: Filter for STOCKS/ETFs only for Auto-Refresh (FAST Assets) ---
-                const fastAssetsToFetch = currentHoldings.filter(holding => {
+                //const fastAssetsToFetch = currentHoldings.filter(holding => {
                     // Only include Stocks/ETFs for fast polling.
-                    if (!(holding.type === 'Stock' || holding.type === 'ETF')) return false;
+                  //  if (!(holding.type === 'Stock' || holding.type === 'ETF')) return false;
                     
                     // Exclude any account types that should not be auto-refreshed (like 401k/529)
-                    const accountsToExclude = ['401(k)', '529 College Saving'];
-                    if (accountsToExclude.includes(holding.accountType)) return false; 
+                    //const accountsToExclude = ['401(k)', '529 College Saving'];
+                    //if (accountsToExclude.includes(holding.accountType)) return false; 
                     
-                    const cached = priceCache[holding.symbol];
-                    const staleTime = CACHE_STALE_TIME_FAST;
+                    //const cached = priceCache[holding.symbol];
+                    //const staleTime = CACHE_STALE_TIME_FAST;
 
-                    const isManualOverride = cached && cached.manualPrice != null;
-                    const isStale = !cached || (Date.now() - (cached.lastFetchTimestamp || 0)) > staleTime;
+                    //const isManualOverride = cached && cached.manualPrice != null;
+                    //const isStale = !cached || (Date.now() - (cached.lastFetchTimestamp || 0)) > staleTime;
                     
-                    return forceRefresh || (!isManualOverride && isStale);
+                    //return forceRefresh || (!isManualOverride && isStale);
+				//New code to scan all stock/etfs/mutual fund
+				const fastAssetsToFetch = currentHoldings.filter(holding => {
+    // Exclude 401(k) only
+    if (holding.accountType === '401(k)') return false;
+
+    // Skip rows with no symbol
+    if (!holding.symbol) return false;
+
+    // Optional: respect manual override unless force refresh
+    const cached = priceCache[holding.symbol];
+    const isManualOverride = cached && cached.manualPrice != null;
+    if (isManualOverride && !forceRefresh) return false;
+
+    // ✅ Scan every eligible holding every countdown (no stale check)
+    return true;
                 });
                 
                 refreshStats.total = fastAssetsToFetch.length;
