@@ -1603,8 +1603,9 @@ let __historyBuildPromise = null;
             // --- END EXCLUSION ---
 
             const symbol = holding.symbol;
-            const isMutualFund = holding.type === 'Mutual Fund' || (symbol && symbol.toUpperCase().endsWith('X'));
-            const isStockOrETF = holding.type === 'Stock' || holding.type === 'ETF';
+            const holdingTypeText = String(holding.type || '').trim().toLowerCase();
+            const isMutualFund = holdingTypeText === 'mutual fund' || (symbol && symbol.toUpperCase().endsWith('X'));
+            const isStockOrETF = holdingTypeText === 'stock' || holdingTypeText === 'etf';
             
             console.log(`Fetching price for: ${symbol}, Type: ${holding.type}, IsMutualFund: ${isMutualFund}`);
 
@@ -1807,16 +1808,17 @@ let __historyBuildPromise = null;
                 const fastAssetsToFetch = currentHoldings.filter(holding => {
                     if (!holding || !holding.symbol) return false;
 
-                    const isMutualFund = holding.type === 'Mutual Fund' || (holding.symbol && holding.symbol.toUpperCase().endsWith('X'));
-                    const isStockOrETF = holding.type === 'Stock' || holding.type === 'ETF';
+                    const typeText = String(holding.type || '').trim().toLowerCase();
+                    const symbolText = String(holding.symbol || '').trim().toUpperCase();
+                    const isMutualFund = typeText === 'mutual fund' || symbolText.endsWith('X');
+                    const isStockOrETF = typeText === 'stock' || typeText === 'etf';
                     if (!(isStockOrETF || isMutualFund)) return false;
 
+                    // Exclude only 401k / 529 as requested.
                     if (isExcludedRefreshHolding(holding)) return false;
 
-                    const cached = priceCache[holding.symbol];
-                    const isManualOverride = cached && cached.manualPrice != null;
-                    if (isManualOverride && !forceRefresh) return false;
-
+                    // IMPORTANT: do NOT skip manual overrides here.
+                    // User requested scan the whole portfolio every refresh (except 401k/529).
                     return true;
                 });
 
@@ -1824,7 +1826,7 @@ let __historyBuildPromise = null;
 
                 // --- Early Exit if nothing to fetch ---
                 if (fastAssetsToFetch.length === 0) {
-                    console.log("No Stocks or ETFs need refreshing.");
+                    console.log("No eligible Stock/ETF/Mutual Fund holdings need refreshing (after excluding 401k/529).");
                     updateRefreshProgress('completed', 0, 0, null, 0, 0, 0); 
                     return; 
                 }
@@ -1879,7 +1881,7 @@ let __historyBuildPromise = null;
                 // --- Post-Loop Actions ---
                 const totalFetched = refreshStats.total - refreshStats.failed;
                 updateRefreshProgress('completed', refreshStats.total, totalFetched, null, refreshStats.gained, refreshStats.lost, refreshStats.failed);
-                logActivity(`Refreshed prices for ${totalFetched} Stocks/ETFs.`);
+                logActivity(`Refreshed prices for ${totalFetched} asset(s) (Stocks/ETFs/Mutual Funds).`);
                 await saveDataToFirestore(); // Save updated price cache
                 updateDisplay(false).catch(err=>console.error("updateDisplay error", err));
 // Update UI with new prices (don't refetch history)
@@ -1953,9 +1955,16 @@ let __historyBuildPromise = null;
             } else if (status === 'completed') {
                 card.classList.remove('progress');
                 
-                // Current callers pass: current=attempted count, total=successful count
-                const attemptedCount = Number(current) || 0;
-                const totalRefreshed = Number.isFinite(Number(total)) ? Number(total) : Math.max(0, attemptedCount - failed);
+                // Current callers usually pass: current=attempted count, total=successful count.
+                // Be defensive: if UI callers pass wrong/empty values, fall back to refreshStats.
+                const attemptedFromArgs = Number(current);
+                const successFromArgs = Number(total);
+                const attemptedCount = Number.isFinite(attemptedFromArgs) && attemptedFromArgs > 0
+                    ? attemptedFromArgs
+                    : (Number(refreshStats?.total) || 0);
+                const totalRefreshed = Number.isFinite(successFromArgs) && successFromArgs >= 0
+                    ? successFromArgs
+                    : Math.max(0, attemptedCount - (Number(failed) || 0));
                 
                 // Modified completion message structure for mobile wrapping
                 const message = `
